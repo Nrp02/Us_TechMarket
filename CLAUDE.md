@@ -14,9 +14,9 @@ Constraints that shape every decision below: no user accounts, no budget (free t
 
 - **Frontend + Backend**: Next.js (App Router), one repo
 - **Database**: Supabase (Postgres, free tier)
-- **Scheduled jobs**: Vercel Cron
+- **Scheduled jobs**: Supabase Cron (`pg_cron` + `pg_net`) — **not** Vercel Cron; see the reversal note below for why
 - **Hosting**: Vercel (free tier)
-- **AI**: Gemini API, model **Gemini 2.5 Flash**, free tier only — no billing enabled on the Google AI Studio project, ever. See "Free tier verification" under Open Items — don't trust a specific rate-limit number from training data or a blog post; check the live console at build time.
+- **AI**: Gemini API, model **`gemini-3.5-flash`** (Gemini 2.5 Flash is unavailable — see the reversal note below), free tier only — no billing enabled on the Google AI Studio project, ever. See "Free tier verification" under Open Items — don't trust a specific rate-limit number from training data or a blog post; check the live console at build time.
 
 ## Division of labor: Claude Design vs. Claude Code
 
@@ -40,14 +40,37 @@ Every part of this app is written in **TypeScript**. No Python, no separate back
 
 | Need | Source | Note |
 |---|---|---|
-| Price, volume, company news, earnings calendar | Finnhub (free tier, 60 calls/min) | Primary source for almost everything |
-| Market index proxy (NASDAQ, S&P 500) | Finnhub `/quote` on ETF symbols | No direct index endpoint on free tier |
-| Dow Jones, Technology Sector, VIX | Finnhub — find the closest free-tier equivalent (ETF/index proxy) | Confirm exact symbols in Phase 1 |
+| Price, company news, earnings calendar | Finnhub (free tier, 60 calls/min) | Primary source for almost everything |
+| **Today's traded volume + intraday bars** | Yahoo Finance `query1.finance.yahoo.com/v8/finance/chart` | **Finnhub's free tier cannot supply this** — see the reversal note below. Scoped to this one gap only; unofficial endpoint, so callers treat failure as "volume unknown", never as an error. |
+| Average daily volume | Finnhub `/stock/metric` (`10DayAverageTradingVolume`, reported in millions) | Denominator for relative volume |
+| Market index proxies — all five cards | Finnhub `/quote` on ETF symbols: `QQQ` (NASDAQ 100), `SPY` (S&P 500), `DIA` (Dow Jones), `XLK` (Technology), `VIXY` (Volatility) | Confirmed live in Phase 1. Real index symbols (`^VIX`, `^GSPC`, `^IXIC`) return "Market data subscription required for CFD indices". `VIXY` tracks VIX **futures**, not VIX spot — the UI must not imply otherwise. |
 | Sector/Peers | Finnhub `/stock/peers` | Used inside Today's Activity, not a standalone page |
 | SEC filings | SEC EDGAR Full-Text Search API | Metadata only — type, date, link. Never parse full filing text. |
 | AI summarization | Gemini 2.5 Flash (free tier) | Batched — see "AI call budget" below |
 
 No paid tier anywhere. If a free-tier endpoint can't deliver something in this file, stop and flag it rather than substituting a paid one.
+
+---
+
+## Ingestion architecture — locked
+
+**No client-triggered upstream API calls.** This is structural, not a preference, and it applies to every phase:
+
+- Every external API call (Finnhub, Yahoo, Gemini) originates from a **scheduled server-side ingestion job**. Never from a page render, a component, a user interaction, or a page view.
+- **Frontend pages read cached Supabase data only** — always through `src/lib/queries.ts`, never through an upstream client.
+- **AI summaries are generated once per stock/data cycle and stored.** Never per visitor. Two visitors loading the same page cause zero AI calls between them.
+
+How this is enforced:
+
+| Mechanism | Where |
+|---|---|
+| Upstream clients isolated | `src/lib/finnhub.ts`, `src/lib/yahoo.ts` — only ever reached via an ingestion job |
+| Ingestion behind a shared secret | `src/app/api/refresh/route.ts` checks `CRON_SECRET` and **fails closed** — a missing secret returns 503, never open access |
+| Work skipped outside market hours | `isMarketOpen()` in `src/lib/market.ts`, evaluated in `America/New_York` so it survives EST/EDT |
+| Schedules provisioned | `scripts/setup-cron.mts` (idempotent, re-runnable; reads secrets from `.env.local`, commits none) |
+| Violations caught mechanically | `no-restricted-imports` in `eslint.config.mjs` — importing an upstream client from a page or component fails lint |
+
+A consequence worth knowing: adding a stock to the watchlist does **not** fetch anything. All 20 candidate symbols are ingested every cycle, so any stock the user can add already has cached data.
 
 ---
 
@@ -57,13 +80,17 @@ Each phase ends on a **gate**: a demo the project owner reviews before you conti
 
 Deadline: **20 days from the day work starts** (Day 1 = whatever day the owner kicks this off), all days count including weekends. Don't anchor to a specific calendar date in this file — track elapsed days from the actual start instead.
 
-| Phase | Days | Gate |
-|---|---|---|
-| 1. Foundation | Day 1–3 | Day 3 |
-| 2. Home page | Day 4–7 | Day 7 |
-| 3. News pipeline | Day 8–12 | Day 12 — **hard cutoff, see Cut Order below** |
-| 4. Today's Activity | Day 13–16 | Day 16 |
-| 5. Automation, polish, deploy | Day 17–20 | Day 20 — final deadline |
+| Phase | Days | Gate | Status |
+|---|---|---|---|
+| 1. Foundation | Day 1–3 | Day 3 | **Done** — gate criteria verified |
+| 2. Home page | Day 4–7 | Day 7 | **Done** — gate criteria verified |
+| 3. News pipeline | Day 8–12 | Day 12 — **hard cutoff, see Cut Order below** | **Done** — no cuts taken; all 4 tabs shipped |
+| 4. Today's Activity | Day 13–16 | Day 16 | |
+| 5. Automation, polish, deploy | Day 17–20 | Day 20 — final deadline | Scheduler pulled forward — see note |
+
+**Phase 5's scheduler work was pulled forward into Phase 2–3.** The "no client-triggered upstream API calls" rule means there is no compliant way to refresh data without a scheduler, so ingestion scheduling had to exist before the news pipeline, not after it. Phase 5 keeps the news/EOD schedules, visual pass, outage test, and final deploy.
+
+Live URL: **https://ustechmarket.vercel.app** (Vercel deployment protection disabled so it is publicly reachable).
 
 ### Phase 1 — Foundation (Day 1–3)
 
@@ -106,7 +133,7 @@ ELSE                                                  → Normal
 1. Fetch and cache news from Finnhub, dedup so the same article never appears twice in the DB.
 2. **Batched AI summarization**: one Gemini 2.5 Flash call per fetch cycle covering all new articles together — never one call per article. The 2–3 line summary shown per article **must be AI-generated paraphrase**, never Finnhub's raw snippet/headline field pasted directly (copyright risk). The prompt must also enforce the AI Safety / Data Integrity Rules below (no invented facts, no causal claims beyond what the source states, no predictions).
 3. Build the News page: 4 tabs — `All News` (default) / `Company News` / `Industry News` / `Market News`. No sort dropdown, no list/grid toggle — one fixed "latest first" list view.
-4. **Thumbnail fallback chain**, in order: Finnhub-provided image URL → generic category icon (Company/Industry/Market) → no image at all. Check the image URL resolves (`onError` handler) before trusting it — don't let a dead URL leave a broken-image icon on screen.
+4. **Thumbnails are logos, never article photography.** Chain, in order: company logo → ticker lettermark (companies with no freely-licensed mark) → category icon (market news, which belongs to no single company). Finnhub's `image` field is deliberately unused: it supplies an image for nearly every article, but there were only **10 distinct URLs across 90 articles** — 69 sharing one Yahoo Finance placeholder and 13 the Reuters publisher logo — so the page rendered the same two pictures over and over. Dropping remote images also removes the need for an `onError` handler, which is why `news-thumbnail.tsx` is a server component with no client JavaScript.
 5. **Related Stock tags**: use the ticker field Finnhub already attaches to each article — don't have the AI infer which stocks an article relates to.
 6. No bookmarking feature — there's no auth/user system to attach it to, so it's out of scope entirely, not deferred.
 
@@ -139,8 +166,11 @@ No Confidence Score. It was considered and cut — the natural version of it wou
 
 ### Phase 5 — Automation, polish, deploy (Day 17–20)
 
-1. Vercel Cron: news fetch ~4x/day at 08:00 / 12:00 / 16:30 / 20:00 **ET** (not the owner's local time — the owner is in Thailand/ICT, the schedule must convert automatically and stay correct across EST/EDT daylight saving). Plus the end-of-day Today's Activity generation job, timed to run after US market close.
+1. Supabase Cron: news fetch ~4x/day at 08:00 / 12:00 / 16:30 / 20:00 **ET** (not the owner's local time — the owner is in Thailand/ICT, the schedule must convert automatically and stay correct across EST/EDT daylight saving). Plus the end-of-day Today's Activity generation job, timed to run after US market close.
+   - Schedules are added to `scripts/setup-cron.mts` alongside the intraday snapshot job, not to `vercel.json`.
+   - **DST is handled in code, not in the cron expression**: schedule across a UTC window wide enough to cover both EST and EDT, then let the handler decide using `America/New_York` time. A fixed UTC cron expression silently drifts by an hour twice a year.
    - **Done when**: a manual trigger of each job succeeds; don't wait on a live cron firing to find out it's broken.
+   - Verify the real outcome in `net._http_response`, **not** `cron.job_run_details` — `pg_net` is fire-and-forget and reports success as soon as the request is queued, so a job shows green even when the endpoint returned 401 or timed out.
 2. EOD job depends on all news for the day being fetched first — sequence the 16:30 ET news cycle to complete before the EOD summary job starts.
 3. Implement whatever visual design Claude Design has produced by this point; responsive check across the three pages.
 4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing.
@@ -186,8 +216,10 @@ This directly extends Risk #2 in the register above (AI hallucinates numbers) �
 |---|---|---|---|
 | 1 | News pipeline overruns Day 12 | Pre-agreed cut order above; deadline doesn't move | Project owner decides only if the cut order itself is somehow insufficient |
 | 2 | AI hallucinates numbers, invents facts, or overreaches into causation/prediction/advice | Full rules in "AI Safety / Data Integrity Rules" below — structured input only, no invented values, no unsupported causal claims, no predictions or recommendations | Claude Code writes the prompt; owner spot-checks at the Phase 4 gate |
-| 3 | Finnhub rate limit hit during a 10-stock batch | Queue/delay between calls, designed in from Day 8, not patched in afterward | Claude Code |
+| 3 | Finnhub rate limit hit during a 10-stock batch | Queue/delay between calls, designed in from Day 8, not patched in afterward. Already in place: `mapLimit` in `src/lib/refresh.ts` caps concurrency at 5, and pages make zero upstream calls so traffic cannot affect the limit | Claude Code |
 | 4 | Gate review stalls the critical path (this is a solo-reviewer project — no parallel work possible) | Owner blocks calendar time in advance for each gate date above | Project owner |
+| 5 | A scheduled ingestion job fails silently — `pg_net` is fire-and-forget, so `cron.job_run_details` shows success even when the endpoint returned 401 or timed out | Treat `net._http_response` as the source of truth when checking any scheduled job. A green cron row proves only that the request was queued | Claude Code |
+| 6 | Public ingestion endpoint used to burn upstream rate limits | `CRON_SECRET` guard that **fails closed** (503 when unset). Rotating it means updating `.env.local`, `vercel env add`, then re-running `npm run setup-cron` — two places, easy to half-do | Claude Code |
 
 ## Decisions that were explicitly reversed mid-planning — don't revert to the original
 
@@ -198,8 +230,26 @@ These look like they contradict earlier reasoning in this doc. They're not mista
 - Sparklines: **included**, on both Home cards and watchlist rows — the earlier "skip sparklines to save time" call was reversed once the intraday snapshot table made them cheap.
 - Today's Activity page: **no secondary tab bar at all** — earlier mockups showed 8 tabs (Overview/News/Events/Financials/Charts/Peers/SEC Filings); all removed in favor of the sidebar + one dense AI summary.
 
+The three below were forced by what the free tiers actually do, discovered by probing the live APIs during Phase 1–2. They are not preferences and re-litigating them means re-hitting the same wall.
+
+- **Scheduler: Supabase Cron, not Vercel Cron.** Vercel Hobby permits a cron job to run **at most once per day**, and a more frequent expression *fails at deploy time* — verified against Vercel's own docs. That cannot deliver 15-minute snapshots or a 4x/day news fetch. `pg_cron` 1.6.4 and `pg_net` 0.20.4 are available on the Supabase project and `supabase_vault` 0.3.1 is already installed, so the schedule lives in Postgres. Upgrading Vercel to Pro would fix it for $20/mo and is ruled out by the $0 constraint.
+- **Volume comes from Yahoo Finance, not Finnhub.** Probed at build time: `/quote` returns no volume field at all, and `/stock/candle` returns `"You don't have access to this resource"` on free tier for both daily and intraday. Without a second source the app loses the `Volume` and `Rel. Volume` columns, two of the three Significant Movement branches, and every sparkline. Yahoo's chart endpoint supplies today's cumulative volume *and* the full session's 15-minute bars, which also solves the sparkline cold-start problem. Finnhub remains the source for price and average volume.
+- **Model: `gemini-3.5-flash`, not Gemini 2.5 Flash.** `gemini-2.5-flash` still appears in the model list but `generateContent` returns 404 *"no longer available to new users"*; `gemini-2.5-flash-lite` is gone the same way. Pinned rather than the `gemini-flash-latest` alias, so the summarisation prompt cannot shift under a graded demo. **Reasoning is capped at `thinkingBudget: 2048`** — unbounded reasoning made latency wildly variable (a 13-article batch once took *longer* than a 40-article one, blowing past the 60s function limit), and capping it cut a cycle from ~50s to ~13s and token use from ~20k to ~2.8k. It is not set to 0: some reasoning measurably improves adherence to the safety rules.
+- **News categories are drawn from per-symbol tagging, not from Finnhub's news categories.** `/news?category=technology` and `/news?category=general` return byte-identical articles (100 of 100 ids overlap), carry no tickers, and are general world/business news. So `company` = watchlist symbols, `industry` = the other Top 20 tech companies, `market` = the general feed. Calling that general feed "Technology Industry News" would simply be false.
+- **Company news is relevance-filtered before storage.** Finnhub attaches a queried symbol to articles that are not about that company at all — measured at 55% of results, e.g. a Yeti story and a Pan American Silver story both tagged `NVDA`. An article is only stored under a symbol when its headline or snippet actually references that company (`mentionsSymbol` in `src/lib/symbols.ts`). This is plain string matching, **not** AI inference, so the "tickers come from Finnhub's field, never inferred by a model" rule still holds. Mis-tagging fell from 55% to ~13%.
+- **Company logos: Simple Icons for 12 of 20, lettermark plate for the rest.** Simple Icons no longer ships marks for Microsoft, Amazon, Oracle, Salesforce, Adobe, Texas Instruments, Micron, or ServiceNow. This does not reverse the "real logos" decision — it is the fallback where no freely-licensed mark exists. Finnhub's `/stock/profile2` returns a logo URL covering all 20 and is an available upgrade, but it is neither source this file named, so it needs an explicit owner call.
+
+## Resolved items (settled during Phase 1–2 — don't re-open)
+
+- **Intraday snapshot cadence: 15 minutes.** Documented in the schema comment in `0001_init.sql`. Snapshots snap to the 15-minute grid — the upstream feed appends a live partial bar stamped with the current time, so without snapping, every refresh leaves an extra off-grid point behind.
+- **Index symbols: `QQQ` / `SPY` / `DIA` / `XLK` / `VIXY`.** Confirmed live; see the Data sources table.
+- **The "Top 20" is a fixed list**, not a live ranking — no free-tier endpoint ranks US tech by market cap. Defined in `src/lib/symbols.ts`.
+- **The 10-stock watchlist cap is enforced server-side** in `src/app/api/watchlist/route.ts`, and the watchlist table is the single source of truth. An earlier read-path fallback to a hardcoded default list let the cap be pushed to 11, because the API counted rows while the page counted the fallback.
+
+- **Gemini API key works.** The `AQ.`-prefixed key authenticates fine against `generativelanguage.googleapis.com`; the unusual prefix was not a problem.
+- **One batched Gemini call per cycle is enforced by a cycle cap, not by splitting the call.** `MAX_PER_CYCLE = 15` in `src/lib/news-ingest.ts`. An oversized batch truncates the model's JSON mid-string and loses every summary in it, so surplus articles are deferred to the next cycle rather than triggering a second call.
+
 ## Open items (not yet decided — surface these, don't guess)
 
-- Exact intraday snapshot cadence (15 vs 30 min) — pick one in Phase 1 Day 2 and document it in the schema comments.
-- Exact free-tier symbol/endpoint for Dow Jones, Technology Sector, and VIX on Finnhub — confirm in Phase 1, don't assume the same pattern as NASDAQ/S&P 500 works.
-- **Gemini 2.5 Flash free-tier rate limits** — do not hardcode a specific RPM/RPD number from memory or from a blog post; published numbers for this have changed more than once recently and sources disagree. Check the live quota in the Google AI Studio console for the actual project key at the start of Phase 1, and size the ~10-call EOD batch's inter-call delay off that real number, not an assumed one. Confirm no billing is enabled on the project — free tier only, by owner requirement.
+- **Gemini free-tier rate limits** — Google no longer publishes RPM/RPD in the docs; they are only visible in the AI Studio console for the specific key. Still unchecked. Phase 4 fires one call per watchlist stock back to back, so read the real number off the console and size the inter-call delay against it. The news pipeline is unaffected (4 calls/day).
+- **Confirm no billing is enabled** on the Google AI Studio project — free tier only, by owner requirement. Never hardcode an RPM/RPD number from memory or a blog post; the published figures have changed more than once and sources disagree.
