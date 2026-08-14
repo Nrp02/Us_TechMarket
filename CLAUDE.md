@@ -165,6 +165,8 @@ Deadline: **20 days from the day work starts** (Day 1 = whatever day the owner k
 
 Live URL: **https://ustechmarket.vercel.app** (Vercel deployment protection disabled so it is publicly reachable).
 
+**That URL deploys from `main`, not from the working branch.** Worth stating because it silently misleads: Phase 4 and 4.5 were built and committed on `phase-4-todays-activity` and pushing them left the live site on Phase 3 for the whole time — `/todays-activity/*` returned 404 there while working locally. A branch push produces at most a preview deployment on some other URL. Merge to `main` before treating anything as live, and check a route the branch added rather than just the home page, which returns 200 either way.
+
 ### Phase 1 — Foundation (Day 1–3)
 
 1. Scaffold Next.js, create Supabase project, obtain and test a Finnhub API key against one real stock.
@@ -249,7 +251,8 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
 2. EOD job depends on all news for the day being fetched first — sequence the 16:30 ET news cycle to complete before the EOD summary job starts.
 3. Implement whatever visual design Claude Design has produced by this point; responsive check across the three pages.
 4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing.
-   - **Also confirm the logos load from the deployed origin.** They were only ever verified from `localhost`, and the Brandfetch client id may be origin-restricted. This is the one uncovered failure in the logo change and it fails silently: an unreachable CDN renders **every** mark — watchlist, Top Movers, the Today's Activity header, every news thumbnail — as an empty plate, because `alt=""` suppresses even the broken-image glyph (measured). Load the deployed URL and check the network tab for 200s; if they fail, the fix is either an allowed-domains entry in the Brandfetch dashboard or an `onError` lettermark fallback, which would make `news-thumbnail.tsx` a client component and should be weighed against that.
+   - ✅ **The logos load from the deployed origin.** Checked on `ustechmarket.vercel.app` after the merge to `main`: all 15 CDN requests a page makes returned 200, so the client id is **not** origin-restricted. Because the URLs carry `fallback/404`, a 200 means the mark is genuinely present rather than a blank placeholder. Re-check if the client id is ever rotated or a custom domain is added.
+   - The failure mode remains worth knowing even though it did not occur: an unreachable CDN renders **every** mark — watchlist, Top Movers, the Today's Activity header, every news thumbnail — as an empty plate, and does so silently, because `alt=""` suppresses even the broken-image glyph (measured). There is no in-app fallback; catching it would need an `onError` handler and so a client component, which reverses the server-component design in `news-thumbnail.tsx`.
 5. Final deploy + a short README aimed at the professor.
 
 **Done when**: someone with zero context opens the live URL on a phone and understands what the product does within 30 seconds.
