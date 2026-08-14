@@ -6,6 +6,7 @@
 // (and the numbers checked by hand) on their own.
 
 import { formatPrice, formatVolume } from "@/lib/format";
+import { isAtOrAfterClose } from "@/lib/market";
 
 export type Snapshot = { at: Date; price: number; volume: number | null };
 export type TimelineNews = { at: Date; headline: string };
@@ -55,13 +56,26 @@ export function buildTimeline(
       label: "Market open",
       detail: formatPrice(first.price),
     },
-    {
+  ];
+
+  // The close is claimed only when a snapshot actually lands at or after the
+  // bell. The last bar is not the close just because it is last: build the
+  // timeline at 13:15 and this used to label 13:15 "Market close", which is
+  // what a forced mid-session run of the end-of-day job put on every one of the
+  // 20 stocks — the job normally refuses to run while the market is open, but
+  // `force` in the route skips that check and nothing downstream re-checked.
+  //
+  // It also covers the quieter case: if the snapshots stop before 16:00 because
+  // a tick was missed near the bell, the day genuinely has no recorded close,
+  // and saying so beats naming whatever time the data happened to stop at.
+  if (isAtOrAfterClose(last.at)) {
+    rows.push({
       eventAt: last.at,
       kind: "market_close",
       label: "Market close",
       detail: formatPrice(last.price),
-    },
-  ];
+    });
+  }
 
   // Session high and low always get a row. An earlier version only added them
   // once the day's range cleared 1%, on the theory that a flat day's "high" is

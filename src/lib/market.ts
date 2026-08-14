@@ -47,6 +47,18 @@ export function isClosingWindow(at: Date = new Date()): boolean {
   );
 }
 
+/**
+ * True when `at` is at or past 16:00 ET on its own day.
+ *
+ * Distinct from `!isMarketOpen()`, which is also true before the opening bell —
+ * a 09:15 timestamp is "not open" but the session has not happened yet, and the
+ * timeline needs to tell those apart before it can call a snapshot the close.
+ */
+export function isAtOrAfterClose(at: Date): boolean {
+  const minutes = sessionMinutes(at);
+  return minutes != null && minutes >= CLOSE_MINUTES;
+}
+
 /** Calendar date in ET, as YYYY-MM-DD — the "trading day" key used for summaries. */
 export function tradingDay(at: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {

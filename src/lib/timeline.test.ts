@@ -8,11 +8,29 @@ import { buildTimeline, type Snapshot, type TimelineNews } from "./timeline.ts";
 // invisible until someone opens the page and notices something missing — which
 // is exactly how the session high/low regression below was found.
 
+// 2026-08-13 is a Thursday in EDT, so UTC is ET+4: 13:00Z is 09:00 ET and
+// 20:00Z is 16:00 ET, the closing bell. Bars below therefore sit mid-session
+// unless a test deliberately runs them past 20:00Z.
 const at = (hhmm: string) => new Date(`2026-08-13T${hhmm}:00Z`);
 
+// Minutes are added to a base instant rather than formatted into the string:
+// the earlier `13:${i * 15}` produced "13:60" from the fifth bar onward, an
+// invalid Date that every assertion happily ignored until something finally
+// read the timestamp.
 function bars(prices: number[], volume: number | null = 1_000): Snapshot[] {
+  const base = at("13:00").getTime();
   return prices.map((price, i) => ({
-    at: at(`13:${String(i * 15).padStart(2, "0")}`),
+    at: new Date(base + i * 15 * 60_000),
+    price,
+    volume,
+  }));
+}
+
+/** The same bars, shifted so the final one lands exactly on 16:00 ET. */
+function barsThroughClose(prices: number[], volume: number | null = 1_000): Snapshot[] {
+  const lastIndex = prices.length - 1;
+  return prices.map((price, i) => ({
+    at: new Date(at("20:00").getTime() - (lastIndex - i) * 15 * 60_000),
     price,
     volume,
   }));
@@ -24,13 +42,42 @@ test("a session with no snapshots produces nothing", () => {
   assert.deepEqual(buildTimeline([], []), []);
 });
 
-test("open and close are always present, priced from the first and last bar", () => {
-  const rows = buildTimeline(bars([100, 101, 102]), []);
+test("open and close are priced from the first and last bar once the bell has gone", () => {
+  const rows = buildTimeline(barsThroughClose([100, 101, 102]), []);
 
   const open = rows.find((r) => r.kind === "market_open");
   const close = rows.find((r) => r.kind === "market_close");
   assert.equal(open?.detail, "$100.00");
   assert.equal(close?.detail, "$102.00");
+});
+
+// Regression: every one of the 20 stocks showed "Market close 1:15 PM" on a
+// day the market was still open, because the last bar was labelled the close
+// whatever time it carried. A forced mid-session run of the end-of-day job is
+// what wrote it, and nothing downstream questioned the label.
+test("a session still in progress has an open but no close", () => {
+  const rows = buildTimeline(bars([100, 101, 102]), []);
+
+  assert.ok(rows.some((r) => r.kind === "market_open"));
+  assert.equal(rows.find((r) => r.kind === "market_close"), undefined);
+});
+
+test("snapshots that stop before the bell claim no close", () => {
+  // Last bar at 19:45Z — 15:45 ET, a quarter hour short of the close.
+  const short = barsThroughClose([100, 101, 102]).map((b) => ({
+    ...b,
+    at: new Date(b.at.getTime() - 15 * 60_000),
+  }));
+
+  assert.equal(buildTimeline(short, []).find((r) => r.kind === "market_close"), undefined);
+});
+
+test("a bar exactly on the bell counts as the close", () => {
+  const rows = buildTimeline(barsThroughClose([100, 101]), []);
+  const close = rows.find((r) => r.kind === "market_close");
+
+  assert.equal(close?.detail, "$101.00");
+  assert.equal(close?.eventAt.toISOString(), "2026-08-13T20:00:00.000Z");
 });
 
 test("session high and low appear even when the day barely moved", () => {
