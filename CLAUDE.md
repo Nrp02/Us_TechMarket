@@ -70,7 +70,69 @@ How this is enforced:
 | Schedules provisioned | `scripts/setup-cron.mts` (idempotent, re-runnable; reads secrets from `.env.local`, commits none) |
 | Violations caught mechanically | `no-restricted-imports` in `eslint.config.mjs` — importing an upstream client from a page or component fails lint |
 
-A consequence worth knowing: adding a stock to the watchlist does **not** fetch anything. All 20 candidate symbols are ingested every cycle, so any stock the user can add already has cached data.
+A consequence worth knowing: adding a stock to the watchlist does **not** fetch anything. All 20 candidate symbols are ingested every cycle, so any stock the user can add already has cached data. Phase 4.5 extends the same reasoning to AI summaries — once each visitor keeps their own watchlist, every stock they *could* pick must already be summarised.
+
+---
+
+## Phase 4.5 — agreed scope change, DESIGNED BUT NOT YET BUILT
+
+**Read this before trusting anything below it.** Everything in this section was agreed with the owner in planning and **none of it is in the code yet**. Where it contradicts a statement further down this file, this section is the newer decision and wins — the older text is left in place deliberately so the reasoning that produced it is still readable, but it describes the code as it stands, not as it is going to be.
+
+Branch at the time of the decision: `phase-4-todays-activity`, last commit `86cb848`, working tree clean.
+
+### What changes, and why
+
+**1. Daily summaries cover all 20 stocks, not the 10 on the watchlist.** 20 ÷ `BATCH_SIZE` 5 = 4 batches = **4 Gemini calls/day** (was 2). This follows directly from change 2: once each visitor has their own watchlist, the server cannot know at generation time which stocks anyone will ask for, so every stock a visitor *could* pick must already have a summary. That is the same principle the ingestion architecture already runs on — all 20 symbols are ingested every cycle so that adding a stock fetches nothing.
+
+- Source of the symbol list moves from the `watchlist` table to `TOP_20_SYMBOLS` in `generateDailySummaries` (`src/lib/daily-summary.ts`).
+- The cron schedule does **not** change. `5-55/10 21-22 * * 1-5` gives 12 ticks; 4 are used, 8 remain as retry headroom.
+
+**2. The watchlist becomes per-browser, stored in a cookie.** Today it is one global Postgres table, so any visitor editing it edits it for everyone. The owner wants each visitor to keep their own selection.
+
+- **Cookie, not `localStorage`** — this was decided against `localStorage` on purpose. Home and News are server components that need the watchlist *at render time*: a cookie is sent with every request and readable via `cookies()`, `localStorage` is not. With `localStorage` the watchlist table and the News page both have to become client components that fetch all 20 and filter after hydration, which adds a first-paint flash, and the cap can then only be enforced client-side — which is exactly the failure recorded under Resolved items, where the read path and the API counted different lists and let the cap reach 11.
+- **Cookies are not shared between visitors** — this came up in planning and is worth recording so it isn't re-asked. A cookie lives in each visitor's own browser, exactly like `localStorage`; the thing that is shared today is the Postgres table. Neither mechanism separates two people using the same browser profile — only accounts would, and accounts are ruled out.
+- Sizes: **default 7 stocks, minimum 1, maximum 10.** The minimum is new — `DELETE` must refuse to remove the last symbol. The default was set to 7 rather than 5 so Company News is not too thin on a first visit.
+- Cap enforcement **stays server-side**, now over the cookie rather than table rows. `readWatchlist()` re-validates on every read: drop anything outside the Top 20, drop duplicates, clamp to 10, fall back to the default when the cookie is missing or ends up empty — a hand-edited cookie must not be able to break a page.
+- Suggested home: a new `src/lib/watchlist.ts` (cookie read + the min/max/default constants), replacing `getWatchlistSymbols()` in `src/lib/queries.ts`. Three call sites read it: `src/app/page.tsx`, `src/app/todays-activity/page.tsx`, `src/app/todays-activity/[symbol]/page.tsx`.
+- The `watchlist` table then has no readers. Leave it in place until everything is verified; drop it in a later migration, not as part of the change.
+
+**3. News categories move from ingest time to query time.** This is forced by change 2 and is easy to miss. `src/lib/news-ingest.ts` currently reads the global watchlist, splits the Top 20 into watched/industry, and **writes `category` into the row permanently**; `getNews` then filters on that stored column. With a per-visitor watchlist that stored value describes nobody. The `news` table already stores `related_symbols`, so the split is derived per request instead:
+
+- `company` → `related_symbols` overlaps the visitor's watchlist
+- `industry` → a per-symbol article that does not overlap it
+- `market` → the general feed, which carries no tickers and is unaffected
+
+Consequences worth stating: Company + Industry together are always the whole Top 20, so no article disappears when the watchlist changes; a change takes effect immediately without re-ingesting, because all 20 symbols' articles are already stored; and an article tagged with several companies lands in Company as soon as any one of them is on the watchlist. **This does not change how many Finnhub calls ingestion makes** — it already fetches watched + industry = all 20.
+
+**4. Today's Activity gets watchlist editing in the header dropdown.** The switcher (`src/components/symbol-switcher.tsx`) grows two groups: the watchlist stocks each with a `−` to remove, and the remaining Top 20 stocks each with a `+` to add. `−` is unavailable at 1 stock, `+` at 10, and the 409 the API already returns for a full watchlist must be surfaced in the menu rather than swallowed. Mutations call `router.refresh()` so the server re-renders against the new cookie. Removing the stock currently being viewed is allowed and does not redirect — the page reads `price_cache`, which holds all 20, so it keeps working and the stock simply moves into the "add" group.
+
+**5. Market News thumbnails use the Finnhub logo**, and **all company logos are re-sourced from Brandfetch** (see the logo note under "Decisions that were explicitly reversed").
+
+### A real bug this change would introduce if built naively
+
+`generateDailySummaries` rebuilds every active stock's timeline **before** it reaches the Gemini call, sequentially — `loadDayData` is 2 Supabase queries per symbol inside a `for` loop. At 10 symbols that is 20 queries; at 20 it is 40. The call is only attempted if at least `MIN_CALL_BUDGET_MS` (15s) remains of `JOB_BUDGET_MS` (55s). If the preamble grows past ~40s, **every tick spends its whole budget on timelines, never places a call, and the day ends with no summaries at all** — and it fails identically on every retry, so the spare ticks do not save it.
+
+Fix this in the same change: run the timeline work through `mapLimit` (already in `src/lib/refresh.ts`) at concurrency 5, and add a budget check inside the loop that abandons the remaining rebuilds and proceeds to the call. Rebuilding every stock's timeline on every run is deliberate and should be kept — it is free of AI and upstream calls, which is what lets a rule change be rolled out by re-running the job — it just must never starve the call.
+
+### Work order
+
+Do these in order; the first three cost no AI quota at all, which is the point of the ordering.
+
+1. Cookie watchlist (change 2 + 3) — verify Home, News and Today's Activity all still render.
+2. Dropdown `+`/`−` and the Home picker (change 4) — verify the 1 and 10 boundaries both hold.
+3. Timeline preamble fix — verify while the job still covers 10 stocks.
+4. Switch the job to all 20 (change 1) — **run once** and confirm 4 calls in the response.
+5. Logos (change 5).
+6. Update this file, then `npm test`, `npx tsc --noEmit`, `npm run lint`.
+
+**Quota discipline while testing:** a full summary run costs 4 of the 20 daily requests. Three careless re-runs exhaust the day. Phase 4 already lost a day this way and had to verify against `gemini-3.5-flash-lite`'s separate quota — see Open items.
+
+### Findings from this planning session (don't re-derive these)
+
+- **`news.source_url` is not the publisher's URL.** Measured against the live table, 135 rows: company 72/72 and industry 44/44 are `finnhub.io` redirect links; market is 17/19 `news.google.com` and 2/19 `cnbc.com`. Deriving a publisher name from the hostname yields "finnhub.io" and "news.google.com" and is worthless. `src/lib/finnhub-news.ts` also drops Finnhub's `source` field — `FinnhubArticle` never declares it — so the publisher name is not stored anywhere either. This is why per-publisher thumbnails were abandoned rather than built.
+- **thesvg has almost no news publishers.** Reuters and Google News exist; Bloomberg, CNBC, Yahoo Finance, MarketWatch and Seeking Alpha do not. Its whole "News" category holds 3 icons — it is a tech-brand library.
+- **The current market-news icon is a rising arrow** (`ICONS.market` in `src/components/news-thumbnail.tsx`). On a market-selloff article it asserts a direction the article contradicts, which sits badly beside a product whose AI is forbidden from implying direction. Whatever replaces it should be direction-neutral.
+- **The thumbnail plate is 176×80 (2.2:1) and the glyph inside it is a 28px square.** The mark does not read as missing because it is absent; it reads as missing because it occupies about a tenth of the plate.
 
 ---
 
@@ -85,8 +147,8 @@ Deadline: **20 days from the day work starts** (Day 1 = whatever day the owner k
 | 1. Foundation | Day 1–3 | Day 3 | **Done** — gate criteria verified |
 | 2. Home page | Day 4–7 | Day 7 | **Done** — gate criteria verified |
 | 3. News pipeline | Day 8–12 | Day 12 — **hard cutoff, see Cut Order below** | **Done** — no cuts taken; all 4 tabs shipped |
-| 4. Today's Activity | Day 13–16 | Day 16 | **Built — awaiting owner gate review.** One deviation needs an owner call: see "Today's Activity summaries are batched" below |
-| 5. Automation, polish, deploy | Day 17–20 | Day 20 — final deadline | Scheduler pulled forward — see note |
+| 4. Today's Activity | Day 13–16 | Day 16 | **Built.** Batched summaries ratified by the owner. A scope change is agreed but unbuilt — see Phase 4.5 above |
+| 5. Automation, polish, deploy | Day 17–20 | Day 20 — final deadline | Scheduler pulled forward — see note. Phase 4.5 lands first |
 
 **Phase 5's scheduler work was pulled forward into Phase 2–3.** The "no client-triggered upstream API calls" rule means there is no compliant way to refresh data without a scheduler, so ingestion scheduling had to exist before the news pipeline, not after it. Phase 5 keeps the news/EOD schedules, visual pass, outage test, and final deploy.
 
@@ -111,7 +173,7 @@ This page's content contract — what must be present, not how it looks. Visual 
 2. **My Watchlist table** — 8 columns exactly: `Symbol, Price, Change, Change %, Volume, Rel. Volume, Status, Chart (Day)`. `Status` is the Significant/Normal badge (rule below). `Chart (Day)` is a sparkline. Use **real company logos** (see Logo sourcing below) — this was explicitly reversed from "generic badge only" because it's a demo, not a shipped product.
 3. **Top Movers Today** — Top 5, ranked by the same significance scoring rule as the Status badge (below), computed across the **full Top-20 list**, not just the watchlist. Tabs for Top Gainers / Top Losers / Most Active are fine to include if trivial, but not required.
 4. **Market News teaser** — 3 articles. Reuse the same ranked list that powers "Top News by Impact" on the News page — do not compute a separate ranking here.
-5. **Watchlist picker** (Top 20 → pick up to 10): add/remove, hard cap enforced at 10, block attempts to add an 11th with a clear message.
+5. **Watchlist picker** (Top 20 → pick up to 10): add/remove, hard cap enforced at 10, block attempts to add an 11th with a clear message. *(Phase 4.5: the store becomes a per-browser cookie, the default becomes 7, and a minimum of 1 is added — removing the last stock must be blocked the same way adding an 11th is.)*
 
 No AI Daily Insight card on this page — cut. Home page has zero AI calls; the only two AI touchpoints in the whole app are the News summarization batches and the per-stock Today's Activity summaries (Phase 3 and Phase 4).
 
@@ -152,7 +214,7 @@ Deadline does not move. Scope does.
 This is a single page per stock at `/todays-activity/[symbol]`, reached only through the sidebar — **no secondary tab bar** (Overview/News/Events/Financials/Charts/Peers/SEC Filings from early mockups were all cut; don't build them).
 
 Layout:
-1. **Header**: ticker only (`NVDA`, not "NVIDIA Corporation") which doubles as a button opening a dropdown of the 10 watchlist stocks; selecting one navigates to that stock's route.
+1. **Header**: ticker only (`NVDA`, not "NVIDIA Corporation") which doubles as a button opening a dropdown of the watchlist stocks; selecting one navigates to that stock's route. *(Phase 4.5 adds `+`/`−` controls to this dropdown so the watchlist can be edited without leaving the page.)*
 2. **5 stat cards**: Price Movement, Trading Activity (relative volume), Sector Performance, Market Performance, News & Events count. All reuse data already fetched elsewhere — no new fetches.
 3. **Significant Movement badge** — same shared rule from Phase 2, same import.
 4. **AI Daily Summary** — this is the core of the page and its role just changed: it now covers **everything** that happened to this stock today (price, volume, news, events) in one narrative, so the user never has to piece it together from separate sections. Because of that widened scope, feed it structured data (exact numbers, not prose) and instruct it not to compute or restate numbers on its own — the wider the summary's coverage, the more a small hallucination compounds. There is no separate "Top News" or "Related Stocks" section anymore — that content lives inside this summary now. This is the highest-stakes prompt in the app for the AI Safety / Data Integrity Rules below — the summary describes what happened, not why it definitely happened or what happens next.
@@ -186,11 +248,11 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
 
 **The free tier's real limit is 20 requests per DAY, per model.** Measured in Phase 4, read off a live 429: `quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20`, for `gemini-3.5-flash`. Not per minute — the same key stayed refused for over 15 minutes. This closes the "Gemini free-tier rate limits" open item; the number came from the API itself, not the console and not the docs.
 
-- News summarization: ~4 batch cycles/day × 1 call each ≈ 4–6 calls/day (varies with article volume)
-- Today's Activity summaries: **1 call per batch of 5 stocks ≈ 2 calls/day** (see the reversal note below — this was 1 call per stock, i.e. 10/day, and the daily cap made that untenable)
+- News summarization: **exactly 4 cycles/day × 1 call each = 4 calls/day.** The `news-ingest` schedule is `0 12,16,21,1 * * *` UTC — 08:00 / 12:00 / 17:00 / 21:00 ET under EDT, 07:00 / 11:00 / 16:00 / 20:00 ET under EST. One call per cycle regardless of article count; surplus articles defer to the next cycle rather than adding a call.
+- Today's Activity summaries: **1 call per batch of 5 stocks.** Currently 10 watchlist stocks = 2 calls/day; **under Phase 4.5 this becomes all 20 stocks = 4 calls/day.** (It was originally 1 call per stock, i.e. 10/day, and the daily cap made that untenable — see the reversal note below.)
 - Home page: **zero** AI calls (Daily Insight card was cut)
 
-Total: roughly **6–8 calls/day against a ceiling of 20**. Never add a call that fires per-article or per-UI-interaction — every AI call in this product is batched and runs once, after market close, except the intraday news cycles, which are still batched (one call per cycle, not per article).
+Total today: roughly **6–8 calls/day against a ceiling of 20**. After Phase 4.5: **8 calls/day**. Never add a call that fires per-article or per-UI-interaction — every AI call in this product is batched and runs once, after market close, except the intraday news cycles, which are still batched (one call per cycle, not per article).
 
 Budget headroom is not a nicety here. Every failed attempt still spends a request, and so does every manual trigger while testing. At the old 14–16/day the app was one debugging session away from a demo with no summaries in it, with no way to buy more before the next midnight Pacific reset.
 
@@ -239,9 +301,9 @@ The three below were forced by what the free tiers actually do, discovered by pr
 - **Scheduler: Supabase Cron, not Vercel Cron.** Vercel Hobby permits a cron job to run **at most once per day**, and a more frequent expression *fails at deploy time* — verified against Vercel's own docs. That cannot deliver 15-minute snapshots or a 4x/day news fetch. `pg_cron` 1.6.4 and `pg_net` 0.20.4 are available on the Supabase project and `supabase_vault` 0.3.1 is already installed, so the schedule lives in Postgres. Upgrading Vercel to Pro would fix it for $20/mo and is ruled out by the $0 constraint.
 - **Volume comes from Yahoo Finance, not Finnhub.** Probed at build time: `/quote` returns no volume field at all, and `/stock/candle` returns `"You don't have access to this resource"` on free tier for both daily and intraday. Without a second source the app loses the `Volume` and `Rel. Volume` columns, two of the three Significant Movement branches, and every sparkline. Yahoo's chart endpoint supplies today's cumulative volume *and* the full session's 15-minute bars, which also solves the sparkline cold-start problem. Finnhub remains the source for price and average volume.
 - **Model: `gemini-3.5-flash`, not Gemini 2.5 Flash.** `gemini-2.5-flash` still appears in the model list but `generateContent` returns 404 *"no longer available to new users"*; `gemini-2.5-flash-lite` is gone the same way. Pinned rather than the `gemini-flash-latest` alias, so the summarisation prompt cannot shift under a graded demo. **Reasoning is capped at `thinkingBudget: 2048`** — unbounded reasoning made latency wildly variable (a 13-article batch once took *longer* than a 40-article one, blowing past the 60s function limit), and capping it cut a cycle from ~50s to ~13s and token use from ~20k to ~2.8k. It is not set to 0: some reasoning measurably improves adherence to the safety rules.
-- **Today's Activity summaries are batched: one Gemini call per 5 stocks, not one per stock.** This contradicts the AI call budget as originally written ("1 call per watchlist stock/day ≈ up to 10 calls/day") and **needs an owner call to ratify**, but the alternative was worse. The free tier allows 20 requests/day for this model (measured — see the AI call budget above), so one call per stock spent half the day's entire quota on one job, leaving nothing for a re-run, a failure, or a manual trigger before a demo. Batched, the whole watchlist costs 2 calls and the app runs at ~6–8/day. Batch size is capped at 5 rather than 10 for the reason the news pipeline already found: an oversized batch truncates the model's JSON mid-string and loses every entry in it. Per-stock summary quality was checked against the batched output and did not visibly suffer.
+- **Today's Activity summaries are batched: one Gemini call per 5 stocks, not one per stock.** **Ratified by the owner.** This contradicts the AI call budget as originally written ("1 call per watchlist stock/day ≈ up to 10 calls/day"), but the alternative was worse. Phase 4.5 keeps the batch size at 5 and widens coverage to all 20 stocks — 4 calls/day. The free tier allows 20 requests/day for this model (measured — see the AI call budget above), so one call per stock spent half the day's entire quota on one job, leaving nothing for a re-run, a failure, or a manual trigger before a demo. Batched, the whole watchlist costs 2 calls and the app runs at ~6–8/day. Batch size is capped at 5 rather than 10 for the reason the news pipeline already found: an oversized batch truncates the model's JSON mid-string and loses every entry in it. Per-stock summary quality was checked against the batched output and did not visibly suffer.
 - **The Today's Activity narrative is generated in three parts and joined, not written as one block.** `movement` (price/volume, no news), `recap` (news, no price), `explanation` (the only field allowed to link them). This exists purely to make the no-causal-claims rule hold. Asked for a single narrative, the model reliably asserted causation the sources never claimed — *"Apple's stock price increased **as** Norway's sovereign wealth fund disclosed a position"* — and listing banned wordings did not stop it, because "does the source state this link" is a judgement it makes generously. Split, the fixed fallback line went from rarely used to used on 7 of 10 stocks, with the other 3 attributed to reports that genuinely made the claim. Do not merge these fields back into one prompt.
-- **News categories are drawn from per-symbol tagging, not from Finnhub's news categories.** `/news?category=technology` and `/news?category=general` return byte-identical articles (100 of 100 ids overlap), carry no tickers, and are general world/business news. So `company` = watchlist symbols, `industry` = the other Top 20 tech companies, `market` = the general feed. Calling that general feed "Technology Industry News" would simply be false.
+- **News categories are drawn from per-symbol tagging, not from Finnhub's news categories.** *(Phase 4.5 keeps these three definitions but computes company-vs-industry per request from `related_symbols` instead of writing it into the row — a per-visitor watchlist makes a stored value meaningless.)* `/news?category=technology` and `/news?category=general` return byte-identical articles (100 of 100 ids overlap), carry no tickers, and are general world/business news. So `company` = watchlist symbols, `industry` = the other Top 20 tech companies, `market` = the general feed. Calling that general feed "Technology Industry News" would simply be false.
 - **Company news is relevance-filtered before storage.** Finnhub attaches a queried symbol to articles that are not about that company at all — measured at 55% of results, e.g. a Yeti story and a Pan American Silver story both tagged `NVDA`. An article is only stored under a symbol when its headline or snippet actually references that company (`mentionsSymbol` in `src/lib/symbols.ts`). This is plain string matching, **not** AI inference, so the "tickers come from Finnhub's field, never inferred by a model" rule still holds. Mis-tagging fell from 55% to ~13%.
 - **Company logos: two icon libraries covering 17 of 20, lettermark plate for the remaining 3.** Simple Icons no longer ships marks for Microsoft, Amazon, Oracle, Salesforce, Adobe, Texas Instruments, Micron, or ServiceNow, so it alone covered only 12. The marks are now **vendored locally as static SVG under `public/logos/`** — no runtime npm dependency — from two free-to-use icon libraries, recorded per the logo-sourcing rule:
   - **Simple Icons** (CC0-1.0), monochrome: AAPL, AMD, AVGO, CSCO, INTC, INTU, NVDA, PLTR, QCOM, TSLA.
@@ -250,14 +312,24 @@ The three below were forced by what the free tiers actually do, discovered by pr
 
   This does not reverse the "real logos" decision — the lettermark is still the fallback where no freely-licensed mark exists. Finnhub's `/stock/profile2` returns a logo URL covering all 20 and is an available upgrade, but it is neither source this file named, so it needs an explicit owner call.
 
-  **Open, needs an owner call:** thesvg's licence terms were not verifiable from the library's own metadata. Simple Icons' CC0-1.0 is confirmed; the seven thesvg marks are not. Confirm before this is shown outside the demo.
+  **Superseded in Phase 4.5 — all marks are re-sourced from Brandfetch.** The owner's call, and it replaces both libraries above: Simple Icons and thesvg are no longer the source, and the thesvg MCP server is to be dropped. The open question it was carrying — thesvg's licence terms were not verifiable from its own metadata, while Simple Icons' CC0-1.0 was — is retired along with it, and replaced by the same question about Brandfetch under Open items.
+
+  Three things about this that are easy to get wrong:
+
+  - **Vendor the files, do not fetch at runtime.** Brandfetch is reached through an MCP server *while developing*; the app must keep loading marks from `public/logos/` as static local SVG. Pointing an `<img>` at Brandfetch's CDN would be an upstream call from the browser on every page view, and it would force `news-thumbnail.tsx` back into being a client component with an `onError` fallback — which is precisely what the current design avoids.
+  - **Prefer a square symbol over a wordmark** for each brand. The plate is a badge; wordmarks are what forced the ORCL lettermark and the AMZN optical nudge in the first place.
+  - **If coverage reaches all 20, delete the workarounds** rather than leaving them: the `HAS_LOGO` set, the TXN/NOW/ORCL lettermark path, and `OPTICAL_NUDGE` in `src/lib/logos.ts` all exist only because the old sources had gaps. Do not remove the thesvg MCP server until Brandfetch coverage is confirmed.
+
+  The Brandfetch MCP is configured at project scope in `.mcp.json`, which carries an API token and **is gitignored** — do not commit it, and do not move the token into any file that is tracked.
+
+- **Market News thumbnails use the Finnhub logo.** Market news has no company to represent, and per-publisher marks were investigated and ruled out on evidence (see the findings in Phase 4.5). The logo names the data provider, not the publisher — which is honest, if slightly loose, given that company and industry news come from Finnhub too. It replaces a rising-arrow glyph that implied a direction the article might contradict.
 
 ## Resolved items (settled during Phase 1–2 — don't re-open)
 
 - **Intraday snapshot cadence: 15 minutes.** Documented in the schema comment in `0001_init.sql`. Snapshots snap to the 15-minute grid — the upstream feed appends a live partial bar stamped with the current time, so without snapping, every refresh leaves an extra off-grid point behind.
 - **Index symbols: `QQQ` / `SPY` / `DIA` / `XLK` / `VIXY`.** Confirmed live; see the Data sources table.
 - **The "Top 20" is a fixed list**, not a live ranking — no free-tier endpoint ranks US tech by market cap. Defined in `src/lib/symbols.ts`.
-- **The 10-stock watchlist cap is enforced server-side** in `src/app/api/watchlist/route.ts`, and the watchlist table is the single source of truth. An earlier read-path fallback to a hardcoded default list let the cap be pushed to 11, because the API counted rows while the page counted the fallback.
+- **The 10-stock watchlist cap is enforced server-side** in `src/app/api/watchlist/route.ts`, and the watchlist table is the single source of truth. An earlier read-path fallback to a hardcoded default list let the cap be pushed to 11, because the API counted rows while the page counted the fallback. *(Phase 4.5 moves the store from the table to a per-browser cookie and adds a minimum of 1. **Server-side enforcement is the part that must not change** — the failure described here is exactly what happens when the read path and the API disagree about what the list is.)*
 
 - **Gemini API key works.** The `AQ.`-prefixed key authenticates fine against `generativelanguage.googleapis.com`; the unusual prefix was not a problem.
 - **One batched Gemini call per cycle is enforced by a cycle cap, not by splitting the call.** `MAX_PER_CYCLE = 15` in `src/lib/news-ingest.ts`. An oversized batch truncates the model's JSON mid-string and loses every summary in it, so surplus articles are deferred to the next cycle rather than triggering a second call.
@@ -265,5 +337,5 @@ The three below were forced by what the free tiers actually do, discovered by pr
 ## Open items (not yet decided — surface these, don't guess)
 
 - **Confirm no billing is enabled** on the Google AI Studio project — free tier only, by owner requirement. Never hardcode an RPM/RPD number from memory or a blog post; the published figures have changed more than once and sources disagree. (The live limit *was* measured in Phase 4 — 20 requests/day — by reading the 429 body, which is the one source that cannot be out of date.)
-- **Ratify the batched Today's Activity summaries** — see the reversal note above. The alternative is raising the AI budget past what the free tier allows, which the $0 constraint rules out.
+- **Brandfetch's licence terms have not been read yet.** The MCP server is configured but was still pending approval when planning ended, so nothing has been fetched and no terms recorded. Do that before vendoring any mark, and write the answer into the logo note above — the logo-sourcing rule requires the source to be recorded, and this replaces an open question rather than closing one.
 - **The stored 2026-08-13 summaries were generated by `gemini-3.5-flash-lite`, not the pinned model.** The daily quota was exhausted while tuning the prompt, so the end-to-end run was verified against the lite model's separate per-model quota. Prompt behaviour and all numbers were checked and are correct, but the next scheduled run is the first to exercise the pinned `gemini-3.5-flash` on this prompt. Worth watching once.
