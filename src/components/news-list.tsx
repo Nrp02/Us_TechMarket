@@ -1,5 +1,5 @@
 import { NewsThumbnail } from "@/components/news-thumbnail";
-import { LOGOS } from "@/lib/logos";
+import { HAS_LOGO } from "@/lib/logos";
 import type { NewsItem } from "@/lib/queries";
 
 function timeAgo(iso: string): string {
@@ -33,7 +33,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
         >
           <NewsThumbnail
             category={item.category}
-            logo={symbol ? (LOGOS[symbol] ?? null) : null}
+            logoSymbol={symbol && HAS_LOGO.has(symbol) ? symbol : null}
             symbol={symbol}
           />
 

@@ -12,9 +12,11 @@ import { TOP_20_SYMBOLS } from "@/lib/symbols";
 
 /**
  * Upper bound on articles handed to a single batched call. Summarising costs
- * roughly a second per article, so 40 measured ~50s against a 60s function
- * limit — too little headroom. At 25 a cycle lands near 30s, and four cycles a
- * day still clear more articles than the feeds produce.
+ * roughly a second per article, so a 40-article batch measured ~50s against a
+ * 60s function limit — too little headroom, and an oversized batch also
+ * truncates the model's JSON mid-string and loses every summary in it. At 15 a
+ * cycle lands comfortably inside the limit, and four cycles a day still clear
+ * more articles than the feeds produce.
  */
 const MAX_PER_CYCLE = 15;
 

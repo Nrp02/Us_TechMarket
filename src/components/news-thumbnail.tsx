@@ -1,4 +1,4 @@
-import type { Glyph } from "@/lib/logos";
+import { logoSrc } from "@/lib/logos";
 import type { NewsCategory } from "@/lib/queries";
 
 // Thumbnails are always a mark, never article photography: company logo, then
@@ -17,24 +17,27 @@ const ICONS: Record<NewsCategory, string> = {
   market: "M3 17l6-6 4 4 8-8M21 7h-5m5 0v5",
 };
 
+// One fixed-width plate for every state (real icon, real wordmark, ticker
+// lettermark, or category icon) so every thumbnail in the list lines up
+// identically — wide enough to fit the widest wordmark mark (Micron, ~3.6:1)
+// without clipping.
 const PLATE =
-  "flex size-20 shrink-0 items-center justify-center rounded-xl bg-surface-strong";
+  "flex h-20 w-44 shrink-0 items-center justify-center rounded-xl bg-surface-strong";
 
 export function NewsThumbnail({
   category,
-  logo,
+  logoSymbol,
   symbol,
 }: {
   category: NewsCategory;
-  logo: Glyph | null;
+  logoSymbol: string | null;
   symbol: string | null;
 }) {
-  if (logo) {
+  if (logoSymbol) {
     return (
       <span className={PLATE} aria-hidden>
-        <svg viewBox="0 0 24 24" className="size-9" fill={`#${logo.hex}`}>
-          <path d={logo.path} />
-        </svg>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static local SVG, no optimization needed */}
+        <img src={logoSrc(logoSymbol)} alt="" className="h-9 w-auto object-contain" />
       </span>
     );
   }

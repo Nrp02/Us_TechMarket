@@ -1,39 +1,37 @@
-// Company logo glyphs.
+// Company logo marks, vendored locally under public/logos/ as static SVG files
+// rather than pulled from an npm package at runtime.
 //
-// Source: Simple Icons (https://simpleicons.org), CC0-1.0 — chosen over
-// scraping brand assets off arbitrary pages, per the logo sourcing rule.
+// Two sources, per the logo-sourcing rule in CLAUDE.md (a free-to-use icon
+// library, never scraped off an arbitrary page):
+//   - Simple Icons (CC0-1.0) — the monochrome 24-grid marks: AAPL, AMD, AVGO,
+//     CSCO, INTC, INTU, NVDA, PLTR, QCOM, TSLA.
+//   - thesvg (github.com/glincker/thesvg) — the full-colour marks Simple Icons
+//     no longer ships: ADBE, AMZN, CRM, GOOGL, META, MSFT, MU.
 //
-// Simple Icons no longer ships marks for Microsoft, Amazon, Oracle, Salesforce,
-// Adobe, Texas Instruments, Micron or ServiceNow, so those eight fall back to a
-// lettermark plate in components/company-logo.tsx.
-import {
-  siAmd,
-  siApple,
-  siBroadcom,
-  siCisco,
-  siGoogle,
-  siIntel,
-  siIntuit,
-  siMeta,
-  siNvidia,
-  siPalantir,
-  siQualcomm,
-  siTesla,
-} from "simple-icons";
+// Companies with no freely-licensed mark at all (Texas Instruments,
+// ServiceNow) or whose only mark is a wordmark too wide to read at any badge
+// size (Oracle, ~7.7:1) fall back to a lettermark plate in the components
+// below.
+export const HAS_LOGO = new Set([
+  "NVDA",
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "META",
+  "AVGO",
+  "TSLA",
+  "PLTR",
+  "AMD",
+  "CSCO",
+  "ADBE",
+  "INTC",
+  "QCOM",
+  "INTU",
+  "CRM",
+  "AMZN",
+  "MU",
+]);
 
-export type Glyph = { path: string; hex: string };
-
-export const LOGOS: Record<string, Glyph> = {
-  NVDA: siNvidia,
-  AAPL: siApple,
-  GOOGL: siGoogle,
-  META: siMeta,
-  AVGO: siBroadcom,
-  TSLA: siTesla,
-  PLTR: siPalantir,
-  AMD: siAmd,
-  CSCO: siCisco,
-  INTC: siIntel,
-  QCOM: siQualcomm,
-  INTU: siIntuit,
-};
+export function logoSrc(symbol: string): string {
+  return `/logos/${symbol}.svg`;
+}

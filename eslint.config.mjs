@@ -16,7 +16,11 @@ const eslintConfig = defineConfig([
   // Enforces the locked ingestion rule: no client-triggered upstream API calls.
   // Pages and components read cached data through lib/queries.ts; anything that
   // talks to an upstream API belongs in a scheduled ingestion job behind the
-  // CRON_SECRET guard. Phase 3 adds the Gemini client to this list.
+  // CRON_SECRET guard.
+  //
+  // Note the group list is exact-match, not prefix-match: "@/lib/finnhub" does
+  // not cover "@/lib/finnhub-news", so every upstream module is named here
+  // individually. Phase 4's summary job belongs in this list too.
   {
     files: ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/components/**"],
     rules: {
@@ -25,7 +29,14 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             {
-              group: ["@/lib/finnhub", "@/lib/yahoo", "@/lib/refresh"],
+              group: [
+                "@/lib/finnhub",
+                "@/lib/finnhub-news",
+                "@/lib/yahoo",
+                "@/lib/gemini",
+                "@/lib/refresh",
+                "@/lib/news-ingest",
+              ],
               message:
                 "Upstream API clients must not be reached from a page or component. Pages read cached data via @/lib/queries; upstream calls belong in a scheduled ingestion job (see CLAUDE.md, 'Ingestion architecture').",
             },
