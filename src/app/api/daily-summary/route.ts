@@ -7,9 +7,9 @@ import { isMarketOpen } from "@/lib/market";
 // routes: driven only by the Supabase Cron schedule, never by a page or a
 // visitor.
 //
-// The job is idempotent and bounded — each call summarises the next few
-// watchlist symbols that still lack today's narrative — so the schedule fires
-// several times after the close and the list finishes across those runs.
+// The job is idempotent and bounded — each call summarises the next few Top 20
+// symbols that still lack today's narrative — so the schedule fires several
+// times after the close and the list finishes across those runs.
 export const maxDuration = 60;
 
 export async function POST(request: Request) {

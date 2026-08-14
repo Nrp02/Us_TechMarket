@@ -68,11 +68,11 @@ ${JSON.stringify(items, null, 2)}`;
 export async function ingestNews(): Promise<IngestResult> {
   const failed: string[] = [];
 
-  const { data: watchlist } = await db.from("watchlist").select("symbol");
-  const watched = (watchlist ?? []).map((r) => r.symbol as string);
-  const industry = TOP_20_SYMBOLS.filter((s) => !watched.includes(s));
-
-  const { articles, errors } = await fetchAllNews(watched, industry);
+  // All 20 symbols in one pass. Company-vs-industry is no longer decided here:
+  // the watchlist is per-visitor, so the split is derived at read time from the
+  // tickers stored on each row. This is the same number of Finnhub calls as
+  // before, since watched + industry was already the whole Top 20.
+  const { articles, errors } = await fetchAllNews(TOP_20_SYMBOLS);
   failed.push(...errors);
   const result: IngestResult = {
     fetched: articles.length,
@@ -128,7 +128,6 @@ export async function ingestNews(): Promise<IngestResult> {
     .upsert(
       fresh.map((a) => ({
         finnhub_id: a.finnhubId,
-        category: a.category,
         headline: a.headline,
         source_url: a.sourceUrl,
         image_url: a.imageUrl,

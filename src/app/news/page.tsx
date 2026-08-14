@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { NewsList } from "@/components/news-list";
-import { getNews, type NewsCategory } from "@/lib/queries";
+import type { NewsCategory } from "@/lib/news-category";
+import { getNews } from "@/lib/queries";
+import { readWatchlist } from "@/lib/watchlist";
 
 // Reads the cached news table only. Fetching and summarising happen in the
 // scheduled ingestion job, never on a page view.
@@ -28,7 +30,11 @@ export default async function News({
   const { tab } = await searchParams;
   const active: TabKey = isTab(tab) ? tab : "all";
 
+  // Company and Industry are split against this visitor's watchlist at read
+  // time, so the same stored articles land differently for different visitors.
+  const watchlist = await readWatchlist();
   const items = await getNews(
+    watchlist,
     active === "all" ? undefined : (active as NewsCategory),
   );
 

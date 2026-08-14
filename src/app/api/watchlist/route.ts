@@ -1,21 +1,33 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
-import { db } from "@/lib/supabase";
-import { TOP_20_SYMBOLS, WATCHLIST_CAP } from "@/lib/symbols";
+import { TOP_20_SYMBOLS } from "@/lib/symbols";
+import {
+  normaliseWatchlist,
+  readWatchlist,
+  serialiseWatchlist,
+  WATCHLIST_COOKIE,
+  WATCHLIST_COOKIE_OPTIONS,
+  WATCHLIST_MAX,
+  WATCHLIST_MIN,
+} from "@/lib/watchlist";
 
-// The cap is enforced here rather than in the UI so it holds however the
-// endpoint is called. There is no user system, so this is one global watchlist.
+// The watchlist is per-browser and lives in a cookie; this is the only place it
+// is written. Both bounds are enforced here rather than in the UI so they hold
+// however the endpoint is called — the cap was already pushed to 11 once, when
+// the read path and this route disagreed about what the list was.
 
-async function currentSymbols(): Promise<string[]> {
-  const { data } = await db
-    .from("watchlist")
-    .select("symbol")
-    .order("added_at", { ascending: true });
-  return (data ?? []).map((r) => r.symbol as string);
+async function save(symbols: string[]): Promise<string[]> {
+  // Normalised on the way out as well as on the way in, so what is stored is
+  // exactly what a page will read back.
+  const next = normaliseWatchlist(symbols);
+  const jar = await cookies();
+  jar.set(WATCHLIST_COOKIE, serialiseWatchlist(next), WATCHLIST_COOKIE_OPTIONS);
+  return next;
 }
 
 export async function GET() {
-  return NextResponse.json({ symbols: await currentSymbols() });
+  return NextResponse.json({ symbols: await readWatchlist() });
 }
 
 export async function POST(request: Request) {
@@ -28,24 +40,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const symbols = await currentSymbols();
+  const symbols = await readWatchlist();
   if (symbols.includes(symbol)) {
     return NextResponse.json({ symbols });
   }
-  if (symbols.length >= WATCHLIST_CAP) {
+  if (symbols.length >= WATCHLIST_MAX) {
     return NextResponse.json(
       {
-        error: `Your watchlist is full at ${WATCHLIST_CAP} stocks. Remove one before adding ${symbol}.`,
+        error: `Your watchlist is full at ${WATCHLIST_MAX} stocks. Remove one before adding ${symbol}.`,
       },
       { status: 409 },
     );
   }
 
-  const { error } = await db.from("watchlist").insert({ symbol });
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-  return NextResponse.json({ symbols: [...symbols, symbol] });
+  return NextResponse.json({ symbols: await save([...symbols, symbol]) });
 }
 
 export async function DELETE(request: Request) {
@@ -54,9 +62,21 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "symbol is required" }, { status: 400 });
   }
 
-  const { error } = await db.from("watchlist").delete().eq("symbol", symbol);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const symbols = await readWatchlist();
+  if (!symbols.includes(symbol)) {
+    return NextResponse.json({ symbols });
   }
-  return NextResponse.json({ symbols: await currentSymbols() });
+  // Every page assumes a non-empty watchlist, so the last stock cannot go.
+  if (symbols.length <= WATCHLIST_MIN) {
+    return NextResponse.json(
+      {
+        error: `Keep at least ${WATCHLIST_MIN} stock on your watchlist. Add another before removing ${symbol}.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  return NextResponse.json({
+    symbols: await save(symbols.filter((s) => s !== symbol)),
+  });
 }

@@ -9,12 +9,13 @@ import {
 } from "@/lib/format";
 import { generateJson, SAFETY_RULES } from "@/lib/gemini";
 import { tradingDay } from "@/lib/market";
+import { mapLimit } from "@/lib/refresh";
 import { isSignificant } from "@/lib/significance";
 import { db } from "@/lib/supabase";
-import { NAME_BY_SYMBOL } from "@/lib/symbols";
+import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
 import { buildTimeline, type Snapshot } from "@/lib/timeline";
 
-// The end-of-day batch job behind Today's Activity. For each watchlist stock it
+// The end-of-day batch job behind Today's Activity. For each of the Top 20 it
 // refreshes the earnings calendar, rebuilds the day's timeline from stored
 // snapshots, and writes one AI narrative covering everything that happened to
 // that stock today — price, volume, news and events in a single account, so the
@@ -24,21 +25,21 @@ import { buildTimeline, type Snapshot } from "@/lib/timeline";
 
 /**
  * Stocks covered by one batched Gemini call, and so by one invocation of this
- * job. Two runs finish a 10-stock watchlist; the schedule fires more often than
- * that, and the spare runs pick up anything that failed.
+ * job. Four runs finish the Top 20; the schedule fires twelve times, and the
+ * spare runs pick up anything that failed.
  *
  * The size is set by the free tier, which turned out to be the binding
  * constraint on this whole job — see the note in CLAUDE.md. The quota is 20
  * *requests per day* for this model (quotaId
  * GenerateRequestsPerDayPerProjectPerModel-FreeTier, read off a live 429, not
- * from the docs). One call per stock would have spent 10 of those 20 every day,
- * leaving the app one manual re-run away from a dead demo. Batched, the whole
- * watchlist costs 2.
+ * from the docs). One call per stock would spend the entire day's quota on this
+ * job alone, leaving nothing for the news cycles, a failure, or a manual
+ * trigger before a demo. Batched, all 20 stocks cost 4.
  *
  * Not larger than 5: the news pipeline already established that an oversized
  * batch truncates the model's JSON mid-string and loses every entry in it, and
- * a batch that spans the entire watchlist would put the day's whole output on
- * one call.
+ * a batch that spans the whole Top 20 would put the day's entire output on one
+ * call.
  */
 const BATCH_SIZE = 5;
 
@@ -59,6 +60,29 @@ const JOB_BUDGET_MS = 55_000;
 /** Below this there is not enough time left to be worth starting a call. */
 const MIN_CALL_BUDGET_MS = 15_000;
 
+/**
+ * When the timeline rebuilds stop, whatever is left of them.
+ *
+ * The rebuilds run before the call and grow with the number of stocks covered,
+ * which makes them the one part of the preamble that can starve the thing the
+ * job exists for. Left unbounded at 20 stocks they could consume the entire
+ * budget, the call would never be attempted, and — because the preamble is
+ * deterministic — every retry in the schedule would fail exactly the same way,
+ * ending the day with no summaries at all.
+ *
+ * Set well below JOB_BUDGET_MS so the calendar refresh and MIN_CALL_BUDGET_MS
+ * both still fit afterwards. Stocks in the current batch are exempt: their day
+ * data is the call's input, so it is never the work that gets dropped.
+ */
+const TIMELINE_DEADLINE_MS = 25_000;
+
+/**
+ * Concurrency for the rebuilds. Each is two Supabase reads and a write, so they
+ * are latency-bound rather than CPU-bound; 5 matches the cap the refresh job
+ * already runs upstream calls at.
+ */
+const TIMELINE_CONCURRENCY = 5;
+
 /** Index proxies quoted alongside the stock, for context in the stat cards. */
 const SECTOR_SYMBOL = "XLK";
 const MARKET_SYMBOL = "SPY";
@@ -70,6 +94,10 @@ export type DailySummaryResult = {
   generated: string[];
   /** Symbols whose timeline was rebuilt — every active one, summarised or not. */
   timelines: string[];
+  /** Rebuilds abandoned to protect the Gemini call's share of the budget. */
+  timelinesSkipped: string[];
+  /** Milliseconds spent before the call was attempted. See TIMELINE_DEADLINE_MS. */
+  preambleMs: number;
   /** Symbols whose price cache has not been refreshed today — a closed session. */
   stale: string[];
   geminiCalls: number;
@@ -409,14 +437,12 @@ export async function generateDailySummaries(
 ): Promise<DailySummaryResult> {
   const startedJobAt = Date.now();
 
-  const [{ data: watchlistRows }, { data: doneRows }, { data: priceRows }] =
-    await Promise.all([
-      db.from("watchlist").select("symbol").order("added_at", { ascending: true }),
-      db.from("daily_summaries").select("symbol").eq("summary_date", day),
-      db
-        .from("price_cache")
-        .select("symbol, price, change, change_percent, volume, avg_volume, updated_at"),
-    ]);
+  const [{ data: doneRows }, { data: priceRows }] = await Promise.all([
+    db.from("daily_summaries").select("symbol").eq("summary_date", day),
+    db
+      .from("price_cache")
+      .select("symbol, price, change, change_percent, volume, avg_volume, updated_at"),
+  ]);
 
   const done = new Set((doneRows ?? []).map((r) => r.symbol as string));
   const prices = new Map(
@@ -428,6 +454,8 @@ export async function generateDailySummaries(
     alreadyDone: done.size,
     generated: [],
     timelines: [],
+    timelinesSkipped: [],
+    preambleMs: 0,
     stale: [],
     geminiCalls: 0,
     calls: [],
@@ -437,9 +465,13 @@ export async function generateDailySummaries(
   const sectorChange = prices.get(SECTOR_SYMBOL)?.change_percent ?? null;
   const marketChange = prices.get(MARKET_SYMBOL)?.change_percent ?? null;
 
+  // Every Top 20 stock, not just a watchlist. The watchlist is per-visitor now,
+  // so at generation time the server cannot know which stocks anyone will ask
+  // for — the same reasoning that already makes ingestion fetch all 20, so that
+  // adding a stock never triggers a fetch. Here it means adding a stock never
+  // lands on a page with no summary on it.
   const active: string[] = [];
-  for (const row of watchlistRows ?? []) {
-    const symbol = row.symbol as string;
+  for (const symbol of TOP_20_SYMBOLS) {
     const price = prices.get(symbol);
     // A holiday leaves yesterday's quote sitting in the cache. Writing a summary
     // for today from it would date the previous session's numbers to the wrong
@@ -451,21 +483,37 @@ export async function generateDailySummaries(
     active.push(symbol);
   }
 
+  const batch = active.filter((symbol) => !done.has(symbol)).slice(0, BATCH_SIZE);
+  const inBatch = new Set(batch);
+
   // The timeline is rebuilt for every active stock on every run, not just the
   // ones being summarised. It is derived entirely from stored snapshots and news
   // by threshold rules — no AI call and no upstream request — so repeating it is
   // free, and keeping it off the summary's critical path means a change to the
   // rules can be rolled out by re-running this job without spending any of the
   // day's Gemini quota re-writing narratives that were already correct.
+  //
+  // Free of quota, but not free of time. Run in parallel and bounded by a
+  // deadline, because at 20 stocks a sequential pass is long enough to leave
+  // nothing for the call. The batch goes first so that if the deadline does
+  // bite, what gets dropped is a rebuild nobody is waiting on rather than the
+  // day data the call is about to be built from.
   const dayData = new Map<string, Awaited<ReturnType<typeof loadDayData>>>();
-  for (const symbol of active) {
+  const ordered = [...batch, ...active.filter((symbol) => !inBatch.has(symbol))];
+
+  await mapLimit(ordered, TIMELINE_CONCURRENCY, async (symbol) => {
+    if (!inBatch.has(symbol) && Date.now() - startedJobAt > TIMELINE_DEADLINE_MS) {
+      result.timelinesSkipped.push(symbol);
+      return;
+    }
+
     try {
       const data = await loadDayData(symbol, day);
       dayData.set(symbol, data);
 
       // No snapshots means nothing to rebuild from; leave whatever is stored
       // rather than deleting a good timeline and writing an empty one.
-      if (!data.snapshots.length) continue;
+      if (!data.snapshots.length) return;
 
       await rebuildTimeline(
         symbol,
@@ -481,9 +529,8 @@ export async function generateDailySummaries(
         `${symbol} timeline: ${error instanceof Error ? error.message : "failed"}`,
       );
     }
-  }
+  });
 
-  const batch = active.filter((symbol) => !done.has(symbol)).slice(0, BATCH_SIZE);
   if (!batch.length) return result;
 
   // Calendar refresh and prompt assembly — still no AI. The calendar lookups go
@@ -534,6 +581,7 @@ export async function generateDailySummaries(
   // a symbol that fails keeps no summary row, stays pending, and a later run
   // picks it up.
   const remaining = JOB_BUDGET_MS - (Date.now() - startedJobAt);
+  result.preambleMs = Date.now() - startedJobAt;
   if (remaining < MIN_CALL_BUDGET_MS) {
     // The preamble ate the run. Everything before this point is already stored,
     // so the next scheduled run starts with less to do and gets the call in.

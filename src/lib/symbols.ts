@@ -27,8 +27,6 @@ export const TOP_20: TopStock[] = [
   { symbol: "INTU", name: "Intuit" },
 ];
 
-export const WATCHLIST_CAP = 10;
-
 // Finnhub's free tier rejects real index symbols ("^VIX", "^GSPC" ->
 // "Market data subscription required for CFD indices"), so every card reads an
 // ETF proxy via /quote. `note` is rendered on the card: VIXY tracks VIX

@@ -2,21 +2,22 @@ import { MarketOverview } from "@/components/market-overview";
 import { NewsTeaser } from "@/components/news-teaser";
 import { TopMovers } from "@/components/top-movers";
 import { WatchlistTable } from "@/components/watchlist-table";
-import { getNewsTeaser, getTickers, getWatchlistSymbols } from "@/lib/queries";
+import { getNewsTeaser, getTickers } from "@/lib/queries";
 import { INDEX_SYMBOLS, TOP_20_SYMBOLS } from "@/lib/symbols";
+import { readWatchlist } from "@/lib/watchlist";
 
 // Reads the cached tables on every request, so the page always reflects the
 // latest refresh without making any upstream API call itself.
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const watchlist = await getWatchlistSymbols();
+  const watchlist = await readWatchlist();
 
   const [indices, top20, watched, news] = await Promise.all([
     getTickers(INDEX_SYMBOLS),
     getTickers(TOP_20_SYMBOLS),
     getTickers(watchlist),
-    getNewsTeaser(3),
+    getNewsTeaser(watchlist, 3),
   ]);
 
   return (

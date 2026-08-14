@@ -9,7 +9,12 @@ import { StatusBadge } from "@/components/status-badge";
 import { SymbolSwitcher } from "@/components/symbol-switcher";
 import { UpcomingEvents } from "@/components/upcoming-events";
 import { formatChange, formatDay, formatPercent, formatPrice } from "@/lib/format";
-import { getActivity, getWatchlistSymbols } from "@/lib/queries";
+import { getActivity } from "@/lib/queries";
+import {
+  readWatchlist,
+  WATCHLIST_MAX,
+  WATCHLIST_MIN,
+} from "@/lib/watchlist";
 
 // One page per stock, reached through the sidebar and the header switcher. There
 // is no secondary tab bar by design — the dense AI summary below replaces the
@@ -25,10 +30,8 @@ export default async function TodaysActivityForSymbol({
   const { symbol: raw } = await params;
   const symbol = raw.toUpperCase();
 
-  const [activity, watchlist] = await Promise.all([
-    getActivity(symbol),
-    getWatchlistSymbols(),
-  ]);
+  const watchlist = await readWatchlist();
+  const activity = await getActivity(symbol, watchlist);
 
   // No cached price for this symbol means it is not one we track at all.
   if (!activity) notFound();
@@ -44,7 +47,12 @@ export default async function TodaysActivityForSymbol({
           <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
           <div>
             {/* Ticker only — the header is the switcher, not a company title. */}
-            <SymbolSwitcher symbol={ticker.symbol} symbols={watchlist} />
+            <SymbolSwitcher
+              symbol={ticker.symbol}
+              symbols={watchlist}
+              min={WATCHLIST_MIN}
+              max={WATCHLIST_MAX}
+            />
             <p className="px-2 text-sm text-body">
               {ticker.name} · session of {formatDay(activity.sessionDay)}
             </p>

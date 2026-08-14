@@ -5,11 +5,8 @@ import { mentionsSymbol } from "@/lib/symbols";
 
 const BASE = "https://finnhub.io/api/v1";
 
-export type NewsCategory = "company" | "industry" | "market";
-
 export type RawArticle = {
   finnhubId: number;
-  category: NewsCategory;
   headline: string;
   /** Finnhub's own snippet. Used only as AI input — never displayed. */
   snippet: string;
@@ -49,7 +46,6 @@ async function get(path: string): Promise<FinnhubArticle[]> {
 
 function normalise(
   raw: FinnhubArticle,
-  category: NewsCategory,
   fallbackSymbol?: string,
 ): RawArticle | null {
   if (!raw.id || !raw.headline || !raw.url || !raw.datetime) return null;
@@ -71,7 +67,6 @@ function normalise(
 
   return {
     finnhubId: raw.id,
-    category,
     headline: raw.headline,
     snippet: raw.summary ?? "",
     sourceUrl: raw.url,
@@ -87,7 +82,6 @@ const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
 async function companyNews(
   symbols: string[],
-  category: NewsCategory,
   from: string,
   to: string,
   errors: string[],
@@ -101,7 +95,7 @@ async function companyNews(
         return raw
           .filter((a) => mentionsSymbol(symbol, `${a.headline ?? ""} ${a.summary ?? ""}`))
           .slice(0, PER_SYMBOL)
-          .flatMap((a) => normalise(a, category, symbol) ?? []);
+          .flatMap((a) => normalise(a, symbol) ?? []);
       } catch (error) {
         // Swallowing this silently would make a rate-limited cycle look
         // identical to a quiet news day, which is the failure mode Risk #3
@@ -117,24 +111,26 @@ async function companyNews(
 }
 
 /**
- * The three categories, and why they are sourced this way.
+ * Two sources, and why the split between them is not decided here.
  *
  * Finnhub's free tier has no technology-specific news feed: `/news?category=
  * technology` and `/news?category=general` return byte-identical article sets
  * (verified — 100 of 100 ids overlap), carrying no tickers and no tech signal.
  * Labelling that feed "Technology Industry News" would be plainly wrong, since
- * it is general business and world news.
+ * it is general business and world news. So the page's Company/Industry split
+ * is drawn from Finnhub's own per-symbol tagging instead.
  *
- * So the split is drawn from Finnhub's own per-symbol tagging instead:
- *   company  - news about the stocks on the watchlist
- *   industry - news about the remaining Top 20 technology companies
- *   market   - the general feed, which is what it actually is
+ * That split used to be decided here, by fetching the watchlist and the rest of
+ * the Top 20 as two labelled passes. It is now derived per request from the
+ * stored tickers (see lib/news-category.ts), because the watchlist is
+ * per-visitor and a label written at fetch time describes nobody. Ingestion
+ * therefore fetches all 20 symbols as one list — the same number of Finnhub
+ * calls it always made, since watched + industry was already all 20.
  *
  * No AI infers any of this, per the rule that tickers come from Finnhub's field.
  */
 export async function fetchAllNews(
-  watchlistSymbols: string[],
-  industrySymbols: string[],
+  symbols: string[],
 ): Promise<{ articles: RawArticle[]; errors: string[] }> {
   const today = new Date();
   const from = isoDate(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000));
@@ -144,7 +140,7 @@ export async function fetchAllNews(
   const marketFeed = async (): Promise<RawArticle[]> => {
     try {
       const raw = await get(`/news?category=general`);
-      return raw.slice(0, PER_FEED).flatMap((a) => normalise(a, "market") ?? []);
+      return raw.slice(0, PER_FEED).flatMap((a) => normalise(a) ?? []);
     } catch (error) {
       errors.push(
         `market feed: ${error instanceof Error ? error.message : "fetch failed"}`,
@@ -153,16 +149,16 @@ export async function fetchAllNews(
     }
   };
 
-  const [company, industry, market] = await Promise.all([
-    companyNews(watchlistSymbols, "company", from, to, errors),
-    companyNews(industrySymbols, "industry", from, to, errors),
+  const [perSymbol, market] = await Promise.all([
+    companyNews(symbols, from, to, errors),
     marketFeed(),
   ]);
 
   // An article can carry several tickers and appear in more than one feed.
-  // Order matters: watchlist news outranks industry news for the same article.
+  // Order matters: a per-symbol hit keeps the ticker that the general feed's
+  // copy of the same article would not carry.
   const byId = new Map<number, RawArticle>();
-  for (const article of [...company, ...industry, ...market]) {
+  for (const article of [...perSymbol, ...market]) {
     if (!byId.has(article.finnhubId)) byId.set(article.finnhubId, article);
   }
   return { articles: [...byId.values()], errors };

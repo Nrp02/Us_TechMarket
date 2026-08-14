@@ -25,7 +25,7 @@ function snapshotSlot(at: Date): string {
   return slot.toISOString();
 }
 
-async function mapLimit<T, R>(
+export async function mapLimit<T, R>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<R>,

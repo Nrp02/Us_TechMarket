@@ -10,7 +10,8 @@ import {
   formatVolume,
 } from "@/lib/format";
 import type { Ticker } from "@/lib/queries";
-import { TOP_20, WATCHLIST_CAP } from "@/lib/symbols";
+import { TOP_20 } from "@/lib/symbols";
+import { WATCHLIST_MAX, WATCHLIST_MIN } from "@/lib/watchlist";
 
 const HEADINGS = [
   "Symbol",
@@ -37,7 +38,8 @@ export function WatchlistTable({
         <WatchlistPicker
           universe={TOP_20}
           selected={selected}
-          cap={WATCHLIST_CAP}
+          min={WATCHLIST_MIN}
+          cap={WATCHLIST_MAX}
         />
       </div>
 

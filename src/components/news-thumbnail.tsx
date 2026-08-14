@@ -1,5 +1,5 @@
 import { logoNudge, logoSrc } from "@/lib/logos";
-import type { NewsCategory } from "@/lib/queries";
+import type { NewsCategory } from "@/lib/news-category";
 
 // Thumbnails are always a mark, never article photography: company logo, then
 // ticker lettermark for companies with no freely-licensed logo, then a category

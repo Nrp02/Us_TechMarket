@@ -1,4 +1,5 @@
 import { tradingDay } from "@/lib/market";
+import { categoriseNews, type NewsCategory } from "@/lib/news-category";
 import { isSignificant, significanceScore } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL } from "@/lib/symbols";
@@ -29,15 +30,6 @@ type PriceRow = {
   volume: number | null;
   avg_volume: number | null;
 };
-
-export async function getWatchlistSymbols(): Promise<string[]> {
-  const { data } = await db
-    .from("watchlist")
-    .select("symbol")
-    .order("added_at", { ascending: true });
-
-  return (data ?? []).map((r) => r.symbol as string);
-}
 
 /**
  * The UTC bounds that contain one New York trading day. New York is UTC-4 or
@@ -143,8 +135,6 @@ export async function getTickers(
   });
 }
 
-export type NewsCategory = "company" | "industry" | "market";
-
 export type NewsItem = {
   id: number;
   category: NewsCategory;
@@ -157,25 +147,34 @@ export type NewsItem = {
 };
 
 const NEWS_COLUMNS =
-  "id, category, headline, source_url, related_symbols, published_at, news_summaries(summary)";
+  "id, headline, source_url, related_symbols, published_at, news_summaries(summary)";
 
 // news_summaries.news_id is the primary key, so PostgREST embeds it as a single
 // object rather than an array. Treating it as an array silently yields null.
-function toNewsItem(row: Record<string, unknown>): NewsItem {
+function toNewsItem(row: Record<string, unknown>, watchlist: string[]): NewsItem {
   const embedded = row.news_summaries as { summary: string } | null;
+  const relatedSymbols = (row.related_symbols as string[] | null) ?? [];
   return {
     id: row.id as number,
-    category: row.category as NewsCategory,
+    category: categoriseNews(relatedSymbols, watchlist),
     headline: row.headline as string,
     sourceUrl: row.source_url as string,
-    relatedSymbols: (row.related_symbols as string[] | null) ?? [],
+    relatedSymbols,
     publishedAt: row.published_at as string,
     summary: embedded?.summary ?? null,
   };
 }
 
-/** Latest first — the one fixed ordering; there is no sort control by design. */
+/**
+ * Latest first — the one fixed ordering; there is no sort control by design.
+ *
+ * The category filter is applied against the visitor's watchlist rather than a
+ * stored column, so the tabs re-split the same stored articles per visitor. The
+ * filter runs in Postgres so that `limit` still counts articles the tab will
+ * actually show.
+ */
 export async function getNews(
+  watchlist: string[],
   category?: NewsCategory,
   limit = 60,
 ): Promise<NewsItem[]> {
@@ -185,18 +184,29 @@ export async function getNews(
     .order("published_at", { ascending: false })
     .limit(limit);
 
-  if (category) query = query.eq("category", category);
+  // An empty tag list is what identifies the general feed; everything else is a
+  // company article, sorted by whether the visitor watches any of its tickers.
+  if (category === "market") query = query.eq("related_symbols", "{}");
+  if (category === "company") query = query.overlaps("related_symbols", watchlist);
+  if (category === "industry") {
+    query = query
+      .neq("related_symbols", "{}")
+      .not("related_symbols", "ov", `{${watchlist.join(",")}}`);
+  }
 
   const { data } = await query;
-  return (data ?? []).map(toNewsItem);
+  return (data ?? []).map((row) => toNewsItem(row, watchlist));
 }
 
 /**
  * Market News teaser on the Home page. Reuses the same ordering as the News
  * page rather than computing a second ranking of its own.
  */
-export async function getNewsTeaser(limit = 3): Promise<NewsItem[]> {
-  return getNews(undefined, limit);
+export async function getNewsTeaser(
+  watchlist: string[],
+  limit = 3,
+): Promise<NewsItem[]> {
+  return getNews(watchlist, undefined, limit);
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +286,11 @@ async function getIntraday(
  * the narrative directly beneath it contradicted. No limit, so the count is the
  * real one — a single symbol's day is a handful of articles.
  */
-async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
+async function getSymbolNews(
+  symbol: string,
+  day: string,
+  watchlist: string[],
+): Promise<NewsItem[]> {
   const { from, to } = dayWindow(day);
   const { data } = await db
     .from("news")
@@ -288,7 +302,7 @@ async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
 
   return (data ?? [])
     .filter((row) => tradingDay(new Date(row.published_at as string)) === day)
-    .map(toNewsItem);
+    .map((row) => toNewsItem(row, watchlist));
 }
 
 /**
@@ -296,7 +310,10 @@ async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
  * cached table read — the page makes no upstream call and triggers no AI call;
  * the narrative was written once by the end-of-day job.
  */
-export async function getActivity(symbol: string): Promise<Activity | null> {
+export async function getActivity(
+  symbol: string,
+  watchlist: string[],
+): Promise<Activity | null> {
   // The snapshots decide which session the page shows, and everything below is
   // then read for that one day — chart, news count, timeline and narrative all
   // describing the same session rather than each picking its own.
@@ -306,7 +323,7 @@ export async function getActivity(symbol: string): Promise<Activity | null> {
     // This page draws its own chart from getIntraday and renders no sparkline.
     getTickers([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
     getIntraday(symbol, sessionDay),
-    getSymbolNews(symbol, sessionDay),
+    getSymbolNews(symbol, sessionDay, watchlist),
   ]);
 
   const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));

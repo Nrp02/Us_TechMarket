@@ -8,10 +8,12 @@ import type { TopStock } from "@/lib/symbols";
 export function WatchlistPicker({
   universe,
   selected,
+  min,
   cap,
 }: {
   universe: TopStock[];
   selected: string[];
+  min: number;
   cap: number;
 }) {
   const router = useRouter();
@@ -21,6 +23,9 @@ export function WatchlistPicker({
 
   const chosen = new Set(selected);
   const full = selected.length >= cap;
+  // The floor matters as much as the cap now: every page assumes a non-empty
+  // watchlist, so the API refuses to remove the last stock.
+  const atMin = selected.length <= min;
 
   async function toggle(symbol: string) {
     const removing = chosen.has(symbol);
@@ -65,7 +70,7 @@ export function WatchlistPicker({
           <ul className="mt-3 max-h-80 overflow-y-auto">
             {universe.map((stock) => {
               const isChosen = chosen.has(stock.symbol);
-              const blocked = !isChosen && full;
+              const blocked = isChosen ? atMin : full;
 
               return (
                 <li key={stock.symbol}>
@@ -83,10 +88,10 @@ export function WatchlistPicker({
                     </span>
                     <span
                       className={`text-xs font-semibold ${
-                        isChosen
-                          ? "text-semantic-down"
-                          : blocked
-                            ? "text-muted"
+                        blocked
+                          ? "text-muted"
+                          : isChosen
+                            ? "text-semantic-down"
                             : "text-primary"
                       }`}
                     >
