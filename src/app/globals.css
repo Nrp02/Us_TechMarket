@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Drives the `dark:` variant off our own attribute rather than the OS setting,
+   because the theme is an explicit choice here and dark is the default. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Light theme. Dark is the default (layout.tsx stamps data-theme="dark" on
+   <html>), so these tokens apply only once a visitor opts into light. */
 :root {
   --color-canvas: #ffffff;
   --color-surface-soft: #f7f7f7;
@@ -12,6 +18,28 @@
   --color-primary-active: #003ecc;
   --color-semantic-up: #05b169;
   --color-semantic-down: #cf202f;
+  --color-logo-plate: #eef0f3;
+}
+
+/* Every token above is redefined here — nothing may have its only definition
+   inside this block, or that colour would be missing in light mode. */
+:root[data-theme="dark"] {
+  --color-canvas: #0d0f12;
+  --color-surface-soft: #15181d;
+  --color-surface-strong: #21262e;
+  --color-ink: #f2f4f7;
+  --color-body: #a3abb8;
+  --color-muted: #79818e;
+  --color-hairline: #2a2f37;
+  --color-primary: #3d78ff;
+  --color-primary-active: #5c8fff;
+  --color-semantic-up: #24c98a;
+  --color-semantic-down: #ff5f6d;
+  /* Deliberately light in BOTH themes. Brand marks carry hardcoded fills we
+     cannot recolour — AAPL #000000, PLTR #101113, AMZN #221f1f are effectively
+     black and vanish on a dark plate. Only real logos sit on this; lettermarks
+     and category icons use surface-strong so their text stays theme-aware. */
+  --color-logo-plate: #e9ebef;
 }
 
 @theme inline {
@@ -26,6 +54,7 @@
   --color-primary-active: var(--color-primary-active);
   --color-semantic-up: var(--color-semantic-up);
   --color-semantic-down: var(--color-semantic-down);
+  --color-logo-plate: var(--color-logo-plate);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
 }

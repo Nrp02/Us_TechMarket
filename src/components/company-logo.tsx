@@ -9,7 +9,12 @@ export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) 
 
   return (
     <span
-      className="flex h-8 w-20 shrink-0 items-center justify-center rounded-full bg-surface-strong"
+      className={`flex h-8 w-20 shrink-0 items-center justify-center rounded-full ${
+        // Real logos need the always-light plate: their fills are hardcoded and
+        // several are near-black, so a theme-aware surface would swallow them
+        // in dark mode. The lettermark is plain text and stays theme-aware.
+        hasLogo ? "bg-logo-plate" : "bg-surface-strong"
+      }`}
       aria-hidden
     >
       {hasLogo ? (

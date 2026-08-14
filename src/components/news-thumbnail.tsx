@@ -22,7 +22,11 @@ const ICONS: Record<NewsCategory, string> = {
 // identically — wide enough to fit the widest wordmark mark (Micron, ~3.6:1)
 // without clipping.
 const PLATE =
-  "flex h-20 w-44 shrink-0 items-center justify-center rounded-xl bg-surface-strong";
+  "flex h-20 w-44 shrink-0 items-center justify-center rounded-xl";
+// Real logos get the always-light plate (their fills are hardcoded and several
+// are near-black); the text-based states stay on the theme-aware surface.
+const LOGO_PLATE = `${PLATE} bg-logo-plate`;
+const TEXT_PLATE = `${PLATE} bg-surface-strong`;
 
 export function NewsThumbnail({
   category,
@@ -35,7 +39,7 @@ export function NewsThumbnail({
 }) {
   if (logoSymbol) {
     return (
-      <span className={PLATE} aria-hidden>
+      <span className={LOGO_PLATE} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- static local SVG, no optimization needed */}
         <img src={logoSrc(logoSymbol)} alt="" className="h-9 w-auto object-contain" />
       </span>
@@ -44,14 +48,14 @@ export function NewsThumbnail({
 
   if (symbol) {
     return (
-      <span className={PLATE} aria-hidden>
+      <span className={TEXT_PLATE} aria-hidden>
         <span className="text-sm font-semibold text-body">{symbol}</span>
       </span>
     );
   }
 
   return (
-    <span className={PLATE} aria-hidden>
+    <span className={TEXT_PLATE} aria-hidden>
       <svg
         viewBox="0 0 24 24"
         fill="none"

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 const NAV_ITEMS = [
   { href: "/", label: "Home" },
   { href: "/news", label: "News" },
@@ -14,8 +16,11 @@ export function Sidebar() {
 
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-hairline bg-canvas px-4 py-6">
-      <div className="px-2 pb-8 text-lg font-semibold tracking-tight text-ink">
-        US TechMarket
+      <div className="flex items-center justify-between gap-2 px-2 pb-8">
+        <span className="text-lg font-semibold tracking-tight text-ink">
+          US TechMarket
+        </span>
+        <ThemeToggle />
       </div>
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
