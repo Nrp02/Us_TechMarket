@@ -9,6 +9,10 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    // Test files import their subject as "./x.ts" because Node's type-stripping
+    // loader does no extension resolution. Safe here: noEmit is on, so nothing
+    // is ever written out with an unresolvable specifier.
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
