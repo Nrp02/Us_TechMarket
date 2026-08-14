@@ -39,39 +39,71 @@ export async function getWatchlistSymbols(): Promise<string[]> {
   return (data ?? []).map((r) => r.symbol as string);
 }
 
-/** Today's intraday closes per symbol, keyed by symbol. */
+/**
+ * The UTC bounds that contain one New York trading day. New York is UTC-4 or
+ * UTC-5, so an ET day always falls between its own midnight UTC and noon UTC the
+ * next day; callers narrow with this and then compare trading days exactly.
+ */
+function dayWindow(day: string): { from: string; to: string } {
+  return {
+    from: `${day}T00:00:00Z`,
+    to: new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString(),
+  };
+}
+
+/**
+ * The most recent session that actually produced snapshots, as an ET date.
+ *
+ * Everything on a per-stock page keys off this. It is read from the data rather
+ * than assumed from the clock: a fixed look-back window expires at a wall-clock
+ * moment, which silently emptied the page from Sunday afternoon until Monday's
+ * open — and after every market holiday — because the chart, the timeline and
+ * the stored summary are all looked up by the day the snapshots imply.
+ */
+async function getLatestSessionDay(symbol?: string): Promise<string | null> {
+  let query = db
+    .from("intraday_snapshots")
+    .select("snapshot_at")
+    .order("snapshot_at", { ascending: false })
+    .limit(1);
+
+  if (symbol) query = query.eq("symbol", symbol);
+
+  const { data } = await query;
+  const newest = data?.[0]?.snapshot_at as string | undefined;
+  return newest ? tradingDay(new Date(newest)) : null;
+}
+
+/** Latest session's intraday closes per symbol, keyed by symbol. */
 async function getSparklines(): Promise<Map<string, number[]>> {
-  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const day = await getLatestSessionDay();
+  if (!day) return new Map();
+
+  const { from, to } = dayWindow(day);
   const { data } = await db
     .from("intraday_snapshots")
     .select("symbol, price, snapshot_at")
-    .gte("snapshot_at", since)
+    .gte("snapshot_at", from)
+    .lt("snapshot_at", to)
     .order("snapshot_at", { ascending: true });
 
-  const bySymbol = new Map<string, { day: string; price: number }[]>();
-  for (const row of data ?? []) {
-    const symbol = row.symbol as string;
-    const list = bySymbol.get(symbol) ?? [];
-    list.push({
-      day: tradingDay(new Date(row.snapshot_at as string)),
-      price: Number(row.price),
-    });
-    bySymbol.set(symbol, list);
-  }
-
-  // Keep only the most recent session so a sparkline never spans two days.
+  // The window can only straddle the boundary, never span two sessions, so the
+  // trading-day comparison is what actually pins each point to `day`.
   const result = new Map<string, number[]>();
-  for (const [symbol, points] of bySymbol) {
-    const latestDay = points[points.length - 1].day;
-    result.set(
-      symbol,
-      points.filter((p) => p.day === latestDay).map((p) => p.price),
-    );
+  for (const row of data ?? []) {
+    if (tradingDay(new Date(row.snapshot_at as string)) !== day) continue;
+    const symbol = row.symbol as string;
+    result.set(symbol, [...(result.get(symbol) ?? []), Number(row.price)]);
   }
   return result;
 }
 
-export async function getTickers(symbols: string[]): Promise<Ticker[]> {
+export async function getTickers(
+  symbols: string[],
+  // Sparklines cost a read of every tracked symbol's whole session, so a caller
+  // that does not render one says so rather than paying for it.
+  { sparklines = true }: { sparklines?: boolean } = {},
+): Promise<Ticker[]> {
   if (!symbols.length) return [];
 
   const [{ data: prices }, sparks] = await Promise.all([
@@ -79,7 +111,7 @@ export async function getTickers(symbols: string[]): Promise<Ticker[]> {
       .from("price_cache")
       .select("symbol, price, change, change_percent, volume, avg_volume")
       .in("symbol", symbols),
-    getSparklines(),
+    sparklines ? getSparklines() : new Map<string, number[]>(),
   ]);
 
   const bySymbol = new Map(
@@ -165,4 +197,173 @@ export async function getNews(
  */
 export async function getNewsTeaser(limit = 3): Promise<NewsItem[]> {
   return getNews(undefined, limit);
+}
+
+// ---------------------------------------------------------------------------
+// Today's Activity
+// ---------------------------------------------------------------------------
+
+export type IntradayPoint = { at: string; price: number; volume: number | null };
+
+export type TimelineEntry = {
+  at: string;
+  kind: "market_open" | "high_volume" | "price_milestone" | "news" | "market_close";
+  label: string;
+  detail: string | null;
+};
+
+export type UpcomingEvent = {
+  type: "earnings_date" | "earnings_call";
+  at: string;
+  note: string | null;
+};
+
+export type DailySummary = {
+  narrative: string;
+  bullets: string[];
+  generatedAt: string;
+};
+
+export type Activity = {
+  /**
+   * The session everything on the page describes, as a New York date. Outside
+   * market hours this is the last session that produced data, not today — the
+   * page would otherwise go blank every evening and all weekend.
+   */
+  sessionDay: string;
+  ticker: Ticker;
+  /** XLK and SPY, for the Sector and Market stat cards. Null before a refresh. */
+  sector: Ticker | null;
+  market: Ticker | null;
+  intraday: IntradayPoint[];
+  news: NewsItem[];
+  timeline: TimelineEntry[];
+  events: UpcomingEvent[];
+  summary: DailySummary | null;
+};
+
+const SECTOR_SYMBOL = "XLK";
+const MARKET_SYMBOL = "SPY";
+
+/** One session's intraday price and volume series for a symbol, oldest first. */
+async function getIntraday(
+  symbol: string,
+  day: string,
+): Promise<IntradayPoint[]> {
+  const { from, to } = dayWindow(day);
+  const { data } = await db
+    .from("intraday_snapshots")
+    .select("price, volume, snapshot_at")
+    .eq("symbol", symbol)
+    .gte("snapshot_at", from)
+    .lt("snapshot_at", to)
+    .order("snapshot_at", { ascending: true });
+
+  return (data ?? [])
+    .filter((row) => tradingDay(new Date(row.snapshot_at as string)) === day)
+    .map((row) => ({
+      at: row.snapshot_at as string,
+      price: Number(row.price),
+      volume: row.volume == null ? null : Number(row.volume),
+    }));
+}
+
+/**
+ * News Finnhub tagged with this symbol during one session.
+ *
+ * Scoped to the session on purpose: the stat card counts these as the day's
+ * articles, and an unscoped "most recent 8 ever" made that card claim a number
+ * the narrative directly beneath it contradicted. No limit, so the count is the
+ * real one — a single symbol's day is a handful of articles.
+ */
+async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
+  const { from, to } = dayWindow(day);
+  const { data } = await db
+    .from("news")
+    .select(NEWS_COLUMNS)
+    .contains("related_symbols", [symbol])
+    .gte("published_at", from)
+    .lt("published_at", to)
+    .order("published_at", { ascending: false });
+
+  return (data ?? [])
+    .filter((row) => tradingDay(new Date(row.published_at as string)) === day)
+    .map(toNewsItem);
+}
+
+/**
+ * Everything the Today's Activity page renders for one stock. Every field is a
+ * cached table read — the page makes no upstream call and triggers no AI call;
+ * the narrative was written once by the end-of-day job.
+ */
+export async function getActivity(symbol: string): Promise<Activity | null> {
+  // The snapshots decide which session the page shows, and everything below is
+  // then read for that one day — chart, news count, timeline and narrative all
+  // describing the same session rather than each picking its own.
+  const sessionDay = (await getLatestSessionDay(symbol)) ?? tradingDay();
+
+  const [tickers, intraday, news] = await Promise.all([
+    // This page draws its own chart from getIntraday and renders no sparkline.
+    getTickers([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
+    getIntraday(symbol, sessionDay),
+    getSymbolNews(symbol, sessionDay),
+  ]);
+
+  const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
+  const ticker = bySymbol.get(symbol);
+  if (!ticker) return null;
+
+  const [timelineRows, eventRows, summaryRow] = await Promise.all([
+    db
+      .from("timeline_events")
+      .select("event_at, kind, label, detail")
+      .eq("symbol", symbol)
+      .eq("trading_day", sessionDay)
+      .order("event_at", { ascending: true }),
+    // Bounded by the start of today's ET date, not by the current instant.
+    // Earnings rows carry a time only so the date and the call sort in order
+    // (noon and 21:00 UTC), so comparing against "now" hid today's earnings from
+    // the afternoon onwards — on the one day they matter most.
+    db
+      .from("events")
+      .select("event_type, event_at, note")
+      .eq("symbol", symbol)
+      .gte("event_at", `${tradingDay()}T00:00:00Z`)
+      .order("event_at", { ascending: true }),
+    db
+      .from("daily_summaries")
+      .select("summary, bullets, generated_at")
+      .eq("symbol", symbol)
+      .eq("summary_date", sessionDay)
+      .maybeSingle(),
+  ]);
+
+  const summary = summaryRow.data;
+
+  return {
+    sessionDay,
+    ticker,
+    sector: bySymbol.get(SECTOR_SYMBOL) ?? null,
+    market: bySymbol.get(MARKET_SYMBOL) ?? null,
+    intraday,
+    news,
+    timeline: (timelineRows.data ?? []).map((row) => ({
+      at: row.event_at as string,
+      kind: row.kind as TimelineEntry["kind"],
+      label: row.label as string,
+      detail: (row.detail as string | null) ?? null,
+    })),
+    events: (eventRows.data ?? []).map((row) => ({
+      type: row.event_type as UpcomingEvent["type"],
+      at: row.event_at as string,
+      note: (row.note as string | null) ?? null,
+    })),
+    summary: summary
+      ? {
+          narrative: summary.summary as string,
+          bullets: (summary.bullets as string[] | null) ?? [],
+          generatedAt: summary.generated_at as string,
+        }
+      : null,
+  };
 }

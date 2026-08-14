@@ -41,7 +41,20 @@ export type GeminiCallResult<T> = {
 export async function generateJson<T>(
   prompt: string,
   responseSchema: Record<string, unknown>,
-  { retries = 2 }: { retries?: number } = {},
+  {
+    retries = 2,
+    timeoutMs,
+  }: {
+    retries?: number;
+    /**
+     * Abort the request after this long. Latency on this model is not merely
+     * variable but occasionally extreme — the same batch measured 13s and 75s —
+     * so a caller that has to finish inside a function limit sets a bound and
+     * gets a clean, reported failure instead of the platform killing the
+     * function mid-job.
+     */
+    timeoutMs?: number;
+  } = {},
 ): Promise<GeminiCallResult<T>> {
   const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash";
   const key = process.env.GEMINI_API_KEY;
@@ -71,9 +84,14 @@ export async function generateJson<T>(
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
       body,
       cache: "no-store",
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     });
 
     if ((res.status === 429 || res.status >= 500) && attempt < retries) {
+      // Logged rather than swallowed: a retry doubles the wall time of a job
+      // that has to finish inside a 60s function, so a run that suddenly takes
+      // twice as long should be traceable to the cap rather than guessed at.
+      console.warn(`Gemini ${res.status}; retrying (attempt ${attempt + 1})`);
       await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
       continue;
     }

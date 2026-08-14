@@ -20,7 +20,7 @@ const eslintConfig = defineConfig([
   //
   // Note the group list is exact-match, not prefix-match: "@/lib/finnhub" does
   // not cover "@/lib/finnhub-news", so every upstream module is named here
-  // individually. Phase 4's summary job belongs in this list too.
+  // individually.
   {
     files: ["src/app/**/page.tsx", "src/app/**/layout.tsx", "src/components/**"],
     rules: {
@@ -32,10 +32,12 @@ const eslintConfig = defineConfig([
               group: [
                 "@/lib/finnhub",
                 "@/lib/finnhub-news",
+                "@/lib/finnhub-events",
                 "@/lib/yahoo",
                 "@/lib/gemini",
                 "@/lib/refresh",
                 "@/lib/news-ingest",
+                "@/lib/daily-summary",
               ],
               message:
                 "Upstream API clients must not be reached from a page or component. Pages read cached data via @/lib/queries; upstream calls belong in a scheduled ingestion job (see CLAUDE.md, 'Ingestion architecture').",

@@ -37,6 +37,20 @@ const JOBS = [
     schedule: "0 12,16,21,1 * * *",
     path: "/api/ingest-news",
   },
+  // End-of-day Today's Activity summaries. Each run summarises the next couple
+  // of watchlist symbols that still lack one, so the list finishes across
+  // several runs rather than in a single call that would overrun the 60s
+  // function limit; the spare runs also absorb the model's intermittent 503s.
+  //
+  // 21:05 UTC is 16:05 ET under EST and 17:05 ET under EDT — after the close in
+  // both, which is what the handler's own America/New_York check enforces. The
+  // :05 offset keeps every run clear of the 21:00 news cycle, which has to land
+  // first so the day's articles are in the database before they are summarised.
+  {
+    name: "daily-summaries",
+    schedule: "5-55/10 21-22 * * 1-5",
+    path: "/api/daily-summary",
+  },
 ];
 
 // A cold news cycle can take ~45s, so pg_net must outwait the function rather

@@ -1,0 +1,83 @@
+import { notFound } from "next/navigation";
+
+import { ActivityStats } from "@/components/activity-stats";
+import { ActivityTimeline } from "@/components/activity-timeline";
+import { CompanyLogo } from "@/components/company-logo";
+import { DailySummaryCard } from "@/components/daily-summary-card";
+import { IntradayChart } from "@/components/intraday-chart";
+import { StatusBadge } from "@/components/status-badge";
+import { SymbolSwitcher } from "@/components/symbol-switcher";
+import { UpcomingEvents } from "@/components/upcoming-events";
+import { formatChange, formatDay, formatPercent, formatPrice } from "@/lib/format";
+import { getActivity, getWatchlistSymbols } from "@/lib/queries";
+
+// One page per stock, reached through the sidebar and the header switcher. There
+// is no secondary tab bar by design — the dense AI summary below replaces the
+// Overview/News/Events/Financials/Charts/Peers tabs the early mockups had.
+//
+// Reads cached tables only. No upstream call, and no AI call: the narrative was
+// written once, after the close.
+export const dynamic = "force-dynamic";
+
+export default async function TodaysActivityForSymbol({
+  params,
+}: PageProps<"/todays-activity/[symbol]">) {
+  const { symbol: raw } = await params;
+  const symbol = raw.toUpperCase();
+
+  const [activity, watchlist] = await Promise.all([
+    getActivity(symbol),
+    getWatchlistSymbols(),
+  ]);
+
+  // No cached price for this symbol means it is not one we track at all.
+  if (!activity) notFound();
+
+  const { ticker } = activity;
+  const up = ticker.changePercent >= 0;
+  const moveColor = up ? "text-semantic-up" : "text-semantic-down";
+
+  return (
+    <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-8 lg:px-10">
+      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
+        <div className="flex items-center gap-4">
+          <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
+          <div>
+            {/* Ticker only — the header is the switcher, not a company title. */}
+            <SymbolSwitcher symbol={ticker.symbol} symbols={watchlist} />
+            <p className="px-2 text-sm text-body">
+              {ticker.name} · session of {formatDay(activity.sessionDay)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-5">
+          <div className="text-right">
+            <p className="font-mono text-2xl font-medium tabular-nums text-ink">
+              {formatPrice(ticker.price)}
+            </p>
+            <p className={`font-mono text-sm tabular-nums ${moveColor}`}>
+              {formatChange(ticker.change)} ({formatPercent(ticker.changePercent)})
+            </p>
+          </div>
+          {/* Same shared rule as the Home page badge and Top Movers ranking. */}
+          <StatusBadge significant={ticker.significant} />
+        </div>
+      </header>
+
+      <ActivityStats activity={activity} />
+
+      <DailySummaryCard summary={activity.summary} symbol={ticker.symbol} />
+
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-ink">Price & Volume</h2>
+        <IntradayChart points={activity.intraday} up={up} />
+      </section>
+
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <ActivityTimeline entries={activity.timeline} />
+        <UpcomingEvents events={activity.events} />
+      </div>
+    </div>
+  );
+}

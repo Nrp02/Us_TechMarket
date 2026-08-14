@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isMarketOpen } from "@/lib/market";
+import { isClosingWindow, isMarketOpen } from "@/lib/market";
 import { refreshMarketData } from "@/lib/refresh";
 
 // The single ingestion entry point. Every upstream API call in the app happens
@@ -26,8 +26,12 @@ export async function POST(request: Request) {
   // The schedule fires across a UTC window wide enough to cover both EST and
   // EDT, so this check — evaluated in America/New_York — is what actually
   // decides whether a tick does any work.
+  //
+  // The closing window is included deliberately: 16:00 ET falls outside
+  // `isMarketOpen`, so without it the newest price on record is the 15:45 quote
+  // and everything downstream that says "close" is saying something untrue.
   const force = new URL(request.url).searchParams.get("force") === "1";
-  if (!force && !isMarketOpen()) {
+  if (!force && !isMarketOpen() && !isClosingWindow()) {
     return NextResponse.json({ skipped: "market closed" });
   }
 
