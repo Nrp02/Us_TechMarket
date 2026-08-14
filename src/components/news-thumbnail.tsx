@@ -1,4 +1,4 @@
-import { logoSrc } from "@/lib/logos";
+import { logoNudge, logoSrc } from "@/lib/logos";
 import type { NewsCategory } from "@/lib/queries";
 
 // Thumbnails are always a mark, never article photography: company logo, then
@@ -41,7 +41,11 @@ export function NewsThumbnail({
     return (
       <span className={LOGO_PLATE} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- static local SVG, no optimization needed */}
-        <img src={logoSrc(logoSymbol)} alt="" className="h-9 w-auto object-contain" />
+        <img
+          src={logoSrc(logoSymbol)}
+          alt=""
+          className={`h-9 w-auto object-contain ${logoNudge(logoSymbol)}`}
+        />
       </span>
     );
   }

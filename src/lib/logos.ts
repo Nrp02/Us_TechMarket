@@ -35,3 +35,27 @@ export const HAS_LOGO = new Set([
 export function logoSrc(symbol: string): string {
   return `/logos/${symbol}.svg`;
 }
+
+/**
+ * Marks whose visual mass sits off the centre of their own bounding box, with a
+ * Tailwind class nudging them back. Lives here rather than in a component
+ * because more than one place renders a logo — the watchlist badge and the news
+ * thumbnail do it independently — and a correction applied in only one of them
+ * is the bug this replaced.
+ *
+ * Amazon is the only entry. Its artwork is the "amazon" wordmark over the orange
+ * swoosh: measured against the vendored SVG, the wordmark occupies the top 59%
+ * of the canvas and the swoosh the rest, putting the dark text's centre 20% of
+ * the canvas height above the box centre. Centring the box is geometrically
+ * correct and reads as sitting high, because the eye tracks the wordmark and not
+ * the pale arc. The nudge is expressed as a percentage of the image's own
+ * height, so it holds at every size the mark is drawn at.
+ */
+const OPTICAL_NUDGE: Record<string, string> = {
+  AMZN: "translate-y-[15%]",
+};
+
+/** Vertical correction for `symbol`'s mark, or "" when it needs none. */
+export function logoNudge(symbol: string): string {
+  return OPTICAL_NUDGE[symbol] ?? "";
+}
