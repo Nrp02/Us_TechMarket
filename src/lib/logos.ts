@@ -1,61 +1,100 @@
-// Company logo marks, vendored locally under public/logos/ as static SVG files
-// rather than pulled from an npm package at runtime.
+// Company marks, hotlinked from Brandfetch's Logo CDN.
 //
-// Two sources, per the logo-sourcing rule in CLAUDE.md (a free-to-use icon
-// library, never scraped off an arbitrary page):
-//   - Simple Icons (CC0-1.0) — the monochrome 24-grid marks: AAPL, AMD, AVGO,
-//     CSCO, INTC, INTU, NVDA, PLTR, QCOM, TSLA.
-//   - thesvg (github.com/glincker/thesvg) — the full-colour marks Simple Icons
-//     no longer ships: ADBE, AMZN, CRM, GOOGL, META, MSFT, MU.
+// Why hotlinked rather than vendored under public/logos/: Brandfetch's terms
+// license downloading and caching Content for at most thirty days and grant no
+// right to reproduce or redistribute the underlying brand assets, which remain
+// third-party IP. Committing the marks into this repo would outlive that
+// window, so the CDN is the delivery path their licence actually contemplates —
+// these URLs are built for direct browser rendering and carry a client id that
+// is public by design (it is visible in page source on every render).
 //
-// Companies with no freely-licensed mark at all (Texas Instruments,
-// ServiceNow) or whose only mark is a wordmark too wide to read at any badge
-// size (Oracle, ~7.7:1) fall back to a lettermark plate in the components
-// below.
-export const HAS_LOGO = new Set([
-  "NVDA",
-  "AAPL",
-  "MSFT",
-  "GOOGL",
-  "META",
-  "AVGO",
-  "TSLA",
-  "PLTR",
-  "AMD",
-  "CSCO",
-  "ADBE",
-  "INTC",
-  "QCOM",
-  "INTU",
-  "CRM",
-  "AMZN",
-  "MU",
-]);
+// This is the only place the app fetches from a third party in the browser, and
+// it is deliberately outside the "no client-triggered upstream API calls" rule.
+// That rule exists to keep page traffic away from metered quotas — Finnhub at
+// 60 calls/min, Gemini at 20 requests/day — where a burst of visitors would
+// starve the ingestion jobs. The Logo CDN is a free static-asset host with a
+// 500k requests/month allowance, so page views cannot exhaust anything the app
+// depends on. No data ever comes back from it, only images.
+//
+// `theme/dark` selects the dark-inked variant of a mark, which is the one that
+// reads on the light plate the components draw. `theme/light` returns the white
+// knock-out variant where it exists at all, and would be invisible here — this
+// was checked in a browser, not assumed, because the naming reads backwards.
+const CLIENT_ID = "1id9EpwYGkeL6X3l9Ad";
 
-export function logoSrc(symbol: string): string {
-  return `/logos/${symbol}.svg`;
+type MarkType = "symbol" | "logo";
+
+/**
+ * The mark to draw for each of the Top 20, plus the asset type that reads best
+ * at badge size.
+ *
+ * `symbol` is a standalone square-ish mark and is preferred wherever the brand
+ * has one. The eight brands mapped to `logo` have no symbol asset at all, so
+ * they get the wordmark lockup, which the plate is wide enough to hold.
+ *
+ * Both the domain and the type were verified by rendering every entry in a real
+ * browser against the live CDN. They could not be checked any other way:
+ * Brandfetch blocks script and server-side fetches of these URLs, returning an
+ * HTML page rather than an image, so curl reports success for marks that do not
+ * exist.
+ *
+ * GOOGL points at google.com rather than the ticker's own abc.xyz, which
+ * resolves to the "Alphabet" wordmark instead of the Google G.
+ */
+const MARKS: Record<string, { domain: string; type: MarkType }> = {
+  NVDA: { domain: "nvidia.com", type: "symbol" },
+  AAPL: { domain: "apple.com", type: "logo" },
+  MSFT: { domain: "microsoft.com", type: "symbol" },
+  GOOGL: { domain: "google.com", type: "symbol" },
+  AMZN: { domain: "amazon.com", type: "symbol" },
+  META: { domain: "meta.com", type: "logo" },
+  AVGO: { domain: "broadcom.com", type: "symbol" },
+  TSLA: { domain: "tesla.com", type: "symbol" },
+  ORCL: { domain: "oracle.com", type: "symbol" },
+  PLTR: { domain: "palantir.com", type: "symbol" },
+  AMD: { domain: "amd.com", type: "symbol" },
+  CRM: { domain: "salesforce.com", type: "symbol" },
+  CSCO: { domain: "cisco.com", type: "logo" },
+  ADBE: { domain: "adobe.com", type: "symbol" },
+  INTC: { domain: "intel.com", type: "logo" },
+  QCOM: { domain: "qualcomm.com", type: "logo" },
+  TXN: { domain: "ti.com", type: "symbol" },
+  MU: { domain: "micron.com", type: "logo" },
+  NOW: { domain: "servicenow.com", type: "logo" },
+  INTU: { domain: "intuit.com", type: "logo" },
+};
+
+// Height is requested well above the largest size any component draws (36px) so
+// the mark stays sharp on a high-DPI screen; width follows the aspect ratio.
+//
+// `fallback/404` is deliberate and is the only setting that makes a mistake in
+// MARKS visible. The alternative, `fallback/transparent`, answers 200 with a
+// blank image for a wrong domain or an asset type a brand does not carry, which
+// would make every check — the network tab, a manual audit — pass for a mark
+// that does not exist. That is the same trap this file documents above for
+// curl, so it is worth not rebuilding it here.
+//
+// Costs nothing visually: measured in Chrome, a 404 under `alt=""` renders as
+// an empty plate with no broken-image glyph, identical to `transparent`.
+function markUrl(domain: string, type: MarkType): string {
+  return `https://cdn.brandfetch.io/${domain}/h/96/theme/dark/fallback/404/type/${type}?c=${CLIENT_ID}`;
+}
+
+/** The mark for `symbol`, or null when it is not one of the Top 20. */
+export function logoSrc(symbol: string): string | null {
+  const mark = MARKS[symbol];
+  return mark ? markUrl(mark.domain, mark.type) : null;
 }
 
 /**
- * Marks whose visual mass sits off the centre of their own bounding box, with a
- * Tailwind class nudging them back. Lives here rather than in a component
- * because more than one place renders a logo — the watchlist badge and the news
- * thumbnail do it independently — and a correction applied in only one of them
- * is the bug this replaced.
- *
- * Amazon is the only entry. Its artwork is the "amazon" wordmark over the orange
- * swoosh: measured against the vendored SVG, the wordmark occupies the top 59%
- * of the canvas and the swoosh the rest, putting the dark text's centre 20% of
- * the canvas height above the box centre. Centring the box is geometrically
- * correct and reads as sitting high, because the eye tracks the wordmark and not
- * the pale arc. The nudge is expressed as a percentage of the image's own
- * height, so it holds at every size the mark is drawn at.
+ * Market news belongs to no single company, so its thumbnail carries the data
+ * provider's mark. This names the source of the data rather than the article's
+ * publisher — a publisher mark is not derivable, since `news.source_url` holds
+ * a Finnhub or Google News redirect and the publisher name is never stored.
+ * It replaces a rising-arrow glyph that asserted a direction the article could
+ * contradict.
  */
-const OPTICAL_NUDGE: Record<string, string> = {
-  AMZN: "translate-y-[15%]",
-};
+export const FINNHUB_LOGO = markUrl("finnhub.io", "logo");
 
-/** Vertical correction for `symbol`'s mark, or "" when it needs none. */
-export function logoNudge(symbol: string): string {
-  return OPTICAL_NUDGE[symbol] ?? "";
-}
+/** Exported for the test that keeps MARKS and TOP_20 in step. */
+export const MARK_SYMBOLS = Object.keys(MARKS);

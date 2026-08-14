@@ -1,5 +1,4 @@
 import { NewsThumbnail } from "@/components/news-thumbnail";
-import { HAS_LOGO } from "@/lib/logos";
 import type { NewsItem } from "@/lib/queries";
 
 function timeAgo(iso: string): string {
@@ -22,8 +21,6 @@ export function NewsList({ items }: { items: NewsItem[] }) {
   return (
     <ul className="rounded-3xl border border-hairline bg-canvas">
       {items.map((item) => {
-        // Resolved here rather than in the thumbnail so the icon set stays out
-        // of the client bundle.
         const symbol = item.relatedSymbols[0] ?? null;
 
         return (
@@ -31,11 +28,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
           key={item.id}
           className="flex gap-4 border-b border-hairline p-5 last:border-0"
         >
-          <NewsThumbnail
-            category={item.category}
-            logoSymbol={symbol && HAS_LOGO.has(symbol) ? symbol : null}
-            symbol={symbol}
-          />
+          <NewsThumbnail symbol={symbol} />
 
           <div className="min-w-0 flex-1">
             <a

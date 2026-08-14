@@ -1,5 +1,5 @@
 import { tradingDay } from "@/lib/market";
-import { categoriseNews, type NewsCategory } from "@/lib/news-category";
+import type { NewsCategory } from "@/lib/news-category";
 import { isSignificant, significanceScore } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL } from "@/lib/symbols";
@@ -135,9 +135,12 @@ export async function getTickers(
   });
 }
 
+// No `category` field: the thumbnail stopped needing one when market news
+// started being identified by an empty `related_symbols`, and the tab filtering
+// runs in Postgres in `getNews` below. `categoriseNews` still holds the rule and
+// its tests, and the three filters there mirror it.
 export type NewsItem = {
   id: number;
-  category: NewsCategory;
   headline: string;
   sourceUrl: string;
   relatedSymbols: string[];
@@ -151,12 +154,11 @@ const NEWS_COLUMNS =
 
 // news_summaries.news_id is the primary key, so PostgREST embeds it as a single
 // object rather than an array. Treating it as an array silently yields null.
-function toNewsItem(row: Record<string, unknown>, watchlist: string[]): NewsItem {
+function toNewsItem(row: Record<string, unknown>): NewsItem {
   const embedded = row.news_summaries as { summary: string } | null;
   const relatedSymbols = (row.related_symbols as string[] | null) ?? [];
   return {
     id: row.id as number,
-    category: categoriseNews(relatedSymbols, watchlist),
     headline: row.headline as string,
     sourceUrl: row.source_url as string,
     relatedSymbols,
@@ -195,7 +197,7 @@ export async function getNews(
   }
 
   const { data } = await query;
-  return (data ?? []).map((row) => toNewsItem(row, watchlist));
+  return (data ?? []).map((row) => toNewsItem(row));
 }
 
 /**
@@ -286,11 +288,7 @@ async function getIntraday(
  * the narrative directly beneath it contradicted. No limit, so the count is the
  * real one — a single symbol's day is a handful of articles.
  */
-async function getSymbolNews(
-  symbol: string,
-  day: string,
-  watchlist: string[],
-): Promise<NewsItem[]> {
+async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
   const { from, to } = dayWindow(day);
   const { data } = await db
     .from("news")
@@ -302,7 +300,7 @@ async function getSymbolNews(
 
   return (data ?? [])
     .filter((row) => tradingDay(new Date(row.published_at as string)) === day)
-    .map((row) => toNewsItem(row, watchlist));
+    .map((row) => toNewsItem(row));
 }
 
 /**
@@ -310,10 +308,7 @@ async function getSymbolNews(
  * cached table read — the page makes no upstream call and triggers no AI call;
  * the narrative was written once by the end-of-day job.
  */
-export async function getActivity(
-  symbol: string,
-  watchlist: string[],
-): Promise<Activity | null> {
+export async function getActivity(symbol: string): Promise<Activity | null> {
   // The snapshots decide which session the page shows, and everything below is
   // then read for that one day — chart, news count, timeline and narrative all
   // describing the same session rather than each picking its own.
@@ -323,7 +318,7 @@ export async function getActivity(
     // This page draws its own chart from getIntraday and renders no sparkline.
     getTickers([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
     getIntraday(symbol, sessionDay),
-    getSymbolNews(symbol, sessionDay, watchlist),
+    getSymbolNews(symbol, sessionDay),
   ]);
 
   const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));

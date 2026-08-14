@@ -47,6 +47,7 @@ Every part of this app is written in **TypeScript**. No Python, no separate back
 | Sector/Peers | Finnhub `/stock/peers` | Used inside Today's Activity, not a standalone page |
 | SEC filings | SEC EDGAR Full-Text Search API | Metadata only — type, date, link. Never parse full filing text. |
 | AI summarization | Gemini 2.5 Flash (free tier) | Batched — see "AI call budget" below |
+| Company + Finnhub logos | Brandfetch Logo CDN (free to 500k req/month) | The one upstream the **browser** calls directly, and the only one that returns images rather than data. Hotlinked, never vendored — the licence caps caching at 30 days. See the logo note under "Decisions that were explicitly reversed". |
 
 No paid tier anywhere. If a free-tier endpoint can't deliver something in this file, stop and flag it rather than substituting a paid one.
 
@@ -69,6 +70,8 @@ How this is enforced:
 | Work skipped outside market hours | `isMarketOpen()` in `src/lib/market.ts`, evaluated in `America/New_York` so it survives EST/EDT |
 | Schedules provisioned | `scripts/setup-cron.mts` (idempotent, re-runnable; reads secrets from `.env.local`, commits none) |
 | Violations caught mechanically | `no-restricted-imports` in `eslint.config.mjs` — importing an upstream client from a page or component fails lint |
+
+**One deliberate exception: company logos.** `src/lib/logos.ts` emits `cdn.brandfetch.io` URLs that the browser loads on every page view. This is outside the rule above rather than a violation of it, and the distinction is what the rule protects: metered quotas. Finnhub allows 60 calls/min and Gemini 20 requests/day, so page traffic reaching either would starve the ingestion jobs and there would be no way to buy more before a demo. Brandfetch's Logo CDN is a free static-asset host with a 500k requests/month allowance, returns images rather than data, and cannot exhaust anything the app depends on. It is also the only delivery method its licence permits — see the logo note under "Decisions that were explicitly reversed". Do not generalise this exception to anything that returns data.
 
 A consequence worth knowing: adding a stock to the watchlist does **not** fetch anything. All 20 candidate symbols are ingested every cycle, so any stock the user can add already has cached data. Phase 4.5 extends the same reasoning to AI summaries — once each visitor keeps their own watchlist, every stock they *could* pick must already be summarised.
 
@@ -124,13 +127,13 @@ Measured on the first 20-stock run: **preamble 6,966ms** for all 20 timelines, `
 
 Rebuilding every stock's timeline on every run is deliberate and was kept — it is free of AI and upstream calls, which is what lets a rule change be rolled out by re-running the job.
 
-### Work order — 1–5 done, 6 blocked
+### Work order — all six done
 
 1. ✅ Cookie watchlist (change 2 + 3) — Home, News and Today's Activity all render; a hand-edited cookie (junk, duplicates, 15 symbols, empty) normalises correctly on every one.
 2. ✅ Dropdown `+`/`−` and the Home picker (change 4) — both boundaries verified in the browser: at 1 stock every `−` is disabled, at 10 every `+` is; the 409 renders in the menu; removing the viewed stock does not redirect.
 3. ✅ Timeline preamble fix — see above.
 4. ✅ Switch the job to all 20 (change 1) — one run, `stale: []`, all 20 timelines, `geminiCalls: 1`. **Note the original wording of this step was wrong:** one invocation summarises one `BATCH_SIZE` batch, so it reports **1** call, not 4. Four *runs* cover the Top 20; that is what "4 calls/day" means.
-5. ⛔ Logos (change 5) — **blocked, not attempted.** The Brandfetch MCP server is configured in `.mcp.json` but was not connected in the session that built 1–4 (no `mcp__brandfetch__*` tools available), and its licence terms are still unread — see Open items. Do not substitute Simple Icons/thesvg and do not scrape; that is the decision this change exists to reverse.
+5. ✅ Logos (change 5) — all 20 marks plus Finnhub now come from Brandfetch, **hotlinked from its Logo CDN rather than vendored**, because reading the licence forced that change. See the logo note under "Decisions that were explicitly reversed". All 21 marks were confirmed 200 in a browser **against `fallback/404`** — the first pass used `fallback/transparent`, under which a wrong domain also answers 200 with a blank image, so that check had proved nothing. A deliberately bogus domain was included as a control and did 404.
 6. ✅ This file updated; `npm test`, `npx tsc --noEmit`, `npm run lint` all clean.
 
 **Quota discipline while testing:** one summary run costs 1 of the 20 daily requests, and a full day's coverage costs 4. Building 1–5 above spent exactly **1** call in total, by verifying the preamble fix and the widening in the same run — the run rebuilds all 20 timelines regardless of batch size, so a separate 10-stock check was unnecessary. Its 5 summary rows were deleted afterwards because the market was still open and they described an unfinished session.
@@ -194,7 +197,7 @@ IF |price change| ≥ 3% AND relative volume ≥ 1.5x    → Significant
 ELSE                                                  → Normal
 ```
 
-**Logo sourcing** — do not scrape logos from arbitrary web pages (adds a second copyright surface). Use one of: (a) an official investor-relations brand asset page, or (b) a free-to-use icon library such as Simple Icons. Record which source you used.
+**Logo sourcing** — do not scrape logos from arbitrary web pages (adds a second copyright surface). Use one of: (a) an official investor-relations brand asset page, or (b) a free-to-use icon library such as Simple Icons. Record which source you used, **and record what its licence actually permits** — the source and the delivery method are separate questions, and Phase 4.5 found a source whose licence allowed hotlinking but not the vendoring that had already been designed around it. *(Settled: the source is now Brandfetch's Logo CDN, hotlinked — see "Decisions that were explicitly reversed".)*
 
 **Done when**: Home page shows real Finnhub data for at least 3 stocks, watchlist add/remove works with the 10-cap enforced, and badges are correct against at least 3 hand-picked edge cases (one of each trigger condition). No AI call happens on this page at all — if you find yourself adding one, stop, that's scope creep against a locked decision.
 
@@ -246,6 +249,7 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
 2. EOD job depends on all news for the day being fetched first — sequence the 16:30 ET news cycle to complete before the EOD summary job starts.
 3. Implement whatever visual design Claude Design has produced by this point; responsive check across the three pages.
 4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing.
+   - **Also confirm the logos load from the deployed origin.** They were only ever verified from `localhost`, and the Brandfetch client id may be origin-restricted. This is the one uncovered failure in the logo change and it fails silently: an unreachable CDN renders **every** mark — watchlist, Top Movers, the Today's Activity header, every news thumbnail — as an empty plate, because `alt=""` suppresses even the broken-image glyph (measured). Load the deployed URL and check the network tab for 200s; if they fail, the fix is either an allowed-domains entry in the Brandfetch dashboard or an `onError` lettermark fallback, which would make `news-thumbnail.tsx` a client component and should be weighed against that.
 5. Final deploy + a short README aimed at the professor.
 
 **Done when**: someone with zero context opens the live URL on a phone and understands what the product does within 30 seconds.
@@ -320,15 +324,21 @@ The three below were forced by what the free tiers actually do, discovered by pr
 
   This does not reverse the "real logos" decision — the lettermark is still the fallback where no freely-licensed mark exists. Finnhub's `/stock/profile2` returns a logo URL covering all 20 and is an available upgrade, but it is neither source this file named, so it needs an explicit owner call.
 
-  **Superseded in Phase 4.5 — all marks are re-sourced from Brandfetch.** The owner's call, and it replaces both libraries above: Simple Icons and thesvg are no longer the source, and the thesvg MCP server is to be dropped. The open question it was carrying — thesvg's licence terms were not verifiable from its own metadata, while Simple Icons' CC0-1.0 was — is retired along with it, and replaced by the same question about Brandfetch under Open items.
+  **Superseded in Phase 4.5 — all marks are re-sourced from Brandfetch, and hotlinked rather than vendored.** Simple Icons and thesvg are no longer the source, the vendored `public/logos/*.svg` are deleted, and the thesvg MCP server can now be dropped — Brandfetch coverage is confirmed at 20/20 plus Finnhub.
 
-  Three things about this that are easy to get wrong:
+  **The "vendor the files, do not fetch at runtime" instruction this section used to carry was wrong, and reading the licence is what reversed it.** Brandfetch's terms grant a licence to download, store and cache Content for **at most thirty days** from retrieval, and explicitly do **not** extend to the original logos themselves, which stay third-party IP with no right to reproduce or redistribute. Committing the marks into a public repo would outlive that window, so vendoring was the one delivery method the licence did not allow. Hotlinking is the path Brandfetch designs for: the Logo API is free to 500k requests/month, needs no attribution, and its own fair-use guide names both "educational" projects and "a stock trading app featuring company logos to identify brands" as acceptable use.
 
-  - **Vendor the files, do not fetch at runtime.** Brandfetch is reached through an MCP server *while developing*; the app must keep loading marks from `public/logos/` as static local SVG. Pointing an `<img>` at Brandfetch's CDN would be an upstream call from the browser on every page view, and it would force `news-thumbnail.tsx` back into being a client component with an `onError` fallback — which is precisely what the current design avoids.
-  - **Prefer a square symbol over a wordmark** for each brand. The plate is a badge; wordmarks are what forced the ORCL lettermark and the AMZN optical nudge in the first place.
-  - **If coverage reaches all 20, delete the workarounds** rather than leaving them: the `HAS_LOGO` set, the TXN/NOW/ORCL lettermark path, and `OPTICAL_NUDGE` in `src/lib/logos.ts` all exist only because the old sources had gaps. Do not remove the thesvg MCP server until Brandfetch coverage is confirmed.
+  Four things about the implementation that are easy to get wrong:
 
-  The Brandfetch MCP is configured at project scope in `.mcp.json`, which carries an API token and **is gitignored** — do not commit it, and do not move the token into any file that is tracked.
+  - **`theme/dark` is the dark-inked variant, and it is the one to use.** The naming reads backwards: `theme/light` returns the white knock-out mark where it exists at all, which is invisible on the light plate the components draw. Verified in a browser — guessing here makes every logo disappear.
+  - **These URLs cannot be verified with curl.** Brandfetch blocks script and server-side fetches of CDN links that carry only the public client id, returning an identical 383KB HTML page with status 200 for every domain, present or not. A shell check therefore "passes" for marks that do not exist. Check in a real browser.
+  - **Prefer `symbol`, fall back to `logo`.** Twelve brands have a square standalone `symbol`; the other eight have only the wordmark lockup. `icon` is deliberately unused — it is an opaque JPEG tile for 13 of 21 brands and would sit inconsistently beside the transparent vectors.
+  - **`max-w-full` caps a wordmark's width, which sets its drawn height** — the wider the lockup, the smaller it renders. It does not "make the plate wide enough", which is what this file claimed until the measurement was actually taken. In the 80×32 watchlist badge: square symbols draw the full 16px, then micron 15.4px, intuit 14.5px, Qualcomm 13.2px, and **servicenow 10.5px**, which is the weakest badge in the set. The badge padding is `px-1` rather than `px-2` for this reason — the 8px is worth ~1px of height on those four and costs the square marks nothing. Revisit servicenow first if legibility is raised at the gate; `icon` is not an improvement for it (a navy tile with unreadable text) and the lettermark loses the brand entirely.
+  - **GOOGL points at `google.com`, not the ticker's own `abc.xyz`**, which resolves to the "Alphabet" wordmark instead of the Google G.
+
+  The workarounds this replaces are all deleted, since coverage reached 20/20: the `HAS_LOGO` set, the TXN/NOW/ORCL lettermark path, and `OPTICAL_NUDGE` (Amazon's `symbol` is a centred square, so the nudge that corrected the old wordmark artwork is no longer needed). `src/lib/logos.test.ts` asserts every `TOP_20` symbol has a mark, so adding a stock without one fails the build instead of rendering a blank badge.
+
+  The client id in `src/lib/logos.ts` is the **public Logo CDN id**, which appears in page source on every render and is meant to be embedded — it is not the private API token. That token lives in `.mcp.json`, which **is gitignored**: do not commit it, and do not move it into any tracked file.
 
 - **Market News thumbnails use the Finnhub logo.** Market news has no company to represent, and per-publisher marks were investigated and ruled out on evidence (see the findings in Phase 4.5). The logo names the data provider, not the publisher — which is honest, if slightly loose, given that company and industry news come from Finnhub too. It replaces a rising-arrow glyph that implied a direction the article might contradict.
 
@@ -347,5 +357,7 @@ The three below were forced by what the free tiers actually do, discovered by pr
 ## Open items (not yet decided — surface these, don't guess)
 
 - **Confirm no billing is enabled** on the Google AI Studio project — free tier only, by owner requirement. Never hardcode an RPM/RPD number from memory or a blog post; the published figures have changed more than once and sources disagree. (The live limit *was* measured in Phase 4 — 20 requests/day — by reading the 429 body, which is the one source that cannot be out of date.)
-- **Brandfetch's licence terms have not been read yet.** Nothing has been fetched and no terms recorded, so nothing can be vendored: the logo-sourcing rule requires the source to be recorded. Until then the logos stay on Simple Icons + thesvg and change 5 is simply not started.
-- **The Brandfetch MCP server was misconfigured, and it was never an approval problem** — worth recording because the planning note guessed wrong and the guess was then repeated. `.mcp.json` declared `"type": "sse"` against `https://mcp.brandfetch.io/mcp`, which is a **Streamable HTTP** endpoint (`/mcp` is the Streamable HTTP convention; SSE servers expose `/sse`). Claude Code opened an SSE GET, the server answered **405**, and the connection never came up — silently, so the session simply had no `mcp__brandfetch__*` tools. Diagnosed with `claude mcp list` plus a direct probe: the same URL answers a Streamable HTTP `initialize` POST with `brandfetch-mcp-server v3.2.4`, so the token and the endpoint were both fine all along. `"type"` is now `"http"`; **the change only takes effect on a fresh Claude Code session**, since MCP servers connect at startup.
+- ~~**Brandfetch's licence terms have not been read yet.**~~ **Closed.** Read and recorded: caching is licensed for 30 days only, the underlying marks stay third-party IP with no redistribution right, the Logo API is free to 500k requests/month without attribution, and the fair-use guide names educational projects and stock apps identifying brands as acceptable. This ruled out vendoring and settled the delivery method as hotlinking — see the logo note under "Decisions that were explicitly reversed".
+- ~~**The Brandfetch MCP server was misconfigured**~~ — **Closed**, and the `"type": "http"` fix is confirmed working: the `mcp__brandfetch__*` tools connected in the next session and served every lookup this change needed. Kept below because the misdiagnosis is the instructive part.
+
+  **The Brandfetch MCP server was misconfigured, and it was never an approval problem** — worth recording because the planning note guessed wrong and the guess was then repeated. `.mcp.json` declared `"type": "sse"` against `https://mcp.brandfetch.io/mcp`, which is a **Streamable HTTP** endpoint (`/mcp` is the Streamable HTTP convention; SSE servers expose `/sse`). Claude Code opened an SSE GET, the server answered **405**, and the connection never came up — silently, so the session simply had no `mcp__brandfetch__*` tools. Diagnosed with `claude mcp list` plus a direct probe: the same URL answers a Streamable HTTP `initialize` POST with `brandfetch-mcp-server v3.2.4`, so the token and the endpoint were both fine all along. `"type"` is now `"http"`; **the change only takes effect on a fresh Claude Code session**, since MCP servers connect at startup.

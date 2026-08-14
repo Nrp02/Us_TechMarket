@@ -30,8 +30,10 @@ export default async function TodaysActivityForSymbol({
   const { symbol: raw } = await params;
   const symbol = raw.toUpperCase();
 
+  // Still needed for the header dropdown's +/- controls, even though the
+  // activity read itself no longer splits news by watchlist.
   const watchlist = await readWatchlist();
-  const activity = await getActivity(symbol, watchlist);
+  const activity = await getActivity(symbol);
 
   // No cached price for this symbol means it is not one we track at all.
   if (!activity) notFound();
