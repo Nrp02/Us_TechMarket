@@ -9,7 +9,6 @@ import {
 } from "@/lib/format";
 import { generateJson, SAFETY_RULES } from "@/lib/gemini";
 import { tradingDay } from "@/lib/market";
-import { mapLimit } from "@/lib/refresh";
 import { isSignificant } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
@@ -75,13 +74,6 @@ const MIN_CALL_BUDGET_MS = 15_000;
  * data is the call's input, so it is never the work that gets dropped.
  */
 const TIMELINE_DEADLINE_MS = 25_000;
-
-/**
- * Concurrency for the rebuilds. Each is two Supabase reads and a write, so they
- * are latency-bound rather than CPU-bound; 5 matches the cap the refresh job
- * already runs upstream calls at.
- */
-const TIMELINE_CONCURRENCY = 5;
 
 /** Index proxies quoted alongside the stock, for context in the stat cards. */
 const SECTOR_SYMBOL = "XLK";
@@ -324,53 +316,103 @@ Stocks:
 ${JSON.stringify(inputs, null, 2)}`;
 }
 
+type DayNews = { headline: string; summary: string | null; publishedAt: string };
+
+type DayDataBatch = {
+  bySymbol: Map<string, { snapshots: Snapshot[]; news: DayNews[] }>;
+  /** Reads that came back short of their exact count — see the note below. */
+  truncated: string[];
+};
+
 /**
  * Snapshots and news are stored in UTC; a trading day is a New York date. New
  * York is UTC-4 or UTC-5, so one ET day always falls inside the UTC window from
  * its own midnight to noon the next day. The window narrows the query; the exact
  * boundary is settled by comparing trading days below.
+ *
+ * Batched across every symbol in `symbols` rather than queried one at a time:
+ * the day window is already shared, so there is nothing symbol-specific about
+ * the query shape. This is what keeps the preamble's Supabase cost fixed at two
+ * round trips no matter how many stocks the run covers, instead of two per
+ * symbol.
  */
-async function loadDayData(symbol: string, day: string) {
+async function loadDayDataBatch(symbols: string[], day: string): Promise<DayDataBatch> {
   const from = `${day}T00:00:00Z`;
   const to = new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString();
 
-  const [{ data: snapshotRows }, { data: newsRows }] = await Promise.all([
+  const [snapshotResult, newsResult] = await Promise.all([
     db
       .from("intraday_snapshots")
-      .select("price, volume, snapshot_at")
-      .eq("symbol", symbol)
+      .select("symbol, price, volume, snapshot_at", { count: "exact" })
+      .in("symbol", symbols)
       .gte("snapshot_at", from)
       .lt("snapshot_at", to)
       .order("snapshot_at", { ascending: true }),
     db
       .from("news")
-      .select("headline, published_at, news_summaries(summary)")
-      .contains("related_symbols", [symbol])
+      .select("related_symbols, headline, published_at, news_summaries(summary)", {
+        count: "exact",
+      })
+      .overlaps("related_symbols", symbols)
       .gte("published_at", from)
       .lt("published_at", to)
       .order("published_at", { ascending: false }),
   ]);
 
-  const snapshots: Snapshot[] = (snapshotRows ?? [])
-    .map((r) => ({
-      at: new Date(r.snapshot_at as string),
-      price: Number(r.price),
-      volume: r.volume == null ? null : Number(r.volume),
-    }))
-    .filter((s) => tradingDay(s.at) === day);
+  const { data: snapshotRows } = snapshotResult;
+  const { data: newsRows } = newsResult;
 
-  const news = (newsRows ?? [])
-    .filter((r) => tradingDay(new Date(r.published_at as string)) === day)
-    .map((r) => ({
-      headline: r.headline as string,
+  // PostgREST caps a response at its max-rows setting (1000 by default) and
+  // says nothing when it does — the reply is simply short. Batching made that
+  // reachable: one query now carries every symbol's rows where each used to
+  // carry one symbol's, and a silent truncation would drop whole stocks'
+  // snapshots and quietly rebuild their timelines from partial data. Comparing
+  // the returned rows against the exact count turns that into a reported
+  // failure. Measured at 671 rows for 20 symbols on a normal session, so this
+  // is headroom monitoring, not an expected path.
+  const truncated: string[] = [];
+  for (const [table, result] of [
+    ["intraday_snapshots", snapshotResult],
+    ["news", newsResult],
+  ] as const) {
+    const returned = result.data?.length ?? 0;
+    if (result.count != null && result.count > returned) {
+      truncated.push(
+        `${table}: row cap hit — ${returned} of ${result.count} rows returned, so timelines would be rebuilt from partial data`,
+      );
+    }
+  }
+
+  const bySymbol = new Map<string, { snapshots: Snapshot[]; news: DayNews[] }>(
+    symbols.map((symbol) => [symbol, { snapshots: [], news: [] }]),
+  );
+
+  for (const row of snapshotRows ?? []) {
+    const at = new Date(row.snapshot_at as string);
+    if (tradingDay(at) !== day) continue;
+    bySymbol.get(row.symbol as string)?.snapshots.push({
+      at,
+      price: Number(row.price),
+      volume: row.volume == null ? null : Number(row.volume),
+    });
+  }
+
+  for (const row of newsRows ?? []) {
+    if (tradingDay(new Date(row.published_at as string)) !== day) continue;
+    const item: DayNews = {
+      headline: row.headline as string,
       // news_id is news_summaries' primary key, so PostgREST embeds a single
       // object here even though the client's inferred type says array.
       summary:
-        (r.news_summaries as unknown as { summary: string } | null)?.summary ?? null,
-      publishedAt: r.published_at as string,
-    }));
+        (row.news_summaries as unknown as { summary: string } | null)?.summary ?? null,
+      publishedAt: row.published_at as string,
+    };
+    for (const symbol of (row.related_symbols as string[] | null) ?? []) {
+      bySymbol.get(symbol)?.news.push(item);
+    }
+  }
 
-  return { snapshots, news };
+  return { bySymbol, truncated };
 }
 
 /** Refreshes the earnings calendar for one symbol and returns what is upcoming. */
@@ -398,32 +440,48 @@ async function syncEvents(symbol: string) {
   }));
 }
 
-async function rebuildTimeline(symbol: string, day: string, rows: ReturnType<typeof buildTimeline>) {
+type TimelineRow = {
+  symbol: string;
+  trading_day: string;
+  event_at: string;
+  kind: string;
+  label: string;
+  detail: string | null;
+};
+
+function timelineRowsFor(symbol: string, day: string, rows: ReturnType<typeof buildTimeline>): TimelineRow[] {
+  return rows.map((r) => ({
+    symbol,
+    trading_day: day,
+    event_at: r.eventAt.toISOString(),
+    kind: r.kind,
+    label: r.label,
+    detail: r.detail,
+  }));
+}
+
+/**
+ * Deletes and re-inserts every symbol's rows for `day` in one round trip each,
+ * rather than one delete + one insert per symbol. Deleted and re-inserted
+ * rather than upserted: a rebuild may drop a row (a flat day loses its
+ * high/low pair), and an upsert alone would leave the stale one behind.
+ */
+async function writeTimelines(symbols: string[], day: string, rows: TimelineRow[]) {
   // Nothing to write means nothing to clear: wiping first and failing to insert
   // would leave the page with no timeline where it previously had a good one.
-  if (!rows.length) return;
+  if (!symbols.length) return;
 
-  // Deleted and re-inserted rather than upserted: a rebuild may drop a row (a
-  // flat day loses its high/low pair), and an upsert alone would leave the
-  // stale one behind.
   const { error: deleteError } = await db
     .from("timeline_events")
     .delete()
-    .eq("symbol", symbol)
+    .in("symbol", symbols)
     .eq("trading_day", day);
   if (deleteError) throw new Error(`timeline_events delete: ${deleteError.message}`);
 
-  const { error } = await db.from("timeline_events").insert(
-    rows.map((r) => ({
-      symbol,
-      trading_day: day,
-      event_at: r.eventAt.toISOString(),
-      kind: r.kind,
-      label: r.label,
-      detail: r.detail,
-    })),
-  );
-  if (error) throw new Error(`timeline_events insert: ${error.message}`);
+  if (rows.length) {
+    const { error } = await db.from("timeline_events").insert(rows);
+    if (error) throw new Error(`timeline_events insert: ${error.message}`);
+  }
 }
 
 /**
@@ -493,43 +551,51 @@ export async function generateDailySummaries(
   // rules can be rolled out by re-running this job without spending any of the
   // day's Gemini quota re-writing narratives that were already correct.
   //
-  // Free of quota, but not free of time. Run in parallel and bounded by a
-  // deadline, because at 20 stocks a sequential pass is long enough to leave
-  // nothing for the call. The batch goes first so that if the deadline does
-  // bite, what gets dropped is a rebuild nobody is waiting on rather than the
-  // day data the call is about to be built from.
-  const dayData = new Map<string, Awaited<ReturnType<typeof loadDayData>>>();
+  // Free of quota, but not free of time. Every active stock's day data is read
+  // in one batched pass, so the two reads below are the whole I/O cost of the
+  // rebuild no matter how many stocks it covers — the loop itself is then pure
+  // arithmetic and a plain sequential pass, with no reason to run it through a
+  // worker pool. The deadline is kept as cheap insurance rather than because
+  // the loop is slow: it is what stops a pathological run from spending the
+  // budget here instead of on the call. The batch goes first so that if the
+  // deadline does bite, what gets dropped is a rebuild nobody is waiting on.
   const ordered = [...batch, ...active.filter((symbol) => !inBatch.has(symbol))];
+  const { bySymbol: dayData, truncated } = await loadDayDataBatch(ordered, day);
+  result.failed.push(...truncated);
 
-  await mapLimit(ordered, TIMELINE_CONCURRENCY, async (symbol) => {
+  const symbolsToWrite: string[] = [];
+  const timelineRows: TimelineRow[] = [];
+
+  for (const symbol of ordered) {
     if (!inBatch.has(symbol) && Date.now() - startedJobAt > TIMELINE_DEADLINE_MS) {
       result.timelinesSkipped.push(symbol);
-      return;
+      continue;
     }
 
     try {
-      const data = await loadDayData(symbol, day);
-      dayData.set(symbol, data);
+      const data = dayData.get(symbol);
 
       // No snapshots means nothing to rebuild from; leave whatever is stored
       // rather than deleting a good timeline and writing an empty one.
-      if (!data.snapshots.length) return;
+      if (!data || !data.snapshots.length) continue;
 
-      await rebuildTimeline(
-        symbol,
-        day,
-        buildTimeline(
-          data.snapshots,
-          data.news.map((n) => ({ at: new Date(n.publishedAt), headline: n.headline })),
-        ),
+      const rows = buildTimeline(
+        data.snapshots,
+        data.news.map((n) => ({ at: new Date(n.publishedAt), headline: n.headline })),
       );
+      if (!rows.length) continue;
+
+      symbolsToWrite.push(symbol);
+      timelineRows.push(...timelineRowsFor(symbol, day, rows));
       result.timelines.push(symbol);
     } catch (error) {
       result.failed.push(
         `${symbol} timeline: ${error instanceof Error ? error.message : "failed"}`,
       );
     }
-  });
+  }
+
+  await writeTimelines(symbolsToWrite, day, timelineRows);
 
   if (!batch.length) return result;
 

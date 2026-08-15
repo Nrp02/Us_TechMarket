@@ -39,7 +39,11 @@ export async function fetchDayData(symbol: string): Promise<DayData> {
   try {
     const res = await fetch(
       `${CHART}/${encodeURIComponent(symbol)}?range=1d&interval=15m`,
-      { cache: "no-store", headers: { "User-Agent": "Mozilla/5.0" } },
+      {
+        cache: "no-store",
+        headers: { "User-Agent": "Mozilla/5.0" },
+        signal: AbortSignal.timeout(10_000),
+      },
     );
     if (!res.ok) return empty;
 

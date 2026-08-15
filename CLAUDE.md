@@ -22,19 +22,28 @@ Constraints that shape every decision below: no user accounts, no budget (free t
 
 Visual design — layout composition, color, spacing, typography, theme — is Claude Design's job, not this file's. This file is a **content contract**: what data and functionality must exist on each page, and what was explicitly cut. It intentionally says nothing about how anything should look. When building a page, treat Claude Design's output as the visual reference and this file as the checklist of what must be present in that layout — if the two ever conflict on *content* (a field, a section, a feature that Design added or dropped on its own), this file wins; re-derive the visual from the checklist rather than the other way around, since every content decision here already went through several rounds of scoping with the owner. If Design's output already comes as usable component code rather than a visual mockup, treat it as a starting point to build on rather than a reference to redraw from scratch — but the content contract still governs what stays in it.
 
-## Languages — locked, with reasoning
+## Language & Technology Policy
 
-Every part of this app is written in **TypeScript**. No Python, no separate backend language, no JavaScript-without-types anywhere in the repo.
+Programming language is NOT locked.
 
-| Layer | Language | Why |
-|---|---|---|
-| Frontend (React components, pages) | TypeScript (`.tsx`) | Next.js App Router default. Type-checked props catch a whole class of "field renamed, UI silently breaks" bugs before they ship. |
-| Backend (API routes, cron job handlers) | TypeScript (`.ts`) | Next.js API routes run as Vercel serverless functions natively in TS/JS — no second runtime, no second deploy target, no second language to keep in sync with the frontend. |
-| Database access | TypeScript, via the Supabase JS client | Keeps query code in the same language and the same file tree as everything else calling it. |
-| Database schema / migrations | Plain SQL (`.sql` migration files) | Migrations are the one place raw SQL beats a TS wrapper — the schema should be readable and diffable on its own, without needing to run TS to see what a table looks like. |
-| Styling | Tailwind CSS | Fastest path to implementing whatever Claude Design produces without hand-rolling a CSS architecture; standard pairing with Next.js, nothing extra to configure. |
+Claude Code may choose TypeScript, Python, SQL, or another appropriate
+language when it provides a meaningful technical advantage.
 
-**Why one language for the whole stack, specifically for this project:** this is a solo-AI-written codebase with one human reviewer checking in at 5 gates over 20 days, not a team that can absorb the cost of context-switching between languages. Every language boundary in a project is a place where a type or a field name can silently drift out of sync — API response shape, DB row shape, and UI prop shape all need to agree, and TypeScript enforces that agreement in one pass instead of three. A Python backend would need its own deploy target outside Vercel's zero-config Next.js hosting, which contradicts the "$0, one deploy button" constraint this whole project is built around. Nothing in this app's data processing (rate calculations, significance scoring, batching news for one AI call) is heavy enough to need Python's data/ML ecosystem — it's arithmetic on numbers Finnhub already returns.
+Language selection must be based on:
+- compatibility with the existing architecture
+- deployment constraints
+- free-tier availability
+- maintainability
+- reliability
+- performance
+- library/API support
+- implementation complexity
+
+Do not introduce a second language unless the benefit is significant enough
+to justify the additional runtime, deployment, dependency, and maintenance cost.
+
+The architecture and product requirements are locked; the implementation
+language is not.
 
 ## Data sources
 
@@ -74,6 +83,36 @@ How this is enforced:
 **One deliberate exception: company logos.** `src/lib/logos.ts` emits `cdn.brandfetch.io` URLs that the browser loads on every page view. This is outside the rule above rather than a violation of it, and the distinction is what the rule protects: metered quotas. Finnhub allows 60 calls/min and Gemini 20 requests/day, so page traffic reaching either would starve the ingestion jobs and there would be no way to buy more before a demo. Brandfetch's Logo CDN is a free static-asset host with a 500k requests/month allowance, returns images rather than data, and cannot exhaust anything the app depends on. It is also the only delivery method its licence permits — see the logo note under "Decisions that were explicitly reversed". Do not generalise this exception to anything that returns data.
 
 A consequence worth knowing: adding a stock to the watchlist does **not** fetch anything. All 20 candidate symbols are ingested every cycle, so any stock the user can add already has cached data. Phase 4.5 extends the same reasoning to AI summaries — once each visitor keeps their own watchlist, every stock they *could* pick must already be summarised.
+
+## Serving latency — measured from inside the deployed function
+
+The read path was slow for reasons that had nothing to do with the queries themselves, and the two fixes below came from measurement rather than reasoning. Both reverse an earlier decision; don't undo them without re-measuring.
+
+**What the measurement showed.** A query returning **one row** costs the same as one returning **840** — ~155ms either way, timed from inside the Vercel function. The price is per *request*, not per row or per byte, and Next.js itself contributes ~1–4ms (`handlerTotalMs` equalled `dbTotalMs` exactly). So page time was almost precisely *(number of queries that must run in sequence) × (per-request cost)*, and the fix is to attack those two numbers rather than to tune SQL.
+
+This also means **reducing the count of queries that already run in parallel buys nothing.** Three concurrent copies of the same scan measured 0.34s against 0.28s for one. Query *depth* is what costs; query *count* mostly does not.
+
+**Fix 1 — `vercel.json` pins functions to `sin1`.** They defaulted to `iad1` (US East) while the Supabase project sits in Asia, so every round trip crossed the Pacific. Measured per-request cost by region: `iad1` 260ms, `hnd1` (Tokyo) 225ms, **`sin1` (Singapore) 155ms**. Tokyo was tried on the theory that the database was there and was worse, which is what settled Singapore. Nothing else in the repo sets a region, so this file is the whole change.
+
+**Fix 2 — the read helpers in `src/lib/queries.ts` are wrapped in `unstable_cache` at `CACHE_SECONDS` = 60.** Ingestion only writes every 15 minutes, so re-querying on every render was buying freshness that did not exist. `getTickers`, `getNews` and `getActivity` are cached; the watchlist arrives as an *argument* and so becomes part of the cache key, which is what keeps the Company and Industry tabs per-visitor.
+
+Three traps here, all of which were hit:
+
+- **`export const dynamic = "force-dynamic"` silently disables the data cache.** It implies `revalidate = 0`, so `unstable_cache` was a no-op while it was set and the pages re-queried on every render. It has been removed from Home, News and Today's Activity — they still render per request because `readWatchlist()` reads a cookie, and the build output still marks all three `ƒ (Dynamic)`. Check that marking if the setting is ever reinstated.
+- **`getSparklines` returns a `Map`, which does not survive the cache** — it serialises to `{}` and every sparkline comes back empty. This is why the wrapper sits on `getTickers` (which returns plain `Ticker[]`) rather than on `getSparklines`. Every other cached shape was checked for `Date` fields for the same reason; all of them are already strings.
+- **A stale `next start` on port 3000 will silently serve an old build.** `npm start` fails with `EADDRINUSE` while the previous process keeps answering, and `pkill -f "next start"` does not always match it. Two rounds of measurement were thrown away to this. Use `lsof -ti:3000 | xargs kill -9` and confirm the port is free before trusting any number.
+
+**Result**, server-side median, 13 interleaved samples per cell:
+
+| Route | before | + region | + cache |
+|---|---|---|---|
+| Home | 1453ms | 547ms | **93ms** |
+| Today's Activity | 1252ms | 557ms | **92ms** |
+| News | 821ms | 378ms | **94ms** |
+
+`/news` is the honest control: its query code was never touched, so its improvement is entirely region plus caching. All three now sit at the floor of what the function itself costs.
+
+The accepted cost is up to 60s of staleness, which is well inside the 15-minute ingestion cadence — a visitor cannot be shown figures from a different session than the one already on screen. Raise `CACHE_SECONDS` if a demo wants fewer database reads; lower it only with a reason, since the reads it prevents are the entire page cost.
 
 ---
 
@@ -270,6 +309,27 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
 Total: **8 calls/day against a ceiling of 20** (4 news cycles + 4 summary batches). Never add a call that fires per-article or per-UI-interaction — every AI call in this product is batched and runs once, after market close, except the intraday news cycles, which are still batched (one call per cycle, not per article).
 
 Budget headroom is not a nicety here. Every failed attempt still spends a request, and so does every manual trigger while testing. At the old 14–16/day the app was one debugging session away from a demo with no summaries in it, with no way to buy more before the next midnight Pacific reset.
+
+### Two Gemini keys: one for testing, one for the deployed site
+
+There are **two separate Gemini API keys, from two different Google AI Studio projects** (the second was registered under a different email). This matters because the quota is `GenerateRequestsPerDayPerProjectPerModel` — **per project**, not per key. Two keys from the *same* project would share one 20/day bucket and the separation would be an illusion; two keys from different projects genuinely get 20/day each.
+
+That the projects really are separate is **measured, not assumed**: the deploy key was exhausted and returning 429 when the test key succeeded on the very next request, in the same minute.
+
+| Key | Where it lives | Used by |
+|---|---|---|
+| **Test** | `.env.local` only | `npm run dev`, any manually triggered job from a laptop |
+| **Deploy** | Vercel env vars only | The live site and every Supabase Cron job |
+
+**The split exists because of what happened without it.** `.env.local` originally held the *deploy* key, so every locally triggered job drew on the same 20/day bucket as the live site. A single afternoon of testing exhausted it, and the scheduled jobs then failed with 429 for the rest of the day through no fault of their own — the laptop had already spent production's quota. Keeping a test key in `.env.local` is what stops a debugging session from starving the demo.
+
+`src/lib/gemini.ts` reads one unlabelled `GEMINI_API_KEY` and knows nothing about environments — the split is entirely a config convention, and it holds only because `.env.local` is gitignored and never deployed. **`.env.local` carries a comment naming which key is currently in it**; that comment is the only way to tell the two apart from the file, so update it whenever the key is swapped. Never write either key into a tracked file, this one included.
+
+**Testing locally is not isolated from production, and the keys do not change that.** Local and deployed both point at the *same* Supabase project, so a manually triggered job on a laptop writes real rows to the production database. Observed directly: during one local test run, `daily-summary` reported `alreadyDone: 15` when only 10 had been generated locally — the other 5 came from the Vercel cron writing to the same tables at the same time. Consequences to keep in mind:
+
+- A local "test" run of `/api/daily-summary` or `/api/ingest-news` produces **production data**, not throwaway data.
+- Because those jobs skip work that is already done, a local run also *consumes* work the scheduled job would otherwise have performed — the two interfere rather than running independently.
+- Separate test and production Supabase projects would fix this properly. Rejected for this build: it means maintaining a second project and re-running every migration, which is real work for a $0 school demo. The mitigation is this note plus running local jobs deliberately, not casually.
 
 ## AI Safety / Data Integrity Rules
 

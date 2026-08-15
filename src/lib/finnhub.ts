@@ -16,7 +16,7 @@ export type Quote = {
 
 async function get<T>(path: string): Promise<T> {
   const url = `${BASE}${path}&token=${process.env.FINNHUB_API_KEY}`;
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Finnhub ${path.split("?")[0]} -> ${res.status}`);
   return res.json() as Promise<T>;
 }

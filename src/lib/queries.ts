@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 import { tradingDay } from "@/lib/market";
 import type { NewsCategory } from "@/lib/news-category";
 import { isSignificant, significanceScore } from "@/lib/significance";
@@ -6,6 +8,23 @@ import { NAME_BY_SYMBOL } from "@/lib/symbols";
 
 // Every Home page read comes from here. Nothing in this file calls an upstream
 // API — the tables are filled by lib/refresh.ts.
+
+/**
+ * How long a render may reuse the previous database read.
+ *
+ * Measured from inside the deployed function: a query returning one row costs
+ * the same ~155ms as one returning 840, so the price is paid per request rather
+ * than per row, and page time was almost exactly (number of queries that have to
+ * run in sequence) × that cost. Re-reading on every render bought nothing,
+ * because the ingestion jobs only write every 15 minutes — a window this far
+ * inside that cadence cannot show a visitor figures from a different session
+ * than the one already on screen.
+ *
+ * The reads cached here are all visitor-independent. The watchlist is a cookie
+ * and never reaches this file except as an argument, which becomes part of the
+ * cache key, so one visitor's selection can never be served to another.
+ */
+const CACHE_SECONDS = 60;
 
 export type Ticker = {
   symbol: string;
@@ -90,7 +109,7 @@ async function getSparklines(): Promise<Map<string, number[]>> {
   return result;
 }
 
-export async function getTickers(
+async function getTickersUncached(
   symbols: string[],
   // Sparklines cost a read of every tracked symbol's whole session, so a caller
   // that does not render one says so rather than paying for it.
@@ -135,6 +154,13 @@ export async function getTickers(
   });
 }
 
+// Ticker[] is plain JSON, so it survives the cache intact. The Map that
+// getSparklines returns deliberately never crosses this boundary — a Map
+// serialises to {} and every sparkline would silently come back empty.
+export const getTickers = unstable_cache(getTickersUncached, ["tickers"], {
+  revalidate: CACHE_SECONDS,
+});
+
 // No `category` field: the thumbnail stopped needing one when market news
 // started being identified by an empty `related_symbols`, and the tab filtering
 // runs in Postgres in `getNews` below. `categoriseNews` still holds the rule and
@@ -175,7 +201,7 @@ function toNewsItem(row: Record<string, unknown>): NewsItem {
  * filter runs in Postgres so that `limit` still counts articles the tab will
  * actually show.
  */
-export async function getNews(
+async function getNewsUncached(
   watchlist: string[],
   category?: NewsCategory,
   limit = 60,
@@ -199,6 +225,12 @@ export async function getNews(
   const { data } = await query;
   return (data ?? []).map((row) => toNewsItem(row));
 }
+
+// The watchlist is an argument rather than a cookie read, so it lands in the
+// cache key and the Company and Industry tabs stay per-visitor.
+export const getNews = unstable_cache(getNewsUncached, ["news"], {
+  revalidate: CACHE_SECONDS,
+});
 
 /**
  * Market News teaser on the Home page. Reuses the same ordering as the News
@@ -308,24 +340,23 @@ async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
  * cached table read — the page makes no upstream call and triggers no AI call;
  * the narrative was written once by the end-of-day job.
  */
-export async function getActivity(symbol: string): Promise<Activity | null> {
+async function getActivityUncached(symbol: string): Promise<Activity | null> {
   // The snapshots decide which session the page shows, and everything below is
   // then read for that one day — chart, news count, timeline and narrative all
   // describing the same session rather than each picking its own.
   const sessionDay = (await getLatestSessionDay(symbol)) ?? tradingDay();
 
-  const [tickers, intraday, news] = await Promise.all([
+  // One wave, not two: the timeline/events/summary queries only need `symbol`
+  // and `sessionDay`, both already known, so they don't have to wait behind the
+  // tickers/intraday/news queries above them.
+  const [tickers, intraday, news, timelineRows, eventRows, summaryRow] = await Promise.all([
     // This page draws its own chart from getIntraday and renders no sparkline.
-    getTickers([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
+    // Uncached on purpose: the whole of getActivity is cached below, so going
+    // through the cached variant here would only add a second lookup for a
+    // result this one already covers.
+    getTickersUncached([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
     getIntraday(symbol, sessionDay),
     getSymbolNews(symbol, sessionDay),
-  ]);
-
-  const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
-  const ticker = bySymbol.get(symbol);
-  if (!ticker) return null;
-
-  const [timelineRows, eventRows, summaryRow] = await Promise.all([
     db
       .from("timeline_events")
       .select("event_at, kind, label, detail")
@@ -349,6 +380,10 @@ export async function getActivity(symbol: string): Promise<Activity | null> {
       .eq("summary_date", sessionDay)
       .maybeSingle(),
   ]);
+
+  const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
+  const ticker = bySymbol.get(symbol);
+  if (!ticker) return null;
 
   const summary = summaryRow.data;
 
@@ -379,3 +414,10 @@ export async function getActivity(symbol: string): Promise<Activity | null> {
       : null,
   };
 }
+
+// Keyed by symbol alone — nothing on this page varies by visitor. Every field
+// in Activity is a string, a number or an array of them, so the object survives
+// the cache unchanged; no timestamp here is a Date that would come back as text.
+export const getActivity = unstable_cache(getActivityUncached, ["activity"], {
+  revalidate: CACHE_SECONDS,
+});

@@ -22,7 +22,10 @@ import {
 //
 // Reads cached tables only. No upstream call, and no AI call: the narrative was
 // written once, after the close.
-export const dynamic = "force-dynamic";
+//
+// Not "force-dynamic" — see the note on the Home page: it implies revalidate 0
+// and disables the data cache getActivity depends on. readWatchlist reads a
+// cookie below, which is what keeps the route dynamic.
 
 export default async function TodaysActivityForSymbol({
   params,

@@ -20,6 +20,14 @@ import { TOP_20_SYMBOLS } from "@/lib/symbols";
  */
 const MAX_PER_CYCLE = 15;
 
+/**
+ * The route's own ceiling (its maxDuration is 60s). Bounds the Gemini call so a
+ * hung or slow request is aborted with a reported failure — an article's
+ * summary backfills on the next cycle — rather than the call running unbounded
+ * until the platform kills the function mid-job.
+ */
+const JOB_BUDGET_MS = 55_000;
+
 export type IngestResult = {
   fetched: number;
   alreadyStored: number;
@@ -66,6 +74,7 @@ ${JSON.stringify(items, null, 2)}`;
 }
 
 export async function ingestNews(): Promise<IngestResult> {
+  const startedJobAt = Date.now();
   const failed: string[] = [];
 
   // All 20 symbols in one pass. Company-vs-industry is no longer decided here:
@@ -113,6 +122,7 @@ export async function ingestNews(): Promise<IngestResult> {
     const { data, tokens } = await generateJson<{ id: string; summary: string }[]>(
       buildPrompt(fresh),
       SUMMARY_SCHEMA,
+      { timeoutMs: JOB_BUDGET_MS - (Date.now() - startedJobAt) },
     );
     result.geminiCalls = 1;
     result.tokens = tokens;

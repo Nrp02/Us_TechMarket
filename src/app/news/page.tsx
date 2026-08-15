@@ -7,7 +7,10 @@ import { readWatchlist } from "@/lib/watchlist";
 
 // Reads the cached news table only. Fetching and summarising happen in the
 // scheduled ingestion job, never on a page view.
-export const dynamic = "force-dynamic";
+//
+// Not "force-dynamic" — see the note on the Home page: it implies revalidate 0
+// and disables the data cache these reads depend on. The cookie read below is
+// what keeps the route dynamic.
 
 const TABS = [
   { key: "all", label: "All News" },
