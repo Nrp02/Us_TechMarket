@@ -44,3 +44,17 @@ next-env.d.ts
 
 # MCP config carries an API token
 .mcp.json
+
+# Claude Code tooling. The skills are vendored copies of upstream packages
+# (~3.4MB across ~150 files) rather than anything this project authored, and
+# the rest is per-machine session state. DESIGN.md and PRODUCT.md are the
+# artifacts of this work that belong in the repo, and both are tracked.
+.claude/skills/
+.claude/settings.local.json
+.claude/RESUME.md
+.claude/scheduled_tasks.lock
+
+# Generated from DESIGN.md by `/impeccable document` — a build artifact of the
+# design pipeline, regenerable and not a source of truth. Note DESIGN.md cites
+# .impeccable/design.json as its machine-readable companion; that file is local.
+.impeccable/
