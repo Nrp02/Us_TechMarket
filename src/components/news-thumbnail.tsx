@@ -44,7 +44,19 @@ export function NewsThumbnail({ symbol }: { symbol: string | null }) {
     return (
       <span className={LOGO_PLATE} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- remote CDN mark; Brandfetch requires these URLs be hotlinked, so next/image optimization (which refetches server-side) is not an option */}
-        <img src={src} alt="" className="h-5 max-w-full object-contain" />
+        <img
+          src={src}
+          alt=""
+          // The News page renders up to 60 rows, so this one line was opening
+          // 60 concurrent CDN connections on every visit, the great majority of
+          // them below the fold, and drawing down the 500k/month Brandfetch
+          // allowance about five times faster than the page needs to. No layout
+          // cost either way: the plate's fixed h-11 w-24 already reserves the
+          // box, so there was never CLS to trade against.
+          loading="lazy"
+          decoding="async"
+          className="h-5 max-w-full object-contain"
+        />
       </span>
     );
   }

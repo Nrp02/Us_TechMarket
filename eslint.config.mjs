@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored tooling, not application code. Without this, `npm run lint`
+    // reports 152 warnings from the Impeccable skill's own scripts and buries
+    // anything the app itself produces — the signal this command exists for.
+    ".claude/**",
+    ".impeccable/**",
   ]),
   // Enforces the locked ingestion rule: no client-triggered upstream API calls.
   // Pages and components read cached data through lib/queries.ts; anything that

@@ -1,6 +1,6 @@
+import { SectionHeading } from "@/components/section-heading";
 import { Sparkline } from "@/components/sparkline";
 import { formatChange, formatPercent } from "@/lib/format";
-import { isMarketOpen } from "@/lib/market";
 import type { Ticker } from "@/lib/queries";
 import { INDEX_CARDS } from "@/lib/symbols";
 
@@ -23,22 +23,21 @@ import { INDEX_CARDS } from "@/lib/symbols";
 
 export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
   const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
-  const open = isMarketOpen();
 
   return (
     <section>
-      <div className="mb-4 flex items-baseline justify-between">
-        <h2 className="text-lg font-semibold text-ink">Market Overview</h2>
-        <span className="flex items-center gap-2 text-xs font-medium text-body">
-          <span
-            className={`size-2 rounded-full ${open ? "bg-semantic-up" : "bg-muted"}`}
-            aria-hidden
-          />
-          {open ? "Market open" : "Market closed"}
-        </span>
-      </div>
+      {/* The market-open indicator used to live here. It now leads the session
+          digest in the page header, about 200px above this line, and stating it
+          twice on one screen made neither instance feel authoritative. */}
+      {/* Not "free tier rejects index symbols", which was the reason the app
+          uses proxies, not a fact about the market. The visitor needs to know
+          the levels are ETFs, because VIXY tracks VIX futures rather than VIX
+          itself and the interface must not imply otherwise. */}
+      <SectionHeading meta="Levels shown via ETF proxies">
+        Market Overview
+      </SectionHeading>
 
-      <div className="overflow-hidden rounded-3xl border border-hairline bg-canvas">
+      <div className="panel overflow-hidden">
         <div className="-ml-px -mt-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {INDEX_CARDS.map((card) => {
             const ticker = bySymbol.get(card.symbol);
@@ -46,6 +45,9 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
             return (
               <article
                 key={card.symbol}
+                // No hover state: these cells are not links and nothing here
+                // responds to a click. A hover response on inert content is a
+                // promise the cell cannot keep.
                 className="border-l border-t border-hairline px-5 py-5"
               >
                 <h3 className="text-[11px] font-semibold text-ink">
@@ -58,11 +60,15 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                     <p className="mt-4 font-mono text-figure font-medium tabular-nums text-ink">
                       {ticker.price.toFixed(2)}
                     </p>
+                    {/* The change was loose text at the same size as the note
+                        above it. As a tinted pill it becomes the cell's second
+                        object, and the tint is the only place a card carries a
+                        field of colour rather than a line of it. */}
                     <p
-                      className={`mt-1.5 font-mono text-sm tabular-nums ${
+                      className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs font-medium tabular-nums ${
                         ticker.changePercent >= 0
-                          ? "text-semantic-up"
-                          : "text-semantic-down"
+                          ? "bg-tint-up text-semantic-up"
+                          : "bg-tint-down text-semantic-down"
                       }`}
                     >
                       {formatChange(ticker.change)} (
@@ -73,6 +79,7 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                         values={ticker.spark}
                         up={ticker.changePercent >= 0}
                         width={140}
+                        height={36}
                       />
                     </div>
                   </>

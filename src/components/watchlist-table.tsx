@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CompanyLogo } from "@/components/company-logo";
+import { SectionHeading } from "@/components/section-heading";
 import { Sparkline } from "@/components/sparkline";
 import { StatusBadge } from "@/components/status-badge";
 import { WatchlistPicker } from "@/components/watchlist-picker";
@@ -35,20 +36,26 @@ export function WatchlistTable({
 }) {
   return (
     <section>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-ink">My Watchlist</h2>
-        <WatchlistPicker
-          universe={TOP_20}
-          selected={selected}
-          min={WATCHLIST_MIN}
-          cap={WATCHLIST_MAX}
-        />
-      </div>
+      <SectionHeading
+        meta={
+          <WatchlistPicker
+            universe={TOP_20}
+            selected={selected}
+            min={WATCHLIST_MIN}
+            cap={WATCHLIST_MAX}
+          />
+        }
+      >
+        My Watchlist
+      </SectionHeading>
 
-      <div className="overflow-x-auto rounded-3xl border border-hairline bg-canvas">
+      <div className="panel overflow-x-auto">
         <table className="w-full min-w-[880px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-hairline">
+            {/* The header row was the same canvas as the body, separated by one
+                hairline, so a scrolled table lost its column labels into the
+                data. surface-soft is a half-step and reads as a header band. */}
+            <tr className="border-b border-hairline bg-surface-soft">
               {HEADINGS.map((heading) => (
                 <th
                   key={heading}
@@ -68,7 +75,7 @@ export function WatchlistTable({
               return (
                 <tr
                   key={ticker.symbol}
-                  className="border-b border-hairline last:border-0"
+                  className="border-b border-hairline transition-colors last:border-0 hover:bg-surface-soft"
                 >
                   <td className="px-5 py-4">
                     {/* The route to this stock's own page. Home's whole job is
@@ -89,13 +96,18 @@ export function WatchlistTable({
                       </div>
                     </Link>
                   </td>
-                  <td className="px-5 py-4 font-mono text-sm tabular-nums text-ink">
+                  {/* Price is what the row is about, so it carries the one size
+                      step above the rest of the cells. Change % is the second
+                      read and takes the weight instead of a third size. */}
+                  <td className="px-5 py-4 font-mono text-base font-medium tabular-nums text-ink">
                     {formatPrice(ticker.price)}
                   </td>
                   <td className={`px-5 py-4 font-mono text-sm tabular-nums ${moveColor}`}>
                     {formatChange(ticker.change)}
                   </td>
-                  <td className={`px-5 py-4 font-mono text-sm tabular-nums ${moveColor}`}>
+                  <td
+                    className={`px-5 py-4 font-mono text-sm font-semibold tabular-nums ${moveColor}`}
+                  >
                     {formatPercent(ticker.changePercent)}
                   </td>
                   <td className="px-5 py-4 font-mono text-sm tabular-nums text-body">
@@ -123,6 +135,25 @@ export function WatchlistTable({
           </p>
         )}
       </div>
+
+      {/* The Scrolling Island Rule works — the table scrolls inside its own
+          wrapper instead of widening the page — but nothing ever *said* so. At
+          iPad portrait the content column is 480px against an 880px table, so
+          five of the eight columns are off screen, and the only affordance was
+          a scrollbar measuring 1.20:1 that iPadOS hides entirely until a scroll
+          is already under way. A visitor had no way to know Status and Chart
+          existed.
+
+          The breakpoint is arithmetic, not a guess: the content column is
+          min(1200, viewport − 240 sidebar) − 80 padding, so the table stops
+          scrolling at exactly 1200px of viewport. Tailwind's xl (1280) would
+          have shown this line at widths where it is not true. */}
+      {tickers.length > 0 && (
+        <p className="mt-3 px-1 text-xs text-muted min-[1200px]:hidden">
+          Scroll the table sideways for volume, relative volume, status and the
+          day chart.
+        </p>
+      )}
     </section>
   );
 }

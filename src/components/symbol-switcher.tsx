@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
 
+import { useWatchlistMenu } from "@/components/use-watchlist-menu";
 import { TOP_20_SYMBOLS } from "@/lib/symbols";
 
 // The page header doubles as the navigation for this section: the ticker itself
@@ -10,9 +10,17 @@ import { TOP_20_SYMBOLS } from "@/lib/symbols";
 // tab bar on Today's Activity — the sidebar plus this switcher is the whole of it.
 //
 // The menu also edits the watchlist, so a stock can be added or dropped without
-// going back to the Home page. Both bounds are enforced by the API over the
-// cookie; the disabled states here only spare the visitor a pointless request,
-// and the API's own message is shown when one gets through anyway.
+// going back to the Home page. The popover mechanics — open state, outside
+// click, Escape, focus return, and the mutation itself — are shared with the
+// Home picker in use-watchlist-menu.ts; what is left here is the row layout and
+// which bound applies to which group.
+//
+// This is a disclosure, not a menu. `role="menu"` used to sit on the popover
+// with `role="menuitem"` on only one of each row's two buttons, over a <ul> that
+// carried no `role="none"` — so the owned-element relationship was broken and
+// half the controls were invisible to the pattern, in exchange for promising
+// arrow-key semantics nothing here implements. Native list and button semantics
+// plus aria-expanded describe this accurately.
 
 export function SymbolSwitcher({
   symbol,
@@ -26,57 +34,13 @@ export function SymbolSwitcher({
   max: number;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const container = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  const { open, close, toggleOpen, message, pending, container, trigger, mutate } =
+    useWatchlistMenu();
 
   const watched = new Set(symbols);
   const unwatched = TOP_20_SYMBOLS.filter((s) => !watched.has(s));
   const atMin = symbols.length <= min;
   const atMax = symbols.length >= max;
-
-  async function mutate(target: string, method: "POST" | "DELETE") {
-    setMessage(null);
-
-    const res = await fetch("/api/watchlist", {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol: target }),
-    });
-
-    if (!res.ok) {
-      // Surfaced rather than swallowed: at the cap or the floor this is the
-      // only feedback the visitor gets.
-      const body = (await res.json()) as { error?: string };
-      setMessage(body.error ?? "Could not update the watchlist.");
-      return;
-    }
-
-    // Re-render the server components against the new cookie. Dropping the
-    // stock being viewed is fine and does not navigate away — every Top 20
-    // stock has cached prices, so the page keeps working and the stock simply
-    // moves down into the "add" group.
-    startTransition(() => router.refresh());
-  }
 
   const row = (option: string, action: "add" | "remove") => {
     const blocked = action === "add" ? atMax : atMin;
@@ -85,9 +49,8 @@ export function SymbolSwitcher({
       <li key={option} className="flex items-center">
         <button
           type="button"
-          role="menuitem"
           onClick={() => {
-            setOpen(false);
+            close();
             router.push(`/todays-activity/${option}`);
           }}
           className={`flex-1 px-4 py-2 text-left text-sm font-medium transition-colors ${
@@ -108,7 +71,17 @@ export function SymbolSwitcher({
               ? `Add ${option} to your watchlist`
               : `Remove ${option} from your watchlist`
           }
-          className="px-3 py-2 text-sm font-semibold text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-30"
+          // opacity-30 resolved to 1.51:1 light / 1.58:1 dark against the
+          // overlay — the disabled state was invisible, on the control whose
+          // disabled state was the *only* signal that the cap or the floor had
+          // been reached. At 50% it measures 2.08:1 / 2.26:1: still recessive,
+          // which is what a disabled control should be, but now perceptibly
+          // different from the 5.24:1 enabled glyph beside it. The rest of the
+          // job is done in words by the group headers below, because a dimmed
+          // control cannot state a reason and `disabled` also drops the button
+          // out of the tab order, so a keyboard visitor at the cap would
+          // otherwise tab past thirteen `+` controls with no explanation.
+          className="min-h-10 px-3 text-sm font-semibold text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {action === "add" ? "+" : "−"}
         </button>
@@ -119,10 +92,12 @@ export function SymbolSwitcher({
   return (
     <div ref={container} className="relative">
       <button
+        ref={trigger}
         type="button"
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggleOpen}
+        // aria-expanded alone is the disclosure contract. `aria-haspopup="menu"`
+        // used to sit here and promised a menu the popover never declared.
         aria-expanded={open}
-        aria-haspopup="menu"
         className="flex items-center gap-2 rounded-xl px-2 py-1 text-3xl font-semibold tracking-tight text-ink transition-colors hover:bg-surface-strong"
       >
         {symbol}
@@ -144,18 +119,28 @@ export function SymbolSwitcher({
       </button>
 
       {open && (
-        <div
-          role="menu"
-          className="absolute left-0 z-10 mt-2 max-h-96 w-60 overflow-y-auto rounded-2xl border border-hairline bg-canvas py-1 shadow-lg"
-        >
+        <div className="panel-overlay absolute left-0 z-20 mt-2 max-h-96 w-60 overflow-y-auto rounded-2xl py-1">
           {message && (
-            <p className="mx-2 my-1 rounded-xl bg-semantic-down/10 px-3 py-2 text-xs font-medium text-semantic-down">
+            // role="status" so a refused mutation is announced rather than only
+            // drawn. bg-tint-down rather than bg-semantic-down/10: an alpha
+            // composites against whatever lands behind it, which is the exact
+            // thing the Baked Tint Rule exists to prevent. The baked token is
+            // the same colour and measures 4.77:1 / 5.03:1 wherever it sits.
+            <p
+              role="status"
+              className="mx-2 my-1 rounded-xl bg-tint-down px-3 py-2 text-xs font-medium text-semantic-down"
+            >
               {message}
             </p>
           )}
 
+          {/* The count alone did not say what the count *meant* once a bound was
+              reached. These two lines are where the cap and the floor are
+              actually communicated — the dimmed control can only show that
+              something is unavailable, never why. */}
           <p className="px-4 py-1 text-xs font-semibold text-muted">
             Watchlist ({symbols.length}/{max})
+            {atMin && " · remove is unavailable at one stock"}
           </p>
           <ul>{symbols.map((option) => row(option, "remove"))}</ul>
 
@@ -163,6 +148,7 @@ export function SymbolSwitcher({
             <>
               <p className="mt-1 border-t border-hairline px-4 pb-1 pt-2 text-xs font-semibold text-muted">
                 Add from Top 20
+                {atMax && ` · remove one to go below ${max}`}
               </p>
               <ul>{unwatched.map((option) => row(option, "add"))}</ul>
             </>

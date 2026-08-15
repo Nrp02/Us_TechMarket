@@ -32,6 +32,11 @@ export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) 
         <img
           src={src}
           alt=""
+          // Same reasoning as news-thumbnail: the fixed h-8 w-20 plate already
+          // reserves the box, so lazy loading costs no layout stability and
+          // saves the CDN round trips for rows below the fold.
+          loading="lazy"
+          decoding="async"
           className="h-4 max-w-full object-contain"
         />
       ) : (

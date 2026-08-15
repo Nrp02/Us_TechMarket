@@ -32,7 +32,10 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label="Toggle light and dark theme"
       title="Toggle light and dark theme"
-      className="flex size-8 shrink-0 items-center justify-center rounded-lg text-body transition-colors hover:bg-surface-soft hover:text-ink"
+      // size-9 (36px), not size-8 (32px). Both clear WCAG 2.2's 24px minimum,
+      // so this was never a violation — but iPad is a named target and this is
+      // the smallest hit area in the product, on glass. The icon stays 18px.
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-body transition-colors hover:bg-surface-soft hover:text-ink"
     >
       <svg
         viewBox="0 0 24 24"

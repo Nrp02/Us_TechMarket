@@ -7,15 +7,33 @@
 /* Light theme. Dark is the default (layout.tsx stamps data-theme="dark" on
    <html>), so these tokens apply only once a visitor opts into light. */
 :root {
+  /* Tells the browser which way its own furniture should lean — form controls,
+     the caret, and the scrollbar in engines that do not take the rules below. */
+  color-scheme: light;
+  /* The thumb was --color-surface-strong, which measured 1.20:1 light and
+     1.28:1 dark against the canvas it sits on. That is a UI component under
+     1.4.11, and it is also the *only* affordance telling an iPad visitor the
+     880px watchlist table scrolls sideways — five of its eight columns are off
+     screen at portrait width. --color-muted measures 4.96-5.77:1 across every
+     surface a scrollbar lands on here. */
+  scrollbar-color: var(--color-muted) transparent;
+  scrollbar-width: thin;
+
+  /* The page field every panel sits on. Split out of --color-surface-soft,
+     which was doing two unrelated jobs — the field *behind* the cards and the
+     hover state *inside* them — and so could not move for one without moving
+     for the other. Cooler and a step deeper than the old #f7f7f7 so a white
+     panel has something to lift off. */
+  --color-backdrop: #eef1f6;
   --color-canvas: #ffffff;
-  --color-surface-soft: #f7f7f7;
-  --color-surface-strong: #eef0f3;
+  --color-surface-soft: #f6f8fb;
+  --color-surface-strong: #e7ebf2;
   --color-ink: #0a0b0d;
-  --color-body: #5b616e;
+  --color-body: #565d6a;
   /* Was #7c828a, which measured 3.88:1 on canvas — under AA for the table
      headers, timestamps and stat labels that all render in this tier. */
-  --color-muted: #656b74;
-  --color-hairline: #dee1e6;
+  --color-muted: #616873;
+  --color-hairline: #dce1ea;
   --color-primary: #0052ff;
   --color-primary-active: #003ecc;
   /* Accent as a *filled plate* under white text, which is a different contrast
@@ -23,44 +41,120 @@
      had to get lighter to stay readable ON a plate, which simultaneously made it
      too light to sit UNDER white text. One token cannot do both jobs. */
   --color-primary-fill: #0052ff;
-  --color-semantic-up: #00875a;
-  --color-semantic-down: #cf202f;
+  /* The accent plate under white text on press. It must go *darker* in both
+     themes, unlike --color-primary-active, which goes lighter in dark so accent
+     *text* stays readable. The white-text buttons were reaching for
+     primary-active on hover and measured 2.15:1 in dark — the hover state of a
+     primary button was the worst contrast in the product. */
+  --color-primary-fill-hover: #0043d6;
+  /* Was #00875a, which measured 4.02:1 once a hovered Top Movers row put a gain
+     figure on surface-soft rather than on canvas. */
+  --color-semantic-up: #007a51;
+  --color-semantic-down: #c81d2c;
   --color-logo-plate: #eef0f3;
   /* The intraday volume bars encode data, so they answer to the 3:1 floor for
      graphical objects rather than to the decorative-surface bar. surface-strong
      sat at 1.14:1 here and the bars were nearly invisible against their card. */
   --color-chart-bar: #8a92a0;
+
+  /* Tinted plates, baked flat rather than written as `bg-primary/12`.
+     An alpha tint composites against whatever is behind it, so the Significant
+     badge on a *hovered* Top Movers row measured 4.49:1 while the same badge at
+     rest measured 4.76:1 — the component's contrast depended on the pointer.
+     Baked at 11% over canvas in light and 16% in dark, these are fixed. */
+  --color-tint-primary: #e3ecff;
+  --color-tint-up: #e3f0ec;
+  --color-tint-down: #f9e6e8;
+  /* The accent ring on the Significant badge, the active nav item and the
+     leading Top Movers rank. Was written as `ring-primary/25`, which is the
+     same alpha the Baked Tint Rule forbids one line above — baked here at 25%
+     over tint-primary, the only plate it is ever drawn on. Note this changes
+     nothing about how it *looks*: it measures 1.45:1 light / 1.50:1 dark
+     against that plate either way, which is why DESIGN.md no longer counts it
+     as one of the badge's distinguishing channels. The fill, the dot and the
+     word carry that; the ring is an edge, not a signal. */
+  --color-accent-edge: #aac6ff;
+
+  /* --- Depth ------------------------------------------------------------
+     A real elevation scale, which DESIGN.md left open ("if rest-state depth is
+     wanted, the scale gets designed first and applied consistently"). Three
+     steps, each a tight contact shadow plus a wide ambient one, so a panel has
+     both a seam and a cast. Never a zero-offset halo. */
+  --elev-1: 0 1px 2px rgb(15 23 42 / 0.05), 0 4px 12px -2px rgb(15 23 42 / 0.07);
+  --elev-2: 0 2px 4px rgb(15 23 42 / 0.05), 0 14px 30px -8px rgb(15 23 42 / 0.11);
+  --elev-3: 0 4px 8px rgb(15 23 42 / 0.06), 0 26px 50px -12px rgb(15 23 42 / 0.18);
+  /* The lit face of a panel. In light the shadow does the modelling and this is
+     almost nothing; in dark it is what actually makes a surface read as a
+     surface, because a cast shadow on near-black has nothing to darken. */
+  --surface-face: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    color-mix(in srgb, var(--color-canvas) 96%, var(--color-backdrop)) 100%
+  );
+  /* Ambient light catching the top edge, applied as a border-image-free inset.
+     Kept separate from --elev-* so a panel can take depth without the edge. */
+  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.9);
 }
 
 /* Every token above is redefined here — nothing may have its only definition
    inside this block, or that colour would be missing in light mode. */
 :root[data-theme="dark"] {
-  --color-canvas: #0d0f12;
-  --color-surface-soft: #15181d;
-  --color-surface-strong: #21262e;
+  color-scheme: dark;
+
+  /* Dark inverted the depth reading: the field was #15181d and the panels on it
+     were #0d0f12, so every card was *darker* than its background and read as a
+     hole rather than an object. No shadow can rescue that arrangement, which is
+     why the system stayed flat. Panels are now the lighter tone in both themes
+     and the ramp below runs field -> panel -> hover -> chip, upward. */
+  --color-backdrop: #0a0c11;
+  --color-canvas: #141821;
+  --color-surface-soft: #1b2029;
+  --color-surface-strong: #262d39;
   --color-ink: #f2f4f7;
-  --color-body: #a3abb8;
-  --color-muted: #79818e;
-  --color-hairline: #2a2f37;
+  --color-body: #a7afbd;
+  --color-muted: #848c9a;
+  --color-hairline: #2e3543;
   /* Was #3d78ff, which measured 3.86:1 on surface-strong (the active sidebar
      item, present on every page) and 4.42:1 on its own 10% tint (the Significant
      badge). Both are small text and both were under AA in the *default* theme. */
-  --color-primary: #5c8fff;
-  --color-primary-active: #7aa5ff;
+  --color-primary: #6695ff;
+  --color-primary-active: #8db0ff;
   /* Darker than --color-primary on purpose: this one sits under white text.
      See the note in the light block. */
   --color-primary-fill: #1e5fe0;
+  --color-primary-fill-hover: #1a52c4;
   --color-semantic-up: #24c98a;
-  --color-semantic-down: #ff5f6d;
+  --color-semantic-down: #ff6672;
   --color-chart-bar: #5b6577;
   /* Deliberately light in BOTH themes. Brand marks carry hardcoded fills we
      cannot recolour — AAPL #000000, PLTR #101113, AMZN #221f1f are effectively
      black and vanish on a dark plate. Only real logos sit on this; lettermarks
      and category icons use surface-strong so their text stays theme-aware. */
   --color-logo-plate: #e9ebef;
+
+  /* Dark takes a heavier tint than light — 16% against 11% — because a tint on
+     a near-black panel has to travel further before it reads as colour at all. */
+  --color-tint-primary: #212c45;
+  --color-tint-up: #173432;
+  --color-tint-down: #3a242e;
+  --color-accent-edge: #324674;
+
+  /* Dark shadows are near-opaque black because the field they fall on is
+     already near-black — a 7% shadow is invisible there. The lit top edge below
+     is doing at least half the work of separating a panel from the field. */
+  --elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5);
+  --elev-2: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6);
+  --elev-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7);
+  --surface-face: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-canvas) 88%, #ffffff) 0%,
+    var(--color-canvas) 140px
+  );
+  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.07);
 }
 
 @theme inline {
+  --color-backdrop: var(--color-backdrop);
   --color-canvas: var(--color-canvas);
   --color-surface-soft: var(--color-surface-soft);
   --color-surface-strong: var(--color-surface-strong);
@@ -71,12 +165,21 @@
   --color-primary: var(--color-primary);
   --color-primary-active: var(--color-primary-active);
   --color-primary-fill: var(--color-primary-fill);
+  --color-primary-fill-hover: var(--color-primary-fill-hover);
   --color-semantic-up: var(--color-semantic-up);
   --color-semantic-down: var(--color-semantic-down);
   --color-logo-plate: var(--color-logo-plate);
   --color-chart-bar: var(--color-chart-bar);
+  --color-tint-primary: var(--color-tint-primary);
+  --color-tint-up: var(--color-tint-up);
+  --color-tint-down: var(--color-tint-down);
+  --color-accent-edge: var(--color-accent-edge);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
+
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
 }
 
 /* Two steps above the old ceiling. The ramp topped out at 30px and 82% of all
@@ -100,9 +203,81 @@
   --text-display--letter-spacing: -0.03em;
 }
 
+/* --- The panel -----------------------------------------------------------
+   Every container in the product was `rounded-3xl border border-hairline
+   bg-canvas`, repeated across sixteen components, so changing how a surface is
+   built meant sixteen edits and drift was guaranteed. It is one utility now,
+   and it is the only place the face gradient, the lit edge and the elevation
+   step are composed.
+
+   `panel` is the resting container. `panel-raised` is for the one element on a
+   page that outranks its neighbours. `panel-overlay` is for things that float
+   over the page and must detach from it completely. */
+@utility panel {
+  background-color: var(--color-canvas);
+  background-image: var(--surface-face);
+  border: 1px solid var(--color-hairline);
+  border-radius: 24px;
+  box-shadow: var(--edge-lit), var(--elev-1);
+}
+
+@utility panel-raised {
+  background-color: var(--color-canvas);
+  background-image: var(--surface-face);
+  border: 1px solid var(--color-hairline);
+  border-radius: 24px;
+  box-shadow: var(--edge-lit), var(--elev-2);
+}
+
+@utility panel-overlay {
+  background-color: var(--color-canvas);
+  background-image: var(--surface-face);
+  border: 1px solid var(--color-hairline);
+  box-shadow: var(--edge-lit), var(--elev-3);
+}
+
 body {
-  background: var(--color-canvas);
+  background: var(--color-backdrop);
   color: var(--color-ink);
+}
+
+/* --- Browser surfaces ----------------------------------------------------
+   The parts of the page nobody draws still ship with defaults that belong to no
+   design system. Selection, the scrollbar and link underlines were all the
+   user agent's, on a product otherwise controlled down to the hairline. */
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 26%, transparent);
+  color: var(--color-ink);
+}
+
+/* Firefox takes scrollbar-color; WebKit needs the pseudo-elements. Both
+   are scoped to a thin, unpainted track so a scrolling table does not gain a
+   grey slab down its edge. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-body);
+  background-clip: padding-box;
+}
+
+/* Headlines and source links run over descenders at the default offset. */
+a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
 }
 
 /* PRODUCT.md commits to WCAG 2.1 AA, which requires a visible focus indicator.

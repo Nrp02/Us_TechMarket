@@ -5,6 +5,7 @@ import { ActivityTimeline } from "@/components/activity-timeline";
 import { CompanyLogo } from "@/components/company-logo";
 import { DailySummaryCard } from "@/components/daily-summary-card";
 import { IntradayChart } from "@/components/intraday-chart";
+import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { SymbolSwitcher } from "@/components/symbol-switcher";
 import { UpcomingEvents } from "@/components/upcoming-events";
@@ -53,7 +54,6 @@ export default async function TodaysActivityForSymbol({
 
   const { ticker } = activity;
   const up = ticker.changePercent >= 0;
-  const moveColor = up ? "text-semantic-up" : "text-semantic-down";
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-8 lg:px-10">
@@ -81,13 +81,22 @@ export default async function TodaysActivityForSymbol({
         </div>
 
         {/* The page's display element. This is the number the visitor came for
-            and it was set at 24px, the same size as a section heading. */}
+            and it was set at 24px, the same size as a section heading. The
+            change beneath it takes the same tinted plate the Market Overview
+            cells use, so the one figure that carries direction on this page
+            carries it as a field of colour rather than as coloured text. */}
         <div className="flex items-center gap-5">
-          <div className="text-right">
+          <div className="flex flex-col items-end">
             <p className="font-mono text-display font-medium tabular-nums text-ink">
               {formatPrice(ticker.price)}
             </p>
-            <p className={`mt-1 font-mono text-lg tabular-nums ${moveColor}`}>
+            <p
+              className={`mt-2 inline-flex items-center rounded-full px-3 py-1 font-mono text-base font-medium tabular-nums ${
+                up
+                  ? "bg-tint-up text-semantic-up"
+                  : "bg-tint-down text-semantic-down"
+              }`}
+            >
               {formatChange(ticker.change)} ({formatPercent(ticker.changePercent)})
             </p>
           </div>
@@ -101,7 +110,9 @@ export default async function TodaysActivityForSymbol({
       <DailySummaryCard summary={activity.summary} symbol={ticker.symbol} />
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-ink">Price & Volume</h2>
+        <SectionHeading meta="Recorded every 15 minutes">
+          Price &amp; Volume
+        </SectionHeading>
         <IntradayChart points={activity.intraday} up={up} />
       </section>
 

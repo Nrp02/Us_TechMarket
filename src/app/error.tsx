@@ -46,7 +46,7 @@ export default function Error({
         </p>
       </header>
 
-      <div className="rounded-3xl border border-hairline bg-canvas px-5 py-6">
+      <div className="panel px-5 py-6">
         <p className="text-sm text-body">
           Cached market data could not be read. Nothing was lost: the stored
           prices, news and summaries are still there, and the next scheduled

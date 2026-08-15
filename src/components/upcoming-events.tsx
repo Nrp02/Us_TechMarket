@@ -1,3 +1,4 @@
+import { SectionHeading } from "@/components/section-heading";
 import { formatEtDate } from "@/lib/format";
 import type { UpcomingEvent } from "@/lib/queries";
 
@@ -16,10 +17,12 @@ const LABEL: Record<UpcomingEvent["type"], string> = {
 export function UpcomingEvents({ events }: { events: UpcomingEvent[] }) {
   return (
     <section>
-      <h2 className="mb-4 text-lg font-semibold text-ink">Upcoming Events</h2>
+      <SectionHeading meta="From the earnings calendar">
+        Upcoming Events
+      </SectionHeading>
 
       {events.length ? (
-        <ul className="rounded-3xl border border-hairline bg-canvas">
+        <ul className="panel overflow-hidden">
           {events.map((event) => (
             <li
               key={`${event.type}-${event.at}`}
@@ -40,7 +43,7 @@ export function UpcomingEvents({ events }: { events: UpcomingEvent[] }) {
           ))}
         </ul>
       ) : (
-        <p className="rounded-3xl border border-hairline bg-canvas px-5 py-10 text-sm text-muted">
+        <p className="panel px-5 py-10 text-sm text-muted">
           No earnings date on the calendar for this stock.
         </p>
       )}

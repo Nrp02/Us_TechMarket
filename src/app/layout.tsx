@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import { ChartGradients } from "@/components/chart-gradients";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
@@ -40,14 +41,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
-      <body className="flex min-h-full">
+      <body className="flex min-h-full bg-backdrop">
         <Sidebar />
         {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
             min-width:auto, so without it <main> cannot shrink below its
             content's min-content width — the 880px watchlist table and the
             560px intraday chart pushed the whole page sideways instead of
             scrolling inside their own overflow-x-auto wrappers. */}
-        <main className="min-w-0 flex-1 bg-surface-soft">{children}</main>
+        <main className="min-w-0 flex-1 bg-backdrop">{children}</main>
+        <ChartGradients />
       </body>
     </html>
   );

@@ -27,12 +27,18 @@ export function Sparkline({
   const pad = 2;
   const usable = height - pad * 2;
 
-  const points = values
-    .map((value, i) => {
-      const y = pad + usable - ((value - min) / span) * usable;
-      return `${(i * step).toFixed(2)},${y.toFixed(2)}`;
-    })
+  const coords = values.map((value, i) => {
+    const y = pad + usable - ((value - min) / span) * usable;
+    return [i * step, y] as const;
+  });
+  const points = coords
+    .map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`)
     .join(" ");
+
+  // The line closed down to the baseline. The fill is what gives a sparkline
+  // any mass at 96x28 — as a bare stroke it was a grey-scale page's only colour
+  // and still read as a hairline. Gradient defs live in ChartGradients.
+  const area = `${points} ${(width).toFixed(2)},${height} 0,${height}`;
 
   return (
     <svg
@@ -51,6 +57,10 @@ export function Sparkline({
         2,
       )}, session low ${min.toFixed(2)}, high ${max.toFixed(2)}`}
     >
+      <polygon
+        points={area}
+        fill={up ? "url(#session-up)" : "url(#session-down)"}
+      />
       <polyline
         points={points}
         fill="none"
@@ -58,6 +68,14 @@ export function Sparkline({
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
+      />
+      {/* The session's closing point, so the eye has somewhere to land and the
+          line reads as having an end rather than running off the plate. */}
+      <circle
+        cx={coords[coords.length - 1][0]}
+        cy={coords[coords.length - 1][1]}
+        r={2}
+        fill={up ? "var(--color-semantic-up)" : "var(--color-semantic-down)"}
       />
     </svg>
   );

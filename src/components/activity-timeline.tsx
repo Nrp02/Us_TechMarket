@@ -1,3 +1,4 @@
+import { SectionHeading } from "@/components/section-heading";
 import { formatEtTime } from "@/lib/format";
 import type { TimelineEntry } from "@/lib/queries";
 
@@ -20,16 +21,22 @@ const DOT: Record<TimelineEntry["kind"], string> = {
 export function ActivityTimeline({ entries }: { entries: TimelineEntry[] }) {
   return (
     <section>
-      <h2 className="mb-4 text-lg font-semibold text-ink">Today&apos;s Timeline</h2>
+      <SectionHeading
+        meta={entries.length ? `${entries.length} events` : undefined}
+      >
+        Today&apos;s Timeline
+      </SectionHeading>
 
       {entries.length ? (
-        <ol className="rounded-3xl border border-hairline bg-canvas p-5">
+        <ol className="panel p-5">
           {entries.map((entry, i) => (
             <li key={`${entry.at}-${entry.kind}-${i}`} className="flex gap-4">
               {/* The rail is drawn per row so it stops cleanly at the last one. */}
               <div className="flex flex-col items-center">
+                {/* The ring is the panel's own surface, so the dot reads as
+                    sitting on the rail rather than threaded onto it. */}
                 <span
-                  className={`mt-1.5 size-2 shrink-0 rounded-full ${DOT[entry.kind]}`}
+                  className={`mt-1.5 size-2 shrink-0 rounded-full ring-4 ring-canvas ${DOT[entry.kind]}`}
                   aria-hidden
                 />
                 {i < entries.length - 1 && (
@@ -56,7 +63,7 @@ export function ActivityTimeline({ entries }: { entries: TimelineEntry[] }) {
           ))}
         </ol>
       ) : (
-        <p className="rounded-3xl border border-hairline bg-canvas px-5 py-10 text-sm text-muted">
+        <p className="panel px-5 py-10 text-sm text-muted">
           The timeline is built after the close, from the session&apos;s stored
           snapshots.
         </p>

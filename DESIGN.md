@@ -2,27 +2,40 @@
 name: US TechMarket
 description: A composed, after-hours reading surface for what happened to US technology stocks today.
 colors:
-  primary: "#5c8fff"
-  primary-active: "#7aa5ff"
+  primary: "#6695ff"
+  primary-active: "#8db0ff"
   primary-fill: "#1e5fe0"
+  primary-fill-hover: "#1a52c4"
   semantic-up: "#24c98a"
-  semantic-down: "#ff5f6d"
+  semantic-down: "#ff6672"
+  tint-primary: "#212c45"
+  tint-up: "#173432"
+  tint-down: "#3a242e"
+  accent-edge: "#324674"
   chart-bar: "#5b6577"
   ink: "#f2f4f7"
-  body: "#a3abb8"
-  muted: "#79818e"
-  canvas: "#0d0f12"
-  surface-soft: "#15181d"
-  surface-strong: "#21262e"
-  hairline: "#2a2f37"
+  body: "#a7afbd"
+  muted: "#848c9a"
+  backdrop: "#0a0c11"
+  canvas: "#141821"
+  surface-soft: "#1b2029"
+  surface-strong: "#262d39"
+  hairline: "#2e3543"
   logo-plate: "#e9ebef"
 typography:
   display:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.5rem"
+    fontSize: "clamp(2.25rem, 4vw, 3.25rem)"
     fontWeight: 600
-    lineHeight: "2rem"
-    letterSpacing: "-0.025em"
+    lineHeight: "1.02"
+    letterSpacing: "-0.03em"
+  figure:
+    fontFamily: "JetBrains Mono, ui-monospace, monospace"
+    fontSize: "clamp(1.75rem, 2.4vw, 2.375rem)"
+    fontWeight: 500
+    lineHeight: "1.05"
+    letterSpacing: "-0.02em"
+    fontFeature: "tnum"
   headline:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
     fontSize: "1.875rem"
@@ -31,9 +44,15 @@ typography:
     letterSpacing: "-0.025em"
   title:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.125rem"
+    fontSize: "1.25rem"
     fontWeight: 600
     lineHeight: "1.75rem"
+    letterSpacing: "-0.025em"
+  lede:
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 400
+    lineHeight: "1.55"
     letterSpacing: "normal"
   body:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
@@ -74,18 +93,42 @@ spacing:
   "8": "32px"
   "10": "40px"
 components:
+  panel:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.3xl}"
+    padding: "20px"
+  panel-raised:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.3xl}"
+    padding: "24px"
+  panel-overlay:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.2xl}"
+    padding: "4px 0"
   badge-significant:
-    backgroundColor: "rgb(61 120 255 / 0.10)"
+    backgroundColor: "{colors.tint-primary}"
     textColor: "{colors.primary}"
     typography: "{typography.label}"
     rounded: "{rounded.full}"
-    padding: "4px 12px"
+    padding: "4px 12px 4px 8px"
   badge-normal:
     backgroundColor: "{colors.surface-strong}"
     textColor: "{colors.body}"
     typography: "{typography.label}"
     rounded: "{rounded.full}"
-    padding: "4px 12px"
+    padding: "4px 12px 4px 8px"
+  change-pill-up:
+    backgroundColor: "{colors.tint-up}"
+    textColor: "{colors.semantic-up}"
+    typography: "{typography.numeric}"
+    rounded: "{rounded.full}"
+    padding: "2px 8px"
+  change-pill-down:
+    backgroundColor: "{colors.tint-down}"
+    textColor: "{colors.semantic-down}"
+    typography: "{typography.numeric}"
+    rounded: "{rounded.full}"
+    padding: "2px 8px"
   button-pill:
     backgroundColor: "{colors.surface-strong}"
     textColor: "{colors.ink}"
@@ -94,26 +137,33 @@ components:
   button-pill-hover:
     backgroundColor: "{colors.hairline}"
     textColor: "{colors.ink}"
+  button-fill:
+    backgroundColor: "{colors.primary-fill}"
+    textColor: "#ffffff"
+    rounded: "{rounded.full}"
+    padding: "8px 16px"
+  button-fill-hover:
+    backgroundColor: "{colors.primary-fill-hover}"
+    textColor: "#ffffff"
+  tab-track:
+    backgroundColor: "{colors.canvas}"
+    rounded: "{rounded.full}"
+    padding: "4px"
   tab-active:
     backgroundColor: "{colors.primary-fill}"
     textColor: "#ffffff"
     rounded: "{rounded.full}"
     padding: "8px 16px"
   tab-inactive:
-    backgroundColor: "{colors.surface-strong}"
-    textColor: "{colors.ink}"
+    textColor: "{colors.body}"
     rounded: "{rounded.full}"
     padding: "8px 16px"
-  card:
-    backgroundColor: "{colors.canvas}"
-    rounded: "{rounded.3xl}"
-    padding: "20px"
   nav-item:
     textColor: "{colors.body}"
     rounded: "{rounded.lg}"
     padding: "8px 12px"
   nav-item-active:
-    backgroundColor: "{colors.surface-strong}"
+    backgroundColor: "{colors.tint-primary}"
     textColor: "{colors.primary}"
     rounded: "{rounded.lg}"
     padding: "8px 12px"
@@ -127,10 +177,11 @@ components:
     textColor: "{colors.body}"
     rounded: "{rounded.full}"
     padding: "2px 10px"
-  menu-surface:
-    backgroundColor: "{colors.canvas}"
-    rounded: "{rounded.2xl}"
-    padding: "4px 0"
+  table-header:
+    backgroundColor: "{colors.surface-soft}"
+    textColor: "{colors.muted}"
+    typography: "{typography.label}"
+    padding: "12px 20px"
 ---
 
 # Design System: US TechMarket
@@ -141,74 +192,92 @@ components:
 
 The market has closed. The numbers have stopped moving, the day is complete, and what is left is a desk with everything laid out on it — settled, recorded, and quiet. That is the room this interface is in, and it explains its two most visible decisions: dark is the *default* theme rather than an option, and nothing on screen ticks, flashes, pulses, or announces itself. A product whose entire premise is "here is what happened today" would be lying with its motion design if it behaved like a live tape.
 
-The voice is **composed, exact, and unhurried**. Density is high — a 20-stock universe, eight-column tables, five stat cards, an intraday chart with two panels — but the pressure is low. Precision is what does the persuading: monospaced tabular numerals so figures align down a column, hairline rules instead of heavy dividers, and an accent colour used so sparingly that its appearance is information. The interface is confident enough to stay quiet.
+**There is a lamp on the desk.** The system used to be flat everywhere — tonal layering only, shadow confined to two dropdowns — and it read as a stack of grey rectangles rather than as a surface with objects on it. Depth is now real and systematic: panels are the lighter tone in both themes, they catch light on their top edge, and they cast. That is a change of *material*, not of temperament. The room is still quiet; you can just see the objects in it now. Nothing here is decorated, and the light is doing legibility work rather than atmosphere work — it is what separates a panel from the field behind it, which on a near-black canvas nothing else was achieving.
 
-Components are **soft-edged and matter-of-fact**. Radii are generous — 24px on every container, full pills on anything that reads as a token — but nothing is decorated. There are no gradients, no illustrations, no icon set beyond a sun, a moon, and a chevron. The softness is the entire source of warmth in the system; everything else is a surface, a hairline, and a number. Depth follows the same restraint: the shell layers tonally (a canvas sidebar, a recessed grey field, and canvas cards floating back up on it) rather than reaching for shadow.
+The voice is **composed, exact, and unhurried**. Density is high — a 20-stock universe, eight-column tables, five stat cells, an intraday chart with two panels — but the pressure is low. Precision is what does the persuading: monospaced tabular numerals so figures align down a column, hairline rules instead of heavy dividers, and an accent colour used so sparingly that its appearance is information. Colour arrives in exactly three places — the gain/loss pair, the reserved accent, and the gradient a session's own chart lays under itself — and never as surface decoration.
 
 **Key Characteristics:**
 
 - Dark-default, two-theme system where every token is defined twice and neither theme is an afterthought.
 - Monospaced tabular numerals for every figure in the product, without exception.
-- Flat, hairline-ruled surfaces; tonal layering carries depth, shadow is currently confined to overlays.
+- One composed panel material — face gradient, lit top edge, hairline border, elevation step — applied through a single utility, never assembled per component.
+- Three elevation steps and no more: resting panel, the one raised element per page, and overlays.
 - One reserved accent whose appearance always means "active" or "significant".
 - Generous radii (24px containers, full pills) as the only decorative gesture.
 - No chart library and almost no client JavaScript — sparklines, the intraday chart, and every thumbnail are server-rendered SVG and markup.
+- Browser furniture is themed: selection, scrollbars, focus rings, and underline offset all come from the palette.
 
 ## Colors
 
-A near-neutral, slightly blue-shifted greyscale carrying three signal colours: one reserved accent and a gain/loss pair that belongs to the session being reported.
+A near-neutral, blue-shifted greyscale that climbs from a deep page field up to the surfaces on it, carrying three signal colours: one reserved accent and a gain/loss pair that belongs to the session being reported.
 
 **On the two themes.** Dark is the default (`<html data-theme="dark">`), so the frontmatter above carries the dark values as canonical. Every token also has a light counterpart defined in `:root` in `src/app/globals.css`; both values are listed below and machine-readable in `.impeccable/design.json`. Neither theme is a derived tint of the other — they are hand-paired.
 
 ### Primary
 
-- **Signal Blue** (`primary`, #5c8fff dark / #0052ff light): the only accent in the system, and it is never decoration. It marks the active sidebar item, the Significant badge, inline links, the bullet dots in the AI summary, price-milestone and high-volume markers on the timeline, and the focus ring on every control. If Signal Blue appears, something is active, focused, or crossed a threshold.
-- **Signal Blue Active** (`primary-active`, #7aa5ff dark / #003ecc light): the pressed and hover state for accent surfaces. Note the direction reverses between themes — light mode goes *darker* on press, dark mode goes *lighter*, because contrast against the plate is what has to increase, not brightness.
-- **Signal Blue Fill** (`primary-fill`, #1e5fe0 dark / #0052ff light): the accent as a *filled plate under white text* — currently only the active news tab. It exists because one token cannot serve both jobs: `primary` had to get lighter in dark mode to stay readable *on* a plate, which simultaneously made it too light to sit *under* white text. Reach for this only when the accent is a background carrying light text.
+- **Signal Blue** (`primary`, #6695ff dark / #0052ff light): the only accent in the system, and it is never decoration. It marks the active sidebar item, the Significant badge, the leading rank in Top Movers, inline links, the bullet dots in the AI summary, price-milestone and high-volume markers on the timeline, and the focus ring on every control. If Signal Blue appears, something is active, focused, or crossed a threshold.
+- **Signal Blue Active** (`primary-active`, #8db0ff dark / #003ecc light): the pressed and hover state for accent *text*. Note the direction reverses between themes — light goes darker, dark goes lighter, because contrast against the plate is what has to increase, not brightness.
+- **Signal Blue Fill** (`primary-fill`, #1e5fe0 dark / #0052ff light): the accent as a *filled plate under white text* — the active news tab and the primary button. It exists because one token cannot serve both jobs: `primary` had to get lighter in dark mode to stay readable *on* a plate, which simultaneously made it too light to sit *under* white text.
+- **Signal Blue Fill Pressed** (`primary-fill-hover`, #1a52c4 dark / #0043d6 light): the hover for a filled accent plate, and the one accent token that goes **darker in both themes**. This is the counter-intuitive one and it exists because getting it wrong is invisible until measured: the white-text buttons previously reached for `primary-active`, which in dark is lighter, and their hover state measured **2.15:1** — the worst contrast in the product, on a control nobody thinks to check.
 
 ### Secondary
 
-- **Session Green** (`semantic-up`, #24c98a dark / #00875a light) and **Session Red** (`semantic-down`, #ff5f6d dark / #cf202f light): gains and losses in the session being reported. They colour change values, sparkline and intraday chart strokes, the market-open dot, and error text in the watchlist menus. They describe a completed day, not a live tape.
+- **Session Green** (`semantic-up`, #24c98a dark / #007a51 light) and **Session Red** (`semantic-down`, #ff6672 dark / #c81d2c light): gains and losses in the session being reported. They colour change values, sparkline and intraday strokes and fills, the breadth bar in the session digest, the market-open dot, and error text in the watchlist menus. They describe a completed day, not a live tape.
 
-  Deliberately *not* applied to volume. The Trading Activity stat card stays neutral, because heavy volume is neither good news nor bad and colouring it would assert a judgement the product is not allowed to make.
+  Deliberately *not* applied to volume. The Trading Activity cell and the relative-volume figure in Top Movers stay neutral, because heavy volume is neither good news nor bad and colouring it would assert a judgement the product is not allowed to make.
+
+### Tertiary
+
+Three **tinted plates** — `tint-primary` (#212c45 dark / #e3ecff light), `tint-up` (#173432 / #e3f0ec), `tint-down` (#3a242e / #f9e6e8) — carrying the Significant badge, the active nav item, the leading Top Movers rank, and every change pill. They are the accent and the session pair as a *field* rather than as a line, and they are the only way colour occupies area in this system. A fourth baked token, **Accent Edge** (`accent-edge`, #324674 dark / #aac6ff light), is the 1px inset ring those three accent plates carry.
+
+They are baked flat rather than written as `bg-primary/12`, and that is load-bearing rather than tidy. See The Baked Tint Rule.
 
 ### Neutral
 
+The neutral ramp climbs. `backdrop` is the floor, panels sit above it, hover sits above the panel, and chips above that — in **both** themes.
+
 - **Ink** (`ink`, #f2f4f7 dark / #0a0b0d light): headings, ticker symbols, primary values, and anything the eye should land on first.
-- **Body** (`body`, #a3abb8 dark / #5b616e light): running prose, summaries, secondary figures, inactive navigation.
-- **Muted** (`muted`, #79818e dark / #656b74 light): table headers, stat card labels, timestamps, axis labels, chart provenance notes. The quietest readable tier — and the floor is set by AA, not by taste: the light value was #7c828a until it measured 3.88:1 on canvas.
+- **Body** (`body`, #a7afbd dark / #565d6a light): running prose, summaries, secondary figures, inactive navigation and tabs.
+- **Muted** (`muted`, #848c9a dark / #616873 light): table headers, cell labels, timestamps, axis labels, provenance notes, and the scrollbar thumb (hovering to Body). The quietest readable tier — and the floor is set by AA, not by taste. Both values moved once a hovered row put muted text on `surface-soft` rather than on `canvas`.
 - **Chart Bar** (`chart-bar`, #5b6577 dark / #8a92a0 light): the intraday volume bars, and nothing else. Separate from `surface-strong` because these bars *are* data and so answer to the 3:1 floor for graphical objects, where a decorative surface does not.
-- **Canvas** (`canvas`, #0d0f12 dark / #ffffff light): the sidebar and every card, panel, list and table surface.
-- **Surface Soft** (`surface-soft`, #15181d dark / #f7f7f7 light): the `<main>` field that cards sit on, plus hover states on menu rows.
-- **Surface Strong** (`surface-strong`, #21262e dark / #eef0f3 light): filled but unaccented chips, the Normal badge, pill buttons, ticker tags, the active nav plate, and the intraday chart's volume bars.
-- **Hairline** (`hairline`, #2a2f37 dark / #dee1e6 light): every 1px border, table rule, grid line, and timeline rail in the product. It is the system's primary means of separation.
+- **Backdrop** (`backdrop`, #0a0c11 dark / #eef1f6 light): the `<body>` and `<main>` field every panel sits on. Nothing else uses it.
+- **Canvas** (`canvas`, #141821 dark / #ffffff light): the sidebar and every panel, table, list and chart surface.
+- **Surface Soft** (`surface-soft`, #1b2029 dark / #f6f8fb light): row hover inside a panel, and the watchlist table's header band.
+- **Surface Strong** (`surface-strong`, #262d39 dark / #e7ebf2 light): filled but unaccented chips — the Normal badge, pill buttons, ticker tags, unranked Top Movers positions. It no longer carries the scrollbar thumb: at 1.20:1 light / 1.28:1 dark against canvas the thumb was a UI component below the 3:1 floor, and the only affordance telling an iPad visitor the watchlist table scrolls sideways.
+- **Hairline** (`hairline`, #2e3543 dark / #dce1ea light): every 1px border, table rule, grid line, timeline rail, and section rule in the product.
 
 ### Named Rules
 
 **The Two-Theme Rule.** Every colour token is defined in both `:root` and `:root[data-theme="dark"]`. A token whose only definition sits inside one block is a bug, not a shortcut — it silently vanishes in the other theme.
 
+**The Climbing Ramp Rule.** A surface that sits *on* another surface is the lighter of the two, in both themes. Dark previously inverted this — the field was #15181d and the panels on it were #0d0f12 — so every card read as a hole and no shadow could rescue it, which is the whole reason the system stayed flat. If a new surface is darker than what it sits on, the depth will not read no matter what shadow is applied.
+
 **The Always-Light Plate Rule.** `logo-plate` (#e9ebef dark / #eef0f3 light) is the one token that does not invert, and this is load-bearing rather than an oversight. Brand marks arrive with hardcoded fills — Apple #000000, Palantir #101113, Amazon #221f1f — that disappear on a dark surface and cannot be recoloured. Real marks sit on this plate; the lettermark fallback and category glyphs use `surface-strong` so their text stays theme-aware.
 
-**The Reserved Accent Rule.** Signal Blue is the only accent, and it carries exactly two meanings: *this is active* and *this is significant*. It is never used to make a surface look more interesting.
+**The Reserved Accent Rule.** Signal Blue is the only accent, and it carries exactly two meanings: *this is active* and *this is significant*. It is never used to make a surface look more interesting. A decorative dot, tick, or rule in the accent colour is a violation even when it looks good.
 
-**The Measured Floor Rule.** A colour pair ships only once its ratio has been computed, in **both** themes: 4.5:1 for text, 3:1 for a graphical object that carries data. Several tokens here are the value they are because the prettier value failed — `muted` and `semantic-up` in light, `primary` in dark, and `chart-bar` at all. Eyeballing a dark theme is what let five pairs ship under AA.
+**The Baked Tint Rule.** A tinted plate is a flat token, never an alpha (`bg-primary/12`). An alpha composites against whatever happens to be behind it, so the Significant badge measured 4.76:1 at rest and **4.49:1 on a hovered row** — a component whose contrast depended on where the pointer was. The three tints are pre-composited at 16% over canvas in dark and 11% in light, and are therefore fixed wherever they land. `accent-edge` is baked the same way, at 25% over tint-primary, for the same reason — it was the last `ring-primary/25` alpha left in the system.
+
+**The Measured Floor Rule.** A colour pair ships only once its ratio has been computed, in **both** themes: 4.5:1 for text, 3:1 for a graphical object that carries data. Many tokens here are the value they are because the prettier value failed — `muted`, `body` and `semantic-up` in light, `primary` in dark, `chart-bar` at all, and every one of the three tints. Eyeballing a dark theme is what let five pairs ship under AA the first time.
 
 ## Typography
 
 **Display / Body Font:** Inter (with `ui-sans-serif, system-ui, sans-serif`)
 **Numeric Font:** JetBrains Mono (with `ui-monospace, monospace`)
 
-**Character:** A deliberately plain pairing. Inter carries every word in the product with no stylistic opinion, tightened slightly at display sizes; JetBrains Mono carries every number with tabular figures so that a column of prices, percentages and volumes forms a readable grid rather than a ragged list. The split between the two faces is the clearest signal the system sends about what kind of product this is: prose is prose, and figures are data.
+**Character:** A deliberately plain pairing. Inter carries every word in the product with no stylistic opinion, tightened hard at display sizes; JetBrains Mono carries every number with tabular figures so that a column of prices, percentages and volumes forms a readable grid rather than a ragged list. The split between the two faces is the clearest signal the system sends about what kind of product this is: prose is prose, and figures are data.
 
 ### Hierarchy
 
-- **Display** (600, 1.5rem/24px, tracking −0.025em): the one `h1` per page — "What happened to your stocks today", "News". Appears once, at the top, above a single line of Body.
-- **Headline** (600, 1.875rem/30px, tracking −0.025em): reserved for the ticker symbol on Today's Activity, which is simultaneously the page title and the button that opens the stock switcher. It is the largest type in the product, and it is a control.
-- **Title** (600, 1.125rem/18px): every section heading — Market Overview, My Watchlist, Top Movers Today, AI Daily Summary, Price & Volume, Today's Timeline, Upcoming Events.
-- **Body** (400, 0.875rem/14px, line-height 1.625 in prose): article summaries, the AI narrative, stat card detail lines, company names. The relaxed leading applies wherever a passage runs more than one line.
-- **Label** (600, 0.75rem/12px): table column headers, stat card labels, badge text, ticker chips, menu group headers. Uppercase is *not* used — labels are set in sentence case and rely on weight and colour for their tier.
-- **Numeric** (JetBrains Mono, 500, tabular figures): every price, change, percentage, volume, relative volume, rank, timestamp and axis label. Sizes range from Micro on chart axes to 1.5rem/24px on the Today's Activity price.
-- **Micro** (600, 0.6875rem/11px): the smallest step in the system, and the only one below Label. It carries ticker chips, the index-card proxy notes, the lettermark fallback, and — set in JetBrains Mono rather than Inter — the intraday chart's axis labels. It existed in the implementation from the start but was missing from the ramp above, so every use of it read as a deviation.
+- **Display** (600, `clamp(2.25rem, 4vw, 3.25rem)`, tracking −0.03em): the one `h1` per page — "What happened to your stocks today", "News" — and the price on Today's Activity, which is set in mono at the same step. Appears once, at the top.
+- **Figure** (JetBrains Mono, 500, `clamp(1.75rem, 2.4vw, 2.375rem)`, tracking −0.02em): the Market Overview index levels. The size a number should be in a product whose content is numbers.
+- **Headline** (600, 1.875rem/30px, tracking −0.025em): reserved for the ticker symbol on Today's Activity, which is simultaneously the page title and the button that opens the stock switcher. It is a control.
+- **Title** (600, 1.25rem/20px, tracking −0.025em): every section heading — Market Overview, My Watchlist, Top Movers Today, AI Daily Summary, Price & Volume, Today's Timeline, Upcoming Events.
+- **Lede** (400, 1.25rem/20px, line-height 1.55): the AI daily narrative, and nothing else. It is the single thing the whole pipeline exists to produce and it is the only prose in the product set above body size.
+- **Body** (400, 0.875rem/14px, line-height 1.625 in prose): article summaries, summary bullets, cell detail lines, company names.
+- **Label** (600, 0.75rem/12px): table column headers, badge text, menu group headers. Uppercase is *not* used — labels are set in sentence case and rely on weight and colour for their tier.
+- **Numeric** (JetBrains Mono, 500, tabular figures): every price, change, percentage, volume, relative volume, rank, timestamp and axis label. Sizes run from Micro on chart axes to Display on the Today's Activity price. The watchlist Price column is set one step above its neighbours (1rem) because it is what the row is about.
+- **Micro** (600, 0.6875rem/11px): cell labels, ticker chips, the index-card proxy notes, the lettermark fallback, and — set in JetBrains Mono rather than Inter — the intraday chart's axis labels.
 
 ### Named Rules
 
@@ -216,15 +285,19 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 
 **The Signed Value Rule.** Change values always carry an explicit `+` or `−` (U+2212, not a hyphen) and are formatted from the absolute value. Direction is therefore legible without colour, which is what keeps the change columns usable for a colour-blind reader.
 
+**The Measure-On-The-Text Rule.** A `ch` cap belongs on the element whose font size it is meant to describe, never on a wrapper. `ch` resolves against the element's *own* font size, so `max-w-[16ch]` on a 16px wrapper containing a 52px heading yields about 270px and shatters the heading into one-word lines. This shipped once. If a wrapper needs a width, give it px or rem.
+
 ## Layout
 
-**Shell.** A fixed 240px sidebar (`w-60 shrink-0`) in Canvas with a hairline right border, and a flexible `<main>` in Surface Soft. `min-w-0` on `<main>` is load-bearing: a flex item defaults to `min-width: auto`, so without it the 880px watchlist table pushes the entire page sideways instead of scrolling inside its own wrapper. The sidebar holds the wordmark, the theme toggle, and three nav items; there is no secondary tab bar anywhere in the product.
+**Shell.** A fixed 240px sidebar (`w-60 shrink-0`) in Canvas with a hairline right border and an `elev-2` cast to the right, and a flexible `<main>` in Backdrop. `min-w-0` on `<main>` is load-bearing: a flex item defaults to `min-width: auto`, so without it the 880px watchlist table pushes the entire page sideways instead of scrolling inside its own wrapper. The sidebar holds the wordmark, the theme toggle, and three nav items; there is no secondary tab bar anywhere in the product.
 
 **Content column.** Every page uses the same container: `max-w-[1200px]`, centred, with 24px horizontal padding rising to 40px at `lg`, and 32px vertical padding. Nothing is full-bleed.
 
-**Section rhythm.** Home and Today's Activity separate major sections by 40px; News uses 24px because its tab row and list read as one unit. Within a section, the heading sits 16px above its content. Cards carry 20px of internal padding, rising to 24px on the AI summary card, which is the only panel that holds a passage of prose.
+**Page headers.** Home and News open with a two-part header: the display heading and its one supporting line on the left, and a right-hand element that answers the heading — the session digest on Home, the article count on News. Below `lg` these stack and the right-hand element goes full width.
 
-**Grids.** Card rows — the five Market Overview cards and the five Today's Activity stat cards — run `1 → 2 (sm) → 3 (lg) → 5 (xl)`. Paired panels at the foot of Home and Today's Activity run `1 → 2 (lg)`. Breakpoints are Tailwind's `sm` 640px, `lg` 1024px, `xl` 1280px.
+**Section rhythm.** Home and Today's Activity separate major sections by 40px; News uses 24px because its tab row and list read as one unit. Within a section, the heading sits 16px above its content. Panels carry 20px of internal padding, rising to 24–32px on the AI summary card.
+
+**Grids.** Card rows — the five Market Overview cells and the five Today's Activity stat cells — run `1 → 2 (sm) → 3 (lg) → 5 (xl)`. Paired panels at the foot of Home and Today's Activity run `1 → 2 (lg)`. The AI summary splits `1 → [58ch | 1fr] (lg)`. Breakpoints are Tailwind's `sm` 640px, `lg` 1024px, `xl` 1280px.
 
 **Density.** Table rows are 20px × 16px per cell; list rows are 20px all round. This is a dense product by intent, and the padding is what keeps density from becoming pressure.
 
@@ -234,20 +307,39 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 
 **The Scrolling Island Rule.** Anything with a hard minimum width — the 880px watchlist table, the 560px intraday chart — lives inside its own `overflow-x-auto` container and scrolls internally. The page body never scrolls horizontally. A wrapper alone does not achieve this; the flex ancestor must also carry `min-w-0`, or the wrapper is dead code and the page widens anyway.
 
+**A scrolling island must say that it scrolls.** The mechanism was correct and silent: at iPad portrait the content column is 480px against an 880px table, so five of eight columns sat off screen behind a scrollbar measuring 1.20:1 that iPadOS hides entirely until a scroll is already under way. Each island now carries a Muted line naming what is off to the right, and the line is gated to the width where scrolling is genuinely happening — computed, not guessed: content is `min(1200, viewport − 240) − padding`, which puts the table's threshold at 1200px of viewport and the chart's at 888px. Two different numbers, so two different breakpoints, rather than one approximation covering both. The line belongs *outside* the scrolling container: a block child of an `overflow-x-auto` element is laid out in the scrollable coordinate space and slides out of view exactly when it becomes relevant.
+
 **The One Container Rule.** Every page opens with the same `max-w-[1200px]` column and the same padding. A page that sets its own width is drifting.
+
+**The Filled Right Rule.** A full-width container whose content is capped at a reading measure has a second column's worth of empty space in it, and the emptiness reads as unfinished rather than as restraint. Three surfaces were rebuilt for this: the Home header gained the session digest, the AI summary card runs narrative and bullets side by side, and every news row moved its timestamp and tickers into a right-hand column. If a measure cap leaves a third of a panel blank, the panel wants a second column, not a wider measure.
 
 ## Elevation & Depth
 
-The system is almost entirely flat, and depth is carried by **tonal layering plus 1px hairlines**. The shell inverts the usual arrangement: the sidebar and every card are Canvas, while the `<main>` field behind them is the darker Surface Soft — so content reads as floating back up out of a recessed field rather than being lifted off a page. Separation within a surface is always a hairline, never a shadow and never a heavier rule.
+Depth is **real, systematic, and carried by four things at once**: the neutral ramp (a panel is lighter than its field), a face gradient, a lit top edge, and a cast shadow. No component composes these itself — they live in the `panel` utility and its two siblings, and that is the only place they are assembled.
 
-Shadow currently appears in exactly two places, both of them overlays: the watchlist picker dropdown and the symbol switcher menu. Both are things that float above the page and need to detach from it.
+The reason all four are needed is the dark theme. A cast shadow on a #0a0c11 field has almost nothing to darken, so in dark the **lit top edge does at least half the work** of separating a panel from the page, and the face gradient supplies the rest. In light the shadow reads directly and the gradient is nearly nothing. This is why the two themes carry visibly different shadow alphas — 5–18% in light, 45–70% in dark — rather than one scale reused.
 
-**This is recorded descriptively, not as an invariant.** The current flatness is the state of the implementation and a coherent one, but a future pass may introduce a real elevation scale. What should not happen is a shadow appearing on a single component in isolation — if rest-state depth is wanted, the scale gets designed first and applied consistently.
+Three steps, and there is no fourth:
+
+- **Resting** (`elev-1`) — every panel, table, list, chart frame, and empty state.
+- **Raised** (`elev-2`) — the sidebar rail, and **the one element per page that outranks its neighbours**, which in practice is only the AI Daily Summary card.
+- **Overlay** (`elev-3`) — the watchlist picker and the symbol switcher, which float over the page and must detach from it completely.
 
 ### Shadow Vocabulary
 
-- **Menu Soft** (`box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04)`): the watchlist picker dropdown. Barely there — the hairline border is doing most of the separation.
-- **Menu Lifted** (`box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`): the symbol switcher menu, which opens over denser content and needs more detachment.
+- **Elevation 1** (light `0 1px 2px rgb(15 23 42 / 0.05), 0 4px 12px -2px rgb(15 23 42 / 0.07)` · dark `0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5)`): resting panels.
+- **Elevation 2** (light `0 2px 4px rgb(15 23 42 / 0.05), 0 14px 30px -8px rgb(15 23 42 / 0.11)` · dark `0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6)`): the page's one raised element, and the sidebar.
+- **Elevation 3** (light `0 4px 8px rgb(15 23 42 / 0.06), 0 26px 50px -12px rgb(15 23 42 / 0.18)` · dark `0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7)`): floating menus.
+- **Lit Edge** (`--edge-lit`, light `inset 0 1px 0 rgb(255 255 255 / 0.9)` · dark `inset 0 1px 0 rgb(255 255 255 / 0.07)`): composed into all three, always first in the `box-shadow` list.
+- **Surface Face** (`--surface-face`): a vertical gradient across the panel's top — in dark, canvas mixed 12% toward white, resolving to flat canvas by 140px; in light, white resolving toward a 4% mix of backdrop.
+
+### Named Rules
+
+**The One Material Rule.** Panels are built by applying `panel`, `panel-raised`, or `panel-overlay` — never by hand-assembling `bg-canvas border border-hairline rounded-3xl shadow-…`. The material was previously reassembled in sixteen components, which is why nothing could be changed system-wide. A component that inlines the recipe is drift even when the result looks identical.
+
+**The One Raised Element Rule.** At most one thing per page sits at `elev-2` (the sidebar excepted, since it is shell rather than content). The scale exists to say *this outranks its neighbours*; two raised elements on one page say nothing.
+
+**The Two-Channel Depth Rule.** Never add a cast shadow without checking the tonal relationship underneath it. If the surface is not lighter than its field, the shadow is decoration and the depth will not read.
 
 ## Shapes
 
@@ -255,14 +347,14 @@ The form language is **rounded rectangles and pills, with no other geometry**. T
 
 Radius maps directly to what a thing *is*:
 
-- **Full pill** (9999px) — anything that is a token of state or identity: Significant/Normal badges, ticker chips, pill buttons, news tabs, logo plates, status dots, timeline dots, the market-open indicator.
-- **24px** — every container: cards, panels, tables, lists, the AI summary, the chart frame, empty-state blocks.
+- **Full pill** (9999px) — anything that is a token of state or identity: Significant/Normal badges, change pills, ticker chips, pill buttons, news tabs and their track, logo plates, rank plates, status dots, timeline dots, the scrollbar thumb (Muted, hovering to Body).
+- **24px** — every container: panels, tables, lists, the AI summary, the chart frame, empty-state blocks.
 - **16px** — floating menu surfaces.
 - **12px** — interactive rows and inline message blocks inside menus, and the symbol switcher's own trigger.
 - **8px** — the smallest interactive affordances: sidebar nav items and the theme toggle.
 - **2px** — intraday volume bars, the only radius that exists for optical reasons rather than semantic ones.
 
-Borders are always exactly 1px in Hairline. Icons are stroked at 1.5–1.75px with round caps and joins, drawn inline as SVG at 18–20px; there is no icon library and the entire set is a sun, a moon, and a chevron.
+Borders are always exactly 1px in Hairline. Icons are stroked at 1.5–1.75px with round caps and joins, drawn inline as SVG at 18–20px; there is no icon library and the entire set is a sun, a moon, a chevron, and the three-bar wordmark glyph.
 
 ### Named Rules
 
@@ -274,25 +366,27 @@ Borders are always exactly 1px in Hairline. Icons are stroked at 1.5–1.75px wi
 
 - **Shape:** full pill (9999px) for standalone actions; 8px for navigation rows.
 - **Pill button:** Surface Strong plate, Ink text, 600 weight, 8px × 16px padding — the "Edit watchlist (7/10)" trigger. It states its own count, so the cap is legible before the menu opens.
-- **Hover / Focus:** `transition-colors` only. Pill buttons move Surface Strong → Hairline; menu rows move transparent → Surface Soft with Body → Ink text. Nothing moves, scales, or lifts.
+- **Filled button:** Signal Blue Fill under white text, with `elev-1`. Hover moves to Signal Blue Fill Pressed — **darker**, in both themes.
+- **Hover / Focus:** `transition-colors` only. Pill buttons move Surface Strong → Hairline; menu rows move transparent → Surface Soft with Body → Ink text. Nothing scales or lifts.
 - **Icon button:** 32px square, 8px radius, Body icon at 18px, Surface Soft plate on hover — the theme toggle.
-- **Disabled:** `opacity-50` on menu rows, `opacity-30` with `cursor-not-allowed` on the `+`/`−` controls, which is how the watchlist floor (1) and cap (10) are communicated before a request is made.
+- **Disabled:** `opacity-50` with `cursor-not-allowed`, on menu rows and on the `+`/`−` controls alike. This was `opacity-30` on the controls, which resolved to 1.51:1 light / 1.58:1 dark — invisible, on the state that was supposed to be communicating the watchlist floor (1) and cap (10). At 50% it measures 2.08:1 / 2.26:1: recessive, as a disabled control should be, but distinguishable from the 5.24:1 enabled glyph beside it. **A dimmed control is never the whole message.** It cannot state a reason, and `disabled` also drops a button out of the tab order, so both menus name the bound in words in their group headers.
 
 ### Chips
 
-- **Badge (Significant):** Signal Blue at 10% alpha with Signal Blue text — a tinted plate, never a solid fill.
-- **Badge (Normal):** Surface Strong with Body text. The contrast between the two states is deliberate: Significant is coloured, Normal is grey, and both are the same size and shape so a column of them scans.
+- **Badge (Significant):** Tint Primary plate, Signal Blue text, a 1px inset Accent Edge ring, and a 6px accent dot before the label.
+- **Badge (Normal):** Surface Strong plate, Body text, a Muted dot. Both badges are the same size and shape so a column of them scans, and they differ in fill, in dot colour, and in the word itself — the last of which is the one that does not depend on sight at all. The ring was previously counted as a channel here; it measures 1.45:1 light / 1.50:1 dark against its own plate, so it is an edge rather than a signal and nothing should be built on it being read.
+- **Change pill:** Tint Up / Tint Down plate carrying the signed change in mono. This is the only place a directional figure is set on a field rather than as loose coloured text: the Market Overview cells and the Today's Activity header price.
 - **Ticker chip:** Surface Strong, Body text, 11px/600, 2px × 10px padding. Up to four per article.
-- **News tab:** full pill, 8px × 16px. Active is a solid Signal Blue fill with white text — the only place in the product where the accent is a fill rather than a tint or a text colour.
+- **News tab:** full pill, 8px × 16px, inside a Canvas track with 4px padding and `elev-1`. Active is a solid Signal Blue Fill with white text; inactive is Body text on nothing, hovering to Surface Soft.
 
 ### Cards / Containers
 
-- **Corner Style:** 24px.
-- **Background:** Canvas, against the Surface Soft page field.
+- **Built by:** `panel` / `panel-raised` / `panel-overlay`. See The One Material Rule.
+- **Corner Style:** 24px (16px for overlays).
 - **Border:** 1px Hairline on all sides.
-- **Shadow Strategy:** none at rest. See Elevation & Depth.
-- **Internal Padding:** 20px standard; 24px on the AI summary card; 20px × 16px per table cell.
+- **Internal Padding:** 20px standard; 24–32px on the AI summary card; 20px × 16px per table cell.
 - **Internal rules:** rows inside a container are separated by a bottom hairline with `last:border-0`, so the container's own border is never doubled.
+- **Row hover:** Surface Soft, `transition-colors`, **only where the row is actually interactive**. Market Overview's cells have no hover because nothing in them responds to a click.
 
 ### Inputs / Fields
 
@@ -300,46 +394,60 @@ The product has no text inputs, no forms, and no search. Every interaction is a 
 
 ### Navigation
 
-- **Sidebar:** three items, 8px radius, 14px/500. Inactive is Body text on transparent, hovering to Surface Soft with Ink text. Active is a Surface Strong plate with Signal Blue text — plate *and* colour, so the active item is unambiguous.
-- **Wordmark:** "US TechMarket" at 18px/600, tracking-tight, paired with the theme toggle on the same row.
-- **Empty states:** every list and panel has one, written as a plain sentence in Muted inside the same 24px bordered container as the populated state. They explain *why* the data is absent — "The timeline is built after the close, from the session's stored snapshots" — rather than just reporting emptiness.
+- **Sidebar:** three items, 8px radius, 14px/500. Inactive is Body text on transparent, hovering to Surface Soft with Ink text. Active is a Tint Primary plate with Signal Blue text and a 1px inset accent ring — plate, ring *and* colour.
+- **Wordmark:** "US TechMarket" at 18px/600, tracking-tight, preceded by a three-bar glyph in stepped accent opacities (40 / 70 / 100%). It is the product's only mark of its own, on a page otherwise full of other companies' logos.
+- **Section headings:** a Title-scale heading, a hairline rule running from it to the right, and an optional Muted meta at the end of the rule. Built once in `section-heading.tsx`; eight sections previously carried three different ad-hoc versions of this.
+- **Empty states:** every list and panel has one, written as a plain sentence in Muted inside the same panel as the populated state. They explain *why* the data is absent — "The timeline is built after the close, from the session's stored snapshots" — rather than just reporting emptiness.
 
 ### Signature Components
 
-**The Logo Plate.** An 80×32 pill in the always-light `logo-plate` colour, holding a brand mark capped at 16px tall and `max-w-full`. Fixed dimensions mean every row in every table and list aligns identically regardless of mark shape. The width cap has a consequence worth knowing: because a mark keeps its aspect ratio, capping a wide wordmark's *width* sets its drawn *height* — square symbols draw the full 16px, while wide lockups come out smaller (ServiceNow, the widest at 6.9:1, draws about 10.5px). Padding is 4px rather than 8px specifically to buy those marks about a pixel of height. Marks are hotlinked from a CDN and can never be vendored; the plate carries `aria-hidden` and the mark an empty `alt`, because the symbol is always stated in adjacent text.
+**The Logo Plate.** An 80×32 pill in the always-light `logo-plate` colour, holding a brand mark capped at 16px tall and `max-w-full`. Fixed dimensions mean every row in every table and list aligns identically regardless of mark shape. The width cap has a consequence worth knowing: because a mark keeps its aspect ratio, capping a wide wordmark's *width* sets its drawn *height* — square symbols draw the full 16px, while wide lockups come out smaller (ServiceNow, the widest at 6.9:1, draws about 10.5px). Padding is 4px rather than 8px specifically to buy those marks about a pixel of height. Marks are hotlinked from a CDN and can never be vendored; the plate carries `aria-hidden` and the mark an empty `alt`, because the symbol is always stated in adjacent text. **Known failure mode:** an unreachable CDN renders every plate blank and silently, because `alt=""` suppresses even the broken-image glyph. There is no in-app fallback, and adding one would require a client component.
 
-**The Sparkline.** A 96×28 (140px on Market Overview cards) polyline drawn directly from stored intraday snapshots — no chart library, no axes, no fill, no dots. 1.5px stroke in Session Green or Session Red. Fewer than two points renders an em dash rather than an empty box. It carries `role="img"` with an "Trending up/down today" label.
+**The Sparkline.** A 96×28 (140×36 on Market Overview) polyline drawn directly from stored intraday snapshots — no chart library, no axes, no dots except one. 1.5px stroke in Session Green or Session Red, over a gradient area fill closed to the baseline, with a 2px dot marking the session's close. Fewer than two points renders an em dash rather than an empty box. It carries `role="img"` with a label stating direction, open, close, session low and high.
 
-**The Intraday Chart.** Price and volume as two stacked panels sharing a time axis and *nothing else*. They never share a y-axis, and this is a rule rather than a layout preference: a dual-axis chart lets the crossing point of two unrelated scales imply a relationship that is not in the data. Price is a 2px stroke over three hairline gridlines with values in a 64px right gutter; volume is Surface Strong bars on their own baseline and their own scale. The hover readout is a native SVG `<title>` on a transparent hit column — a tooltip with no JavaScript at all.
+**The Session Digest.** The right half of the Home header, and the page's one-glance answer to its own heading: market state and session date, a breadth bar splitting the tracked universe into advancing and declining with both counts written out, then a two-row ledger — how many crossed the significance rule, and which stock moved furthest. Every figure is a count or a max over tickers the page already fetched; it adds no query.
 
-**The Timeline.** A 2px dot and a 1px Hairline rail drawn per row so the rail terminates cleanly at the final entry. Dot colour encodes kind: Muted for market open and close, Signal Blue for price milestones and volume spikes, Session Green for news. Time is mono, label is Ink/600, detail is Body.
+**The Intraday Chart.** Price and volume as two stacked panels sharing a time axis and *nothing else*. They never share a y-axis, and this is a rule rather than a layout preference: a dual-axis chart lets the crossing point of two unrelated scales imply a relationship that is not in the data. Price is a 2px stroke over three hairline gridlines with values in a 64px right gutter, carrying the same gradient fill as the sparklines and a ringed dot at the last reading; volume is Chart Bar columns on their own baseline and their own scale. The hover readout is a native SVG `<title>` on a transparent hit column — a tooltip with no JavaScript at all.
 
-**The AI Summary Card.** The densest panel in the product and the only one with 24px padding. A generation timestamp sits opposite the heading; the narrative runs as relaxed Body prose; bullets sit below a hairline with 6px Signal Blue dots. It closes with a Muted provenance line that names its inputs and states the product's boundary in plain language — "It describes what happened — not why, and not what happens next. Not investment advice." That line is part of the component, not decoration.
+**The Timeline.** A 2px dot ringed 4px in Canvas, on a 1px Hairline rail drawn per row so the rail terminates cleanly at the final entry. Dot colour encodes kind: Muted for market open and close, Signal Blue for price milestones and volume spikes, Ink for news. Time is mono, label is Ink/600, detail is Body.
+
+**The AI Summary Card.** The densest panel in the product and the only one at `elev-2`. A generation timestamp sits opposite the heading; a single low-alpha radial wash of the accent bleeds in from the top-left corner at `-z-10` — the one authored surface in the system, and it appears exactly here. From `lg` the body runs two columns: the narrative at Lede scale on a 58ch measure, and the bullets beside it behind a left hairline, each with a 6px Signal Blue dot. It closes with a full-width rule and a Muted provenance line that names its inputs and states the product's boundary in plain language — "It describes what happened — not why, and not what happens next. Not investment advice." That line is part of the component, not decoration.
 
 ## Do's and Don'ts
 
 ### Do:
 
+- **Do** build every container with `panel`, `panel-raised`, or `panel-overlay`, and add the elevation, face and lit edge nowhere else.
 - **Do** define every new colour token in **both** `:root` and `:root[data-theme="dark"]`, then expose it once in `@theme inline`.
+- **Do** bake a tinted plate as a flat token rather than writing it as an alpha, so its contrast does not change with whatever sits behind it.
+- **Do** check that a surface is *lighter* than the field it sits on before adding a shadow to it.
 - **Do** render every number in JetBrains Mono with `tabular-nums`, and format changes with an explicit `+`/`−` so direction survives without colour.
-- **Do** wrap anything with a hard minimum width in `overflow-x-auto`, and check that its flex ancestors carry `min-w-0` — the wrapper alone does nothing.
+- **Do** put a `ch` measure on the element whose font size it describes, never on a wrapper.
+- **Do** give a right-hand column to any full-width panel whose content is capped at a reading measure.
+- **Do** wrap anything with a hard minimum width in `overflow-x-auto`, and check that its flex ancestors carry `min-w-0` — the wrapper alone does nothing. Then tell the visitor it scrolls, at the widths where it does.
+- **Do** state a bound in words wherever a control is disabled to enforce it. A dimmed control shows that something is unavailable and can never say why, and `disabled` removes it from the tab order as well.
+- **Do** give a headline a heading element when it is the content. Every article row on News is an `h2`; the page previously carried one heading for sixty articles.
 - **Do** give every chart and sparkline `role="img"` and an `aria-label` that states what it shows, including its range where a range exists.
-- **Do** let the global `:focus-visible` rule in `globals.css` supply the focus ring, and never remove an outline without authoring a replacement. It is a 2px Signal Blue ring at 2px offset, which clears 3:1 against canvas in both themes.
-- **Do** mark the current item with `aria-current="page"` wherever an active state is drawn — the sidebar and the news tabs both looked active and announced nothing.
-- **Do** give a status or error message `role="status"` so it is announced. A cap or floor message that only appears visually does not exist for a screen reader.
-- **Do** build new panels from the standing pattern: Canvas surface, 1px Hairline border, 24px radius, 20px padding, rows separated by hairlines with `last:border-0`.
-- **Do** write an empty state for every list and panel, in Muted, inside the same container as the populated state, explaining why the data is not there yet.
-- **Do** keep new work on the server. Sparklines, the intraday chart, thumbnails, and every list are server-rendered; the only client components in the product are the ones that genuinely need browser state (sidebar active link, theme toggle, and the two watchlist menus).
+- **Do** let the global `:focus-visible` rule in `globals.css` supply the focus ring, and never remove an outline without authoring a replacement.
+- **Do** mark the current item with `aria-current="page"` wherever an active state is drawn, and give a status or error message `role="status"`.
+- **Do** theme the browser's own surfaces from the palette — selection, scrollbar, focus ring, underline offset — when adding anything new that exposes one.
+- **Do** write an empty state for every list and panel, in Muted, inside the same panel as the populated state, explaining why the data is not there yet.
+- **Do** keep new work on the server. The only client components in the product are the ones that genuinely need browser state (sidebar active link, theme toggle, and the two watchlist menus).
 - **Do** attach a plain-language provenance line to any surface that displays model-written text.
 
 ### Don't:
 
 - **Don't** give a colour its only definition inside one theme block — it will be missing in the other.
-- **Don't** place a real brand mark on a theme-aware surface. Marks go on `logo-plate`, which stays light in both themes; only lettermarks and glyphs may sit on `surface-strong`.
-- **Don't** apply Session Green or Session Red to volume, counts, or anything that is not a directional price change. Neutral values stay Ink.
+- **Don't** reassemble the panel recipe inline. If it needs a variant, add one to the utility.
+- **Don't** raise a second element to `elev-2` on a page that already has one.
+- **Don't** reach for `primary-active` on a plate that carries white text. That is `primary-fill-hover`, and the distinction is worth 4.7:1.
+- **Don't** place a real brand mark on a theme-aware surface. Marks go on `logo-plate`, which stays light in both themes.
+- **Don't** apply Session Green or Session Red to volume, counts, or anything that is not a directional price change. Neutral values stay Ink or Muted.
+- **Don't** use the accent as decoration — a tick beside a heading, a rule under a section, a dot for rhythm. It means *active* or *significant* and nothing else.
+- **Don't** give a hover state to something that is not interactive.
 - **Don't** put two unrelated scales on one pair of axes. Stack them as separate panels sharing only time.
 - **Don't** use article photography, publisher images, or stock imagery as a thumbnail. Thumbnails are marks: company logo for a per-symbol article, the data provider's mark for market news.
-- **Don't** add a shadow to a rest-state component in isolation. Depth is currently tonal; if that changes, the elevation scale gets designed first and applied across the system.
 - **Don't** convey gain or loss by colour alone — pair it with the sign, an arrow, or a label.
-- **Don't** introduce a client component, an icon package, or a chart library for a purely visual gain. Every one of those was deliberately avoided, and the current set of icons is three hand-drawn SVGs.
+- **Don't** introduce a client component, an icon package, or a chart library for a purely visual gain.
 - **Don't** set a label in uppercase or add letter-spacing to small text. Tier is communicated by weight and colour in this system, not by case.
+- **Don't** let a reason internal to the build ("free tier rejects index symbols") reach user-facing copy. State the fact the visitor needs, not why we had to.

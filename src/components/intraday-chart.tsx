@@ -35,7 +35,7 @@ export function IntradayChart({
 }) {
   if (points.length < 2) {
     return (
-      <p className="rounded-3xl border border-hairline bg-canvas px-5 py-10 text-sm text-muted">
+      <p className="panel px-5 py-10 text-sm text-muted">
         No intraday snapshots stored for this session yet.
       </p>
     );
@@ -70,12 +70,29 @@ export function IntradayChart({
   }
 
   return (
-    <div className="overflow-x-auto rounded-3xl border border-hairline bg-canvas p-5">
+    <>
+      <div className="panel overflow-x-auto p-5">
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="h-auto w-full min-w-[560px]"
         role="img"
-        aria-label={`Intraday price and volume, from ${formatPrice(low)} to ${formatPrice(high)}`}
+        // The 96x28 sparkline stated direction, open, close, low and high; the
+        // 780px chart stated only "from {low} to {high}" — which reads as an
+        // open-to-close range and is not one — so the page's largest data
+        // object was its least described. Same shape as the sparkline's label
+        // now, plus the volume panel, which had no accessible mention at all.
+        //
+        // Per-point values stay pointer-only: the readout is a native SVG
+        // <title> on a hit column, which is what keeps this a server component
+        // with no JavaScript. This label carries the shape of the session
+        // instead of every reading in it.
+        aria-label={
+          `Intraday price and volume. ${up ? "Trending up" : "Trending down"} today, ` +
+          `from ${formatPrice(points[0].price)} at ${formatEtTime(points[0].at)} ` +
+          `to ${formatPrice(points[last].price)} at ${formatEtTime(points[last].at)}, ` +
+          `session low ${formatPrice(low)}, high ${formatPrice(high)}. ` +
+          `Peak 15-minute volume ${formatVolume(peakVolume)} shares.`
+        }
       >
         {/* Grid stays recessive — it is a reference, not part of the data. */}
         {[high, low + span / 2, low].map((value) => {
@@ -101,6 +118,14 @@ export function IntradayChart({
           );
         })}
 
+        {/* Same fill the sparklines carry, from the same document-level
+            gradient defs, so a row's 96px chart and this 780px one are visibly
+            the same drawing at two scales. Closed to the price panel's own
+            floor, not to the volume panel below it. */}
+        <polygon
+          points={`${line.join(" ")} ${PLOT_RIGHT},${PRICE_BOTTOM} ${LEFT},${PRICE_BOTTOM}`}
+          fill={up ? "url(#session-up)" : "url(#session-down)"}
+        />
         <polyline
           points={line.join(" ")}
           fill="none"
@@ -108,6 +133,15 @@ export function IntradayChart({
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
+        />
+        {/* The session's last recorded price, marked so the line has an end. */}
+        <circle
+          cx={x(last)}
+          cy={priceY(points[last].price)}
+          r={3.5}
+          fill={stroke}
+          stroke="var(--color-canvas)"
+          strokeWidth={2}
         />
 
         {/* Volume panel: its own baseline and its own scale. */}
@@ -188,6 +222,20 @@ export function IntradayChart({
           </rect>
         ))}
       </svg>
-    </div>
+      </div>
+
+      {/* Same undiscoverable-scroll problem as the watchlist table, same fix.
+          This plot has a 560px minimum inside a panel with 40px of its own
+          padding, so it stops scrolling at 888px of viewport — a different
+          number from the table's, so it gets its own breakpoint rather than a
+          shared approximation.
+
+          Outside the panel, not inside it: a block child of an overflow-x-auto
+          container is laid out in the scrollable coordinate space, so this line
+          would slide out of view exactly when it became relevant. */}
+      <p className="mt-3 text-xs text-muted min-[888px]:hidden">
+        Scroll sideways to see the whole session.
+      </p>
+    </>
   );
 }

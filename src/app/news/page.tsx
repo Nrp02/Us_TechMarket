@@ -43,15 +43,31 @@ export default async function News({
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-8 lg:px-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">News</h1>
-        <p className="mt-1 text-sm text-body">
-          Every summary is AI-written from the source article. Latest first.
+      {/* This page's h1 was 24px while Home's ran to 52px, so the two pages
+          opened at completely different ranks. Both are the one display element
+          on their surface and both take the display step. */}
+      <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <h1 className="text-display font-semibold text-ink">News</h1>
+          {/* The measure belongs on the paragraph, not on a 16px wrapper — see
+              the note on the Home header for what `ch` actually resolves to. */}
+          <p className="mt-3 max-w-[62ch] text-sm text-body">
+            Every summary is AI-written from the source article. Latest first.
+          </p>
+        </div>
+        <p className="shrink-0 font-mono text-xs tabular-nums text-muted">
+          {items.length} article{items.length === 1 ? "" : "s"} in this tab
         </p>
       </header>
 
-      {/* Fixed latest-first list — no sort control and no grid toggle by design. */}
-      <nav className="flex flex-wrap gap-2">
+      {/* Fixed latest-first list — no sort control and no grid toggle by design.
+          The tabs sit in their own recessed track rather than floating loose on
+          the page field, so the set reads as one control and the active pill as
+          a thing lifted out of it. */}
+      <nav
+        aria-label="News categories"
+        className="inline-flex w-fit max-w-full flex-wrap gap-1 rounded-full border border-hairline bg-canvas p-1 shadow-[var(--edge-lit),var(--elev-1)]"
+      >
         {TABS.map((t) => {
           const isActive = t.key === active;
           return (
@@ -62,8 +78,8 @@ export default async function News({
               aria-current={isActive ? "page" : undefined}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 isActive
-                  ? "bg-primary-fill text-white"
-                  : "bg-surface-strong text-ink hover:bg-hairline"
+                  ? "bg-primary-fill text-white shadow-[var(--elev-1)]"
+                  : "text-body hover:bg-surface-soft hover:text-ink"
               }`}
             >
               {t.label}

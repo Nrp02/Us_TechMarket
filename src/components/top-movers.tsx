@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CompanyLogo } from "@/components/company-logo";
+import { SectionHeading } from "@/components/section-heading";
 import { StatusBadge } from "@/components/status-badge";
 import { formatPercent, formatPrice, formatRelVolume } from "@/lib/format";
 import type { Ticker } from "@/lib/queries";
@@ -12,12 +13,11 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
 
   return (
     <section>
-      <div className="mb-4 flex items-baseline justify-between gap-4">
-        <h2 className="text-lg font-semibold text-ink">Top Movers Today</h2>
-        <span className="text-xs text-muted">Ranked across the Top 20</span>
-      </div>
+      <SectionHeading meta="Ranked across the Top 20">
+        Top Movers Today
+      </SectionHeading>
 
-      <ol className="rounded-3xl border border-hairline bg-canvas">
+      <ol className="panel overflow-hidden">
         {movers.map((ticker, index) => (
           <li
             key={ticker.symbol}
@@ -31,7 +31,23 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
               href={`/todays-activity/${ticker.symbol}`}
               className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-soft"
             >
-            <span className="w-4 font-mono text-sm tabular-nums text-muted">
+            {/* The rank was a bare digit in muted, so five rows of a *ranked*
+                list opened with the least emphatic thing on them. As a plate it
+                is the row's anchor, and the leader keeps the accent because
+                first place is the one fact this list exists to state. */}
+            <span
+              // text-body, not text-muted: muted on surface-strong measured
+              // 4.09:1 in dark — the one pair in the product under AA, on 12px
+              // semibold text, in the theme every visitor sees first. body
+              // measures 6.27:1 dark / 5.54:1 light and still sits a tier below
+              // the accented leader, which is the only rank this list is really
+              // making a claim about.
+              className={`flex size-6 shrink-0 items-center justify-center rounded-full font-mono text-xs font-semibold tabular-nums ${
+                index === 0
+                  ? "bg-tint-primary text-primary ring-1 ring-accent-edge ring-inset"
+                  : "bg-surface-strong text-body"
+              }`}
+            >
               {index + 1}
             </span>
             <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
@@ -44,18 +60,26 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
             </div>
 
             <div className="text-right">
-              <div className="font-mono text-sm tabular-nums text-ink">
+              <div className="font-mono text-base font-medium tabular-nums text-ink">
                 {formatPrice(ticker.price)}
               </div>
-              <div
-                className={`font-mono text-xs tabular-nums ${
-                  ticker.changePercent >= 0
-                    ? "text-semantic-up"
-                    : "text-semantic-down"
-                }`}
-              >
-                {formatPercent(ticker.changePercent)} ·{" "}
-                {formatRelVolume(ticker.relativeVolume)}
+              <div className="font-mono text-xs tabular-nums">
+                <span
+                  className={
+                    ticker.changePercent >= 0
+                      ? "font-semibold text-semantic-up"
+                      : "font-semibold text-semantic-down"
+                  }
+                >
+                  {formatPercent(ticker.changePercent)}
+                </span>
+                {/* Relative volume was coloured by the price direction it has
+                    nothing to do with — the two values shared one span. Volume
+                    stays neutral, per the rule that it is neither good nor bad. */}
+                <span className="text-muted">
+                  {" · "}
+                  {formatRelVolume(ticker.relativeVolume)}
+                </span>
               </div>
             </div>
 

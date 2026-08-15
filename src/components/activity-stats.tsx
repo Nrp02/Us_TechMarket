@@ -37,11 +37,11 @@ function Cell({
     <article className="border-l border-t border-hairline px-5 py-5">
       <h3 className="text-[11px] font-semibold text-muted">{label}</h3>
       <p
-        className={`mt-3 font-mono text-2xl font-medium tabular-nums ${toneClass}`}
+        className={`mt-3 font-mono text-3xl font-medium tabular-nums ${toneClass}`}
       >
         {value}
       </p>
-      <p className="mt-1.5 text-xs text-body">{detail}</p>
+      <p className="mt-2 text-xs leading-relaxed text-body">{detail}</p>
     </article>
   );
 }
@@ -61,7 +61,7 @@ export function ActivityStats({ activity }: { activity: Activity }) {
       {/* Same one-panel construction as Market Overview — see the note there
           for why the cells draw their own top and left edge instead of using
           divide-x. */}
-      <div className="overflow-hidden rounded-3xl border border-hairline bg-canvas">
+      <div className="panel overflow-hidden">
         <div className="-ml-px -mt-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <Cell
             label="Price Movement"

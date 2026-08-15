@@ -1,9 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
-
+import { useWatchlistMenu } from "@/components/use-watchlist-menu";
 import type { TopStock } from "@/lib/symbols";
+
+// The popover mechanics are shared with the Today's Activity symbol switcher —
+// see use-watchlist-menu.ts. This component owns only the trigger, the row
+// layout, and which bound applies to a given row.
 
 export function WatchlistPicker({
   universe,
@@ -16,41 +18,11 @@ export function WatchlistPicker({
   min: number;
   cap: number;
 }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const container = useRef<HTMLDivElement>(null);
-
-  // Ported from symbol-switcher.tsx, which had all of this and this component
-  // had none of it — same cookie, same bounds, two different menus. Escape and
-  // outside-click are the only ways out for a keyboard user; without them the
-  // list of 20 buttons could only be escaped by tabbing back to the trigger.
-  // A 409 from a previous opening of the menu is stale the moment it closes, so
-  // closing clears it. Doing this in an effect on `open` instead would be a
-  // cascading render; every close already goes through here.
-  function close() {
-    setOpen(false);
-    setMessage(null);
-  }
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (event: MouseEvent) => {
-      if (!container.current?.contains(event.target as Node)) close();
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-
-    document.addEventListener("mousedown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
+  // No `close` here: unlike the switcher, picking a stock does not dismiss this
+  // popover — the visitor is usually choosing several — so the only ways out
+  // are the trigger, Escape and an outside click, all of which live in the hook.
+  const { open, toggleOpen, message, pending, container, trigger, mutate } =
+    useWatchlistMenu();
 
   const chosen = new Set(selected);
   const full = selected.length >= cap;
@@ -58,49 +30,41 @@ export function WatchlistPicker({
   // watchlist, so the API refuses to remove the last stock.
   const atMin = selected.length <= min;
 
-  async function toggle(symbol: string) {
-    const removing = chosen.has(symbol);
-    setMessage(null);
-
-    const res = await fetch("/api/watchlist", {
-      method: removing ? "DELETE" : "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ symbol }),
-    });
-
-    if (!res.ok) {
-      const body = (await res.json()) as { error?: string };
-      setMessage(body.error ?? "Could not update the watchlist.");
-      return;
-    }
-    startTransition(() => router.refresh());
-  }
-
   return (
     <div ref={container} className="relative">
       <button
+        ref={trigger}
         type="button"
-        onClick={() => (open ? close() : setOpen(true))}
+        onClick={toggleOpen}
+        // aria-expanded alone is the disclosure contract. `aria-haspopup="menu"`
+        // used to sit here and promised a menu the popover never declared —
+        // it rendered no role at all, so the promise was never kept.
         aria-expanded={open}
-        aria-haspopup="menu"
         className="rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline"
       >
         Edit watchlist ({selected.length}/{cap})
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-80 rounded-3xl border border-hairline bg-canvas p-4 shadow-[0_4px_12px_rgba(0,0,0,0.04)]">
+        <div className="panel-overlay absolute right-0 z-20 mt-2 w-80 rounded-3xl p-4">
+          {/* Says what the bound is *and*, at a bound, what to do about it. A
+              disabled row can only show that something is unavailable. */}
           <p className="px-1 text-xs text-body">
             Pick up to {cap} of the Top 20 US technology stocks.
+            {full && " Remove one to add another."}
+            {atMin && " At one stock, remove is unavailable."}
           </p>
 
           {/* role="status" so the cap and floor messages are announced. They
               were previously a plain <p>: a screen reader user hit the limit
-              and got nothing at all. */}
+              and got nothing at all.
+
+              bg-tint-down rather than bg-semantic-down/10 — see the Baked Tint
+              Rule; the alpha's contrast moved with whatever sat behind it. */}
           {message && (
             <p
               role="status"
-              className="mt-2 rounded-xl bg-semantic-down/10 px-3 py-2 text-xs font-medium text-semantic-down"
+              className="mt-2 rounded-xl bg-tint-down px-3 py-2 text-xs font-medium text-semantic-down"
             >
               {message}
             </p>
@@ -125,7 +89,9 @@ export function WatchlistPicker({
                         ? `Remove ${stock.symbol} from your watchlist`
                         : `Add ${stock.symbol} to your watchlist`
                     }
-                    onClick={() => toggle(stock.symbol)}
+                    onClick={() =>
+                      mutate(stock.symbol, isChosen ? "DELETE" : "POST")
+                    }
                     className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span>
