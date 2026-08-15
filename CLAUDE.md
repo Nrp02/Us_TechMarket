@@ -288,8 +288,39 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
    - **Done when**: a manual trigger of each job succeeds; don't wait on a live cron firing to find out it's broken.
    - Verify the real outcome in `net._http_response`, **not** `cron.job_run_details` — `pg_net` is fire-and-forget and reports success as soon as the request is queued, so a job shows green even when the endpoint returned 401 or timed out.
 2. EOD job depends on all news for the day being fetched first — sequence the 16:30 ET news cycle to complete before the EOD summary job starts.
-3. Implement whatever visual design Claude Design has produced by this point; responsive check across the three pages.
-4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing.
+3. Implement whatever visual design Claude Design has produced by this point; responsive check across the three pages. **Done for laptop and iPad — the target the owner named. Phone is deliberately out of scope.**
+
+   **The whole page was 1,221px wide regardless of viewport, and one missing class was the cause.** `<main>` in `src/app/layout.tsx` is a flex item, which defaults to `min-width: auto`, so it could not shrink below its content's min-content width — the 880px watchlist table plus padding, plus the 240px sidebar. The two `overflow-x-auto` wrappers that already existed (`watchlist-table.tsx:46`, `intraday-chart.tsx:73`) were therefore dead code: instead of scrolling inside themselves, they pushed the page sideways. Adding `min-w-0` to `<main>` is the entire fix, and it makes those wrappers behave as designed — measured at 1100px, the table wrapper is 778px wide holding an 880px table and scrolls internally.
+
+   **The symptom this produced was iPad-only, which is why it went unnoticed.** A laptop viewport exceeds 1,221px so the page always fitted; every iPad is narrower, so Safari laid the page out wider than the screen and it had to be zoomed out before it was usable. Measured before (simulated by forcing `min-width: auto` back on) and after:
+
+   | width | before | after |
+   |---|---|---|
+   | 768 (iPad portrait) | 1189 — overflows | 768 — fits |
+   | 834 (iPad Air / Pro 11") | 1189 — overflows | 834 — fits |
+   | 1024 (iPad landscape) | 1221 — overflows | 1024 — fits |
+
+   The 768/834 figure is 1189 rather than 1221 because the `lg:` breakpoint at 1024px has not engaged, so the Top Movers / News teaser grid is still one column. All three pages are clean at every width above.
+
+   Two things ruled out by measurement, so don't re-investigate them: **the viewport meta tag is present and correct** (`width=device-width, initial-scale=1`, injected by Next) — it was the obvious suspect and it was innocent; and **the sidebar needs no breakpoint for iPad** — `w-60 shrink-0` costs 240 of 768, which is tight but not the cause of anything.
+
+   **At 390px (phone) all three pages still overflow**, because content inside `main` has its own minimums below which nothing can shrink. Left unfixed on purpose: the owner demos on a laptop and wants iPad to work, and fixing phone means giving the sidebar a collapse behaviour, which is a visual-design decision rather than a bug fix. Note this contradicts the "opens the live URL on a phone" wording in **Done when** below — the owner narrowed that target.
+
+   **Testing note: `resize_window` does not work in this environment** — it reports success while `innerWidth` stays put and `outerWidth` reads 0. Every width above was measured by injecting a same-origin `<iframe>` of the target size into a page already on `localhost:3000` and reading `contentDocument.documentElement.scrollWidth` — media queries evaluate against the iframe's own viewport, so this is a real responsive test rather than a simulated one.
+4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing. **Done** — run against a local production build, results below.
+
+   **A Finnhub outage cannot reach a page at all, and that is the point of the ingestion rule.** Simulated by starting `next start` with `FINNHUB_API_KEY` overridden to a bogus value, so every `/quote` answers 401 — the same `!res.ok` throw that a 429 or a 500 takes, so one probe covers rate-limit and outage alike. `POST /api/refresh?force=1` returned **HTTP 200** with `symbols: 25, prices: 0, snapshots: 0, failed: [all 25]`. The important half is what did *not* happen: `price_cache` still held 25 rows with an unchanged newest `updated_at`, and `intraday_snapshots` still held 1,346 rows. A total upstream failure writes nothing rather than overwriting good data with nulls, and the job reports which symbols failed instead of throwing. Home, News (All + Company) and `/todays-activity/NVDA` all returned 200 with the real cached prices still rendered.
+
+   Two consequences worth stating. A failed refresh is **safe to run locally** despite sharing the production database, because nothing is written. And a *partial* outage is the same path — the surviving symbols upsert normally and only the failures land in `failed`, since the try/catch in `refreshMarketData` is per symbol.
+
+   **`src/app/error.tsx` is the fallback for a render that throws**, and it catches less than it appears to — both halves measured, not assumed:
+
+   - **An upstream outage never reaches it.** Pages read cached tables only, and a Supabase query error surfaces as `{ data: null }` rather than a throw, so the components' own empty states handle it.
+   - **A throw during module evaluation never reaches it either.** Starting the server with `SUPABASE_SECRET_KEY` blank makes `createClient` throw on import of `src/lib/supabase.ts`, before the React tree exists: all three routes returned a bare `Internal Server Error` text body, no boundary, no sidebar. **This is a known uncovered case.** Making it catchable means constructing the client lazily, which touches every `db.from(...)` call site — not worth it for a misconfiguration that breaks the whole site anyway, but do not claim the boundary covers it.
+   - **What it does catch is a render-time throw**, whose reachable cause is a malformed timestamp: `Intl.DateTimeFormat` rejects an Invalid Date, so every helper in `src/lib/format.ts` taking an ISO string can raise a `RangeError` on a row in the wrong shape. Verified by temporarily throwing a `RangeError` in `src/app/page.tsx` (reverted): Home served 500 rendering the boundary **inside the layout** — sidebar intact, clicking News from it navigated normally — with the digest shown and the error message not leaked. `/news` and `/todays-activity/NVDA` were unaffected, so the failure is scoped to the route that threw.
+
+   **The boundary renders on the client after hydration**, so `curl` proves nothing: the SSR shell is `<html id="__next_error__">` with the body `Internal Server Error`. Two rounds of checking were spent before this was noticed — verify it in a real browser.
+
    - ✅ **The logos load from the deployed origin.** Checked on `ustechmarket.vercel.app` after the merge to `main`: all 15 CDN requests a page makes returned 200, so the client id is **not** origin-restricted. Because the URLs carry `fallback/404`, a 200 means the mark is genuinely present rather than a blank placeholder. Re-check if the client id is ever rotated or a custom domain is added.
    - The failure mode remains worth knowing even though it did not occur: an unreachable CDN renders **every** mark — watchlist, Top Movers, the Today's Activity header, every news thumbnail — as an empty plate, and does so silently, because `alt=""` suppresses even the broken-image glyph (measured). There is no in-app fallback; catching it would need an `onError` handler and so a client component, which reverses the server-component design in `news-thumbnail.tsx`.
 5. Final deploy + a short README aimed at the professor.

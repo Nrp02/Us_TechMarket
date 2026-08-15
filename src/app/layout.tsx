@@ -42,7 +42,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full">
         <Sidebar />
-        <main className="flex-1 bg-surface-soft">{children}</main>
+        {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
+            min-width:auto, so without it <main> cannot shrink below its
+            content's min-content width — the 880px watchlist table and the
+            560px intraday chart pushed the whole page sideways instead of
+            scrolling inside their own overflow-x-auto wrappers. */}
+        <main className="min-w-0 flex-1 bg-surface-soft">{children}</main>
       </body>
     </html>
   );
