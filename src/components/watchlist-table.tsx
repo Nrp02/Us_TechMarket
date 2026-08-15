@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { CompanyLogo } from "@/components/company-logo";
 import { Sparkline } from "@/components/sparkline";
 import { StatusBadge } from "@/components/status-badge";
@@ -69,15 +71,23 @@ export function WatchlistTable({
                   className="border-b border-hairline last:border-0"
                 >
                   <td className="px-5 py-4">
-                    <div className="flex items-center gap-3">
+                    {/* The route to this stock's own page. Home's whole job is
+                        to say which stock is worth looking at, and until this
+                        link existed the answer led nowhere: the visitor had to
+                        memorise the ticker, open Today's Activity (which lands
+                        on a different stock), and hunt it down in a dropdown. */}
+                    <Link
+                      href={`/todays-activity/${ticker.symbol}`}
+                      className="group flex items-center gap-3"
+                    >
                       <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
                       <div>
-                        <div className="text-sm font-semibold text-ink">
+                        <div className="text-sm font-semibold text-ink transition-colors group-hover:text-primary">
                           {ticker.symbol}
                         </div>
                         <div className="text-xs text-muted">{ticker.name}</div>
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-5 py-4 font-mono text-sm tabular-nums text-ink">
                     {formatPrice(ticker.price)}
@@ -108,7 +118,8 @@ export function WatchlistTable({
 
         {!tickers.length && (
           <p className="px-5 py-8 text-sm text-muted">
-            No price data cached yet — run a refresh to populate the watchlist.
+            No prices stored for this session yet. Prices are recorded every 15
+            minutes while the US market is open.
           </p>
         )}
       </div>

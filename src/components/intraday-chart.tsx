@@ -145,7 +145,10 @@ export function IntradayChart({
               width={barWidth}
               height={Math.max(height, 0)}
               rx={2}
-              fill="var(--color-surface-strong)"
+              // Its own token rather than surface-strong: these bars are data,
+              // so they answer to the 3:1 floor for graphical objects. On
+              // surface-strong they measured 1.26:1 against the card.
+              fill="var(--color-chart-bar)"
             />
           );
         })}

@@ -27,6 +27,16 @@ import {
 // and disables the data cache getActivity depends on. readWatchlist reads a
 // cookie below, which is what keeps the route dynamic.
 
+// Every route shared the one <title> from layout.tsx, so NVDA and AAPL were
+// indistinguishable in the tab strip, in history and in a bookmark — on a
+// product whose unit of value is one page per stock.
+export async function generateMetadata({
+  params,
+}: PageProps<"/todays-activity/[symbol]">) {
+  const { symbol } = await params;
+  return { title: `${symbol.toUpperCase()} — Today's Activity · US TechMarket` };
+}
+
 export default async function TodaysActivityForSymbol({
   params,
 }: PageProps<"/todays-activity/[symbol]">) {
@@ -51,13 +61,19 @@ export default async function TodaysActivityForSymbol({
         <div className="flex items-center gap-4">
           <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
           <div>
-            {/* Ticker only — the header is the switcher, not a company title. */}
-            <SymbolSwitcher
-              symbol={ticker.symbol}
-              symbols={watchlist}
-              min={WATCHLIST_MIN}
-              max={WATCHLIST_MAX}
-            />
+            {/* Ticker only — the header is the switcher, not a company title.
+                Wrapped in an h1 because the page had no heading at all: the
+                ticker was a bare <button>, so a screen reader's heading list
+                gave this page no identity. The button keeps its own type
+                styling; the h1 is purely structural. */}
+            <h1>
+              <SymbolSwitcher
+                symbol={ticker.symbol}
+                symbols={watchlist}
+                min={WATCHLIST_MIN}
+                max={WATCHLIST_MAX}
+              />
+            </h1>
             <p className="px-2 text-sm text-body">
               {ticker.name} · session of {formatDay(activity.sessionDay)}
             </p>

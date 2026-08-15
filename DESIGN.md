@@ -2,10 +2,12 @@
 name: US TechMarket
 description: A composed, after-hours reading surface for what happened to US technology stocks today.
 colors:
-  primary: "#3d78ff"
-  primary-active: "#5c8fff"
+  primary: "#5c8fff"
+  primary-active: "#7aa5ff"
+  primary-fill: "#1e5fe0"
   semantic-up: "#24c98a"
   semantic-down: "#ff5f6d"
+  chart-bar: "#5b6577"
   ink: "#f2f4f7"
   body: "#a3abb8"
   muted: "#79818e"
@@ -51,6 +53,12 @@ typography:
     fontWeight: 500
     lineHeight: "1.25rem"
     fontFeature: "tnum"
+  micro:
+    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.6875rem"
+    fontWeight: 600
+    lineHeight: "1rem"
+    letterSpacing: "normal"
 rounded:
   lg: "8px"
   xl: "12px"
@@ -87,7 +95,7 @@ components:
     backgroundColor: "{colors.hairline}"
     textColor: "{colors.ink}"
   tab-active:
-    backgroundColor: "{colors.primary}"
+    backgroundColor: "{colors.primary-fill}"
     textColor: "#ffffff"
     rounded: "{rounded.full}"
     padding: "8px 16px"
@@ -154,12 +162,13 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 
 ### Primary
 
-- **Signal Blue** (`primary`, #3d78ff dark / #0052ff light): the only accent in the system, and it is never decoration. It marks the active sidebar item, the Significant badge, the active news tab, inline links, the bullet dots in the AI summary, and price-milestone and high-volume markers on the timeline. If Signal Blue appears, something is active or something crossed a threshold.
-- **Signal Blue Active** (`primary-active`, #5c8fff dark / #003ecc light): the pressed and hover state for accent surfaces. Note the direction reverses between themes — light mode goes *darker* on press, dark mode goes *lighter*, because contrast against the plate is what has to increase, not brightness.
+- **Signal Blue** (`primary`, #5c8fff dark / #0052ff light): the only accent in the system, and it is never decoration. It marks the active sidebar item, the Significant badge, inline links, the bullet dots in the AI summary, price-milestone and high-volume markers on the timeline, and the focus ring on every control. If Signal Blue appears, something is active, focused, or crossed a threshold.
+- **Signal Blue Active** (`primary-active`, #7aa5ff dark / #003ecc light): the pressed and hover state for accent surfaces. Note the direction reverses between themes — light mode goes *darker* on press, dark mode goes *lighter*, because contrast against the plate is what has to increase, not brightness.
+- **Signal Blue Fill** (`primary-fill`, #1e5fe0 dark / #0052ff light): the accent as a *filled plate under white text* — currently only the active news tab. It exists because one token cannot serve both jobs: `primary` had to get lighter in dark mode to stay readable *on* a plate, which simultaneously made it too light to sit *under* white text. Reach for this only when the accent is a background carrying light text.
 
 ### Secondary
 
-- **Session Green** (`semantic-up`, #24c98a dark / #05b169 light) and **Session Red** (`semantic-down`, #ff5f6d dark / #cf202f light): gains and losses in the session being reported. They colour change values, sparkline and intraday chart strokes, the market-open dot, and error text in the watchlist menus. They describe a completed day, not a live tape.
+- **Session Green** (`semantic-up`, #24c98a dark / #00875a light) and **Session Red** (`semantic-down`, #ff5f6d dark / #cf202f light): gains and losses in the session being reported. They colour change values, sparkline and intraday chart strokes, the market-open dot, and error text in the watchlist menus. They describe a completed day, not a live tape.
 
   Deliberately *not* applied to volume. The Trading Activity stat card stays neutral, because heavy volume is neither good news nor bad and colouring it would assert a judgement the product is not allowed to make.
 
@@ -167,7 +176,8 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 
 - **Ink** (`ink`, #f2f4f7 dark / #0a0b0d light): headings, ticker symbols, primary values, and anything the eye should land on first.
 - **Body** (`body`, #a3abb8 dark / #5b616e light): running prose, summaries, secondary figures, inactive navigation.
-- **Muted** (`muted`, #79818e dark / #7c828a light): table headers, stat card labels, timestamps, axis labels, chart provenance notes. The quietest readable tier.
+- **Muted** (`muted`, #79818e dark / #656b74 light): table headers, stat card labels, timestamps, axis labels, chart provenance notes. The quietest readable tier — and the floor is set by AA, not by taste: the light value was #7c828a until it measured 3.88:1 on canvas.
+- **Chart Bar** (`chart-bar`, #5b6577 dark / #8a92a0 light): the intraday volume bars, and nothing else. Separate from `surface-strong` because these bars *are* data and so answer to the 3:1 floor for graphical objects, where a decorative surface does not.
 - **Canvas** (`canvas`, #0d0f12 dark / #ffffff light): the sidebar and every card, panel, list and table surface.
 - **Surface Soft** (`surface-soft`, #15181d dark / #f7f7f7 light): the `<main>` field that cards sit on, plus hover states on menu rows.
 - **Surface Strong** (`surface-strong`, #21262e dark / #eef0f3 light): filled but unaccented chips, the Normal badge, pill buttons, ticker tags, the active nav plate, and the intraday chart's volume bars.
@@ -180,6 +190,8 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 **The Always-Light Plate Rule.** `logo-plate` (#e9ebef dark / #eef0f3 light) is the one token that does not invert, and this is load-bearing rather than an oversight. Brand marks arrive with hardcoded fills — Apple #000000, Palantir #101113, Amazon #221f1f — that disappear on a dark surface and cannot be recoloured. Real marks sit on this plate; the lettermark fallback and category glyphs use `surface-strong` so their text stays theme-aware.
 
 **The Reserved Accent Rule.** Signal Blue is the only accent, and it carries exactly two meanings: *this is active* and *this is significant*. It is never used to make a surface look more interesting.
+
+**The Measured Floor Rule.** A colour pair ships only once its ratio has been computed, in **both** themes: 4.5:1 for text, 3:1 for a graphical object that carries data. Several tokens here are the value they are because the prettier value failed — `muted` and `semantic-up` in light, `primary` in dark, and `chart-bar` at all. Eyeballing a dark theme is what let five pairs ship under AA.
 
 ## Typography
 
@@ -195,7 +207,8 @@ A near-neutral, slightly blue-shifted greyscale carrying three signal colours: o
 - **Title** (600, 1.125rem/18px): every section heading — Market Overview, My Watchlist, Top Movers Today, AI Daily Summary, Price & Volume, Today's Timeline, Upcoming Events.
 - **Body** (400, 0.875rem/14px, line-height 1.625 in prose): article summaries, the AI narrative, stat card detail lines, company names. The relaxed leading applies wherever a passage runs more than one line.
 - **Label** (600, 0.75rem/12px): table column headers, stat card labels, badge text, ticker chips, menu group headers. Uppercase is *not* used — labels are set in sentence case and rely on weight and colour for their tier.
-- **Numeric** (JetBrains Mono, 500, tabular figures): every price, change, percentage, volume, relative volume, rank, timestamp and axis label. Sizes range from 0.6875rem/11px on chart axes to 1.5rem/24px on the Today's Activity price.
+- **Numeric** (JetBrains Mono, 500, tabular figures): every price, change, percentage, volume, relative volume, rank, timestamp and axis label. Sizes range from Micro on chart axes to 1.5rem/24px on the Today's Activity price.
+- **Micro** (600, 0.6875rem/11px): the smallest step in the system, and the only one below Label. It carries ticker chips, the index-card proxy notes, the lettermark fallback, and — set in JetBrains Mono rather than Inter — the intraday chart's axis labels. It existed in the implementation from the start but was missing from the ramp above, so every use of it read as a deviation.
 
 ### Named Rules
 
@@ -311,6 +324,9 @@ The product has no text inputs, no forms, and no search. Every interaction is a 
 - **Do** render every number in JetBrains Mono with `tabular-nums`, and format changes with an explicit `+`/`−` so direction survives without colour.
 - **Do** wrap anything with a hard minimum width in `overflow-x-auto`, and check that its flex ancestors carry `min-w-0` — the wrapper alone does nothing.
 - **Do** give every chart and sparkline `role="img"` and an `aria-label` that states what it shows, including its range where a range exists.
+- **Do** let the global `:focus-visible` rule in `globals.css` supply the focus ring, and never remove an outline without authoring a replacement. It is a 2px Signal Blue ring at 2px offset, which clears 3:1 against canvas in both themes.
+- **Do** mark the current item with `aria-current="page"` wherever an active state is drawn — the sidebar and the news tabs both looked active and announced nothing.
+- **Do** give a status or error message `role="status"` so it is announced. A cap or floor message that only appears visually does not exist for a screen reader.
 - **Do** build new panels from the standing pattern: Canvas surface, 1px Hairline border, 24px radius, 20px padding, rows separated by hairlines with `last:border-0`.
 - **Do** write an empty state for every list and panel, in Muted, inside the same container as the populated state, explaining why the data is not there yet.
 - **Do** keep new work on the server. Sparklines, the intraday chart, thumbnails, and every list are server-rendered; the only client components in the product are the ones that genuinely need browser state (sidebar active link, theme toggle, and the two watchlist menus).

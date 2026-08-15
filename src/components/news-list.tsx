@@ -40,15 +40,24 @@ export function NewsList({ items }: { items: NewsItem[] }) {
               {item.headline}
             </a>
 
-            {/* Always the AI paraphrase, never the source's own snippet. */}
+            {/* Always the AI paraphrase, never the source's own snippet.
+                max-w caps the measure — unconstrained, this ran past 110
+                characters per line at the widest supported viewport. text-sm on
+                the same element is load-bearing: `ch` resolves against the
+                element's own font size. */}
             {item.summary && (
-              <p className="mt-1.5 text-sm leading-relaxed text-body">
+              <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-body">
                 {item.summary}
               </p>
             )}
 
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted">{timeAgo(item.publishedAt)}</span>
+              {/* Mono + tabular, per the Mono Numerals Rule. This was the one
+                  timestamp in the product set in Inter; the timeline renders the
+                  same class of value in mono. */}
+              <span className="font-mono text-xs tabular-nums text-muted">
+                {timeAgo(item.publishedAt)}
+              </span>
 
               {/* Tickers come from Finnhub's own field, never AI-inferred. */}
               {item.relatedSymbols.slice(0, 4).map((ticker) => (

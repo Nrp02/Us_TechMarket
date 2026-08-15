@@ -4,12 +4,17 @@ import type { TimelineEntry } from "@/lib/queries";
 // Reconstructed once by the end-of-day job from stored snapshots and news, then
 // read straight from the table here — no polling, no live listener.
 
+// `news` was bg-semantic-up — the gain colour — so on a stock that fell, every
+// headline carried a green dot asserting a direction the article may contradict.
+// That is the same failure the rising-arrow market-news icon was cut for. News
+// is an event, not a direction, so it takes the neutral accent like the other
+// threshold events.
 const DOT: Record<TimelineEntry["kind"], string> = {
   market_open: "bg-muted",
   market_close: "bg-muted",
   price_milestone: "bg-primary",
   high_volume: "bg-primary",
-  news: "bg-semantic-up",
+  news: "bg-ink",
 };
 
 export function ActivityTimeline({ entries }: { entries: TimelineEntry[] }) {

@@ -41,7 +41,15 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       className="overflow-visible"
       role="img"
-      aria-label={up ? "Trending up today" : "Trending down today"}
+      // DESIGN.md requires a chart's accessible name to state its range where
+      // one exists. This said only "Trending up today", so a screen reader got
+      // the direction the adjacent signed number already gave it, and none of
+      // the shape.
+      aria-label={`${
+        up ? "Trending up today" : "Trending down today"
+      }, from ${values[0].toFixed(2)} to ${values[values.length - 1].toFixed(
+        2,
+      )}, session low ${min.toFixed(2)}, high ${max.toFixed(2)}`}
     >
       <polyline
         points={points}

@@ -34,8 +34,8 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
 
         {!items.length && (
           <p className="px-5 py-8 text-sm text-muted">
-            The news pipeline lands in Phase 3 — articles and their AI summaries
-            will appear here.
+            No articles for these stocks yet. News is collected four times a day
+            and summarised on arrival.
           </p>
         )}
       </div>

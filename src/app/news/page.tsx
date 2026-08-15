@@ -58,9 +58,11 @@ export default async function News({
             <Link
               key={t.key}
               href={t.key === "all" ? "/news" : `/news?tab=${t.key}`}
+              // The active tab was colour-only to a screen reader.
+              aria-current={isActive ? "page" : undefined}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 isActive
-                  ? "bg-primary text-white"
+                  ? "bg-primary-fill text-white"
                   : "bg-surface-strong text-ink hover:bg-hairline"
               }`}
             >

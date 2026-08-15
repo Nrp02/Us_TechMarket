@@ -25,7 +25,12 @@ export function DailySummaryCard({
 
       {summary ? (
         <>
-          <p className="mt-4 leading-relaxed text-body">{summary.narrative}</p>
+          {/* The narrative is the longest prose in the product and had no
+              measure cap at all — it ran to roughly 130 characters per line on a
+              1280px viewport. */}
+          <p className="mt-4 max-w-[68ch] leading-relaxed text-body">
+            {summary.narrative}
+          </p>
 
           {summary.bullets.length > 0 && (
             <ul className="mt-5 flex flex-col gap-2.5 border-t border-hairline pt-5">

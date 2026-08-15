@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { CompanyLogo } from "@/components/company-logo";
 import { StatusBadge } from "@/components/status-badge";
 import { formatPercent, formatPrice, formatRelVolume } from "@/lib/format";
@@ -19,15 +21,25 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
         {movers.map((ticker, index) => (
           <li
             key={ticker.symbol}
-            className="flex items-center gap-4 border-b border-hairline px-5 py-4 last:border-0"
+            className="border-b border-hairline last:border-0"
           >
+            {/* Top Movers ranks across the full Top 20, so this list is the only
+                place several of these stocks appear at all — without the link
+                they were unreachable by any route in the product. Every Top 20
+                symbol has cached data, so the target page always resolves. */}
+            <Link
+              href={`/todays-activity/${ticker.symbol}`}
+              className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-surface-soft"
+            >
             <span className="w-4 font-mono text-sm tabular-nums text-muted">
               {index + 1}
             </span>
             <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
 
             <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold text-ink">{ticker.symbol}</div>
+              <div className="text-sm font-semibold text-ink transition-colors group-hover:text-primary">
+                {ticker.symbol}
+              </div>
               <div className="truncate text-xs text-muted">{ticker.name}</div>
             </div>
 
@@ -48,12 +60,14 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
             </div>
 
             <StatusBadge significant={ticker.significant} />
+            </Link>
           </li>
         ))}
 
         {!movers.length && (
           <li className="px-5 py-8 text-sm text-muted">
-            No price data cached yet — run a refresh.
+            No prices stored for this session yet. Ranking appears once the
+            session&apos;s snapshots are in.
           </li>
         )}
       </ol>

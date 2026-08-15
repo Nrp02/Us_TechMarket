@@ -59,7 +59,7 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                 </>
               ) : (
                 <p className="mt-3 text-sm text-muted">
-                  No data yet — run a refresh.
+                  No level stored for this session yet.
                 </p>
               )}
             </article>

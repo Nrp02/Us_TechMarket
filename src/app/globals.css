@@ -12,13 +12,24 @@
   --color-surface-strong: #eef0f3;
   --color-ink: #0a0b0d;
   --color-body: #5b616e;
-  --color-muted: #7c828a;
+  /* Was #7c828a, which measured 3.88:1 on canvas — under AA for the table
+     headers, timestamps and stat labels that all render in this tier. */
+  --color-muted: #656b74;
   --color-hairline: #dee1e6;
   --color-primary: #0052ff;
   --color-primary-active: #003ecc;
-  --color-semantic-up: #05b169;
+  /* Accent as a *filled plate* under white text, which is a different contrast
+     problem from accent-as-text and needs its own value. In dark, --color-primary
+     had to get lighter to stay readable ON a plate, which simultaneously made it
+     too light to sit UNDER white text. One token cannot do both jobs. */
+  --color-primary-fill: #0052ff;
+  --color-semantic-up: #00875a;
   --color-semantic-down: #cf202f;
   --color-logo-plate: #eef0f3;
+  /* The intraday volume bars encode data, so they answer to the 3:1 floor for
+     graphical objects rather than to the decorative-surface bar. surface-strong
+     sat at 1.14:1 here and the bars were nearly invisible against their card. */
+  --color-chart-bar: #8a92a0;
 }
 
 /* Every token above is redefined here — nothing may have its only definition
@@ -31,10 +42,17 @@
   --color-body: #a3abb8;
   --color-muted: #79818e;
   --color-hairline: #2a2f37;
-  --color-primary: #3d78ff;
-  --color-primary-active: #5c8fff;
+  /* Was #3d78ff, which measured 3.86:1 on surface-strong (the active sidebar
+     item, present on every page) and 4.42:1 on its own 10% tint (the Significant
+     badge). Both are small text and both were under AA in the *default* theme. */
+  --color-primary: #5c8fff;
+  --color-primary-active: #7aa5ff;
+  /* Darker than --color-primary on purpose: this one sits under white text.
+     See the note in the light block. */
+  --color-primary-fill: #1e5fe0;
   --color-semantic-up: #24c98a;
   --color-semantic-down: #ff5f6d;
+  --color-chart-bar: #5b6577;
   /* Deliberately light in BOTH themes. Brand marks carry hardcoded fills we
      cannot recolour — AAPL #000000, PLTR #101113, AMZN #221f1f are effectively
      black and vanish on a dark plate. Only real logos sit on this; lettermarks
@@ -52,9 +70,11 @@
   --color-hairline: var(--color-hairline);
   --color-primary: var(--color-primary);
   --color-primary-active: var(--color-primary-active);
+  --color-primary-fill: var(--color-primary-fill);
   --color-semantic-up: var(--color-semantic-up);
   --color-semantic-down: var(--color-semantic-down);
   --color-logo-plate: var(--color-logo-plate);
+  --color-chart-bar: var(--color-chart-bar);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
 }
@@ -62,4 +82,27 @@
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+}
+
+/* PRODUCT.md commits to WCAG 2.1 AA, which requires a visible focus indicator.
+   Nothing in the product authored one, so every button, link and menu row fell
+   back to the user agent's default ring — which on a near-black canvas is
+   effectively invisible. One rule covers every control in the app; it uses
+   :focus-visible so a mouse click does not leave a ring behind. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* The only motion in the product is transition-colors plus the switcher
+   chevron's rotate, but honouring the preference is free and its absence was
+   total. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
