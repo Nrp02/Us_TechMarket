@@ -85,6 +85,15 @@ async function getLatestSessionDay(symbol?: string): Promise<string | null> {
   return newest ? tradingDay(new Date(newest)) : null;
 }
 
+/**
+ * The session the cached data describes, as a New York date, or null before any
+ * snapshot exists. Home needs it to name the day on screen: the page promised
+ * "today" while showing a completed session and carried no date anywhere.
+ */
+export async function getSessionDay(): Promise<string | null> {
+  return getLatestSessionDay();
+}
+
 /** Latest session's intraday closes per symbol, keyed by symbol. */
 async function getSparklines(): Promise<Map<string, number[]>> {
   const day = await getLatestSessionDay();

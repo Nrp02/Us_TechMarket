@@ -2,7 +2,8 @@ import { MarketOverview } from "@/components/market-overview";
 import { NewsTeaser } from "@/components/news-teaser";
 import { TopMovers } from "@/components/top-movers";
 import { WatchlistTable } from "@/components/watchlist-table";
-import { getNewsTeaser, getTickers } from "@/lib/queries";
+import { formatDay } from "@/lib/format";
+import { getNewsTeaser, getSessionDay, getTickers } from "@/lib/queries";
 import { INDEX_SYMBOLS, TOP_20_SYMBOLS } from "@/lib/symbols";
 import { readWatchlist } from "@/lib/watchlist";
 
@@ -21,9 +22,10 @@ export default async function Home() {
   // Top 20), sliced into the three views below — INDEX_SYMBOLS and
   // TOP_20_SYMBOLS each independently trigger a full-session sparkline scan, so
   // three separate calls would run that scan three times for the same day.
-  const [all, news] = await Promise.all([
+  const [all, news, sessionDay] = await Promise.all([
     getTickers([...INDEX_SYMBOLS, ...TOP_20_SYMBOLS]),
     getNewsTeaser(watchlist, 3),
+    getSessionDay(),
   ]);
   const bySymbol = new Map(all.map((t) => [t.symbol, t]));
   const indices = INDEX_SYMBOLS.map((s) => bySymbol.get(s)).filter((t) => t != null);
@@ -32,12 +34,20 @@ export default async function Home() {
 
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-8 lg:px-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+      {/* The page's one display-scale element. It was 24px — barely 1.3x the
+          section headings under it — so the page opened with nothing leading.
+          The session date sits below the heading rather than above it: a date
+          set above a title is a kicker, and the heading carries its own weight. */}
+      <header className="max-w-[22ch]">
+        <h1 className="text-display font-semibold text-ink">
           What happened to your stocks today
         </h1>
-        <p className="mt-1 text-sm text-body">
-          Daily intelligence across US technology markets.
+        <p className="mt-3 font-mono text-xs tabular-nums text-muted">
+          {sessionDay ? `Session of ${formatDay(sessionDay)}` : "No session recorded yet"}
+          <span className="mx-2 text-hairline" aria-hidden>
+            /
+          </span>
+          <span className="font-sans">Prices recorded every 15 minutes</span>
         </p>
       </header>
 

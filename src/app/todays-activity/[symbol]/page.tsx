@@ -80,12 +80,14 @@ export default async function TodaysActivityForSymbol({
           </div>
         </div>
 
+        {/* The page's display element. This is the number the visitor came for
+            and it was set at 24px, the same size as a section heading. */}
         <div className="flex items-center gap-5">
           <div className="text-right">
-            <p className="font-mono text-2xl font-medium tabular-nums text-ink">
+            <p className="font-mono text-display font-medium tabular-nums text-ink">
               {formatPrice(ticker.price)}
             </p>
-            <p className={`font-mono text-sm tabular-nums ${moveColor}`}>
+            <p className={`mt-1 font-mono text-lg tabular-nums ${moveColor}`}>
               {formatChange(ticker.change)} ({formatPercent(ticker.changePercent)})
             </p>
           </div>

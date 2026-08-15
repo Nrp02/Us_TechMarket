@@ -18,9 +18,16 @@ Constraints that shape every decision below: no user accounts, no budget (free t
 - **Hosting**: Vercel (free tier)
 - **AI**: Gemini API, model **`gemini-3.5-flash`** (Gemini 2.5 Flash is unavailable — see the reversal note below), free tier only — no billing enabled on the Google AI Studio project, ever. See "Free tier verification" under Open Items — don't trust a specific rate-limit number from training data or a blog post; check the live console at build time.
 
-## Division of labor: Claude Design vs. Claude Code
+## Division of labor: this file vs. DESIGN.md
 
-Visual design — layout composition, color, spacing, typography, theme — is Claude Design's job, not this file's. This file is a **content contract**: what data and functionality must exist on each page, and what was explicitly cut. It intentionally says nothing about how anything should look. When building a page, treat Claude Design's output as the visual reference and this file as the checklist of what must be present in that layout — if the two ever conflict on *content* (a field, a section, a feature that Design added or dropped on its own), this file wins; re-derive the visual from the checklist rather than the other way around, since every content decision here already went through several rounds of scoping with the owner. If Design's output already comes as usable component code rather than a visual mockup, treat it as a starting point to build on rather than a reference to redraw from scratch — but the content contract still governs what stays in it.
+**Reversed by the owner.** Visual design used to be assigned to a separate "Claude Design" pass, with this file forbidden from saying anything about how things look. That split is gone: whoever builds the page also owns layout composition, colour, spacing, typography, theme, and hierarchy, and does not wait on an external visual reference.
+
+The division that remains is between two files, and it is worth keeping:
+
+- **This file is the content contract** — what data and functionality must exist on each page, and what was explicitly cut. Every content decision here went through several rounds of scoping with the owner, so if a visual pass adds or drops a *field, section, or feature* on its own, this file wins and the visual is re-derived from the checklist.
+- **`DESIGN.md` is the visual contract** — tokens, type ramp, form language, component character, and the named rules. It is generated from the built code by `/impeccable document`, so it describes what exists rather than what was hoped for. `PRODUCT.md` holds durable product truth alongside it.
+
+The content contract does **not** constrain composition. "Five cards", "eight columns exactly" and the like fix what must be *present and legible*; they do not fix the arrangement, the scale, the density, or the visual weight of any of it. A pass that changes how the page is composed while keeping every required field is working as intended.
 
 ## Language & Technology Policy
 

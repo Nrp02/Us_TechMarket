@@ -24,7 +24,12 @@ import { FINNHUB_LOGO, logoSrc } from "@/lib/logos";
 // One fixed-width plate for every state so every thumbnail in the list lines up
 // identically. `max-w-full` on the mark lets a wide wordmark scale down rather
 // than spill past the plate.
-const PLATE = "flex h-20 w-44 shrink-0 items-center justify-center rounded-xl px-4";
+// Was 176x80 with a 36px mark — at an iPad-portrait width that plate took about
+// 40% of the row for an aria-hidden decoration, and on the Market tab it was the
+// same Finnhub mark repeated 19 times down the page. At 96x44 it identifies the
+// source without dominating the headline it sits beside, and it now shares the
+// pill geometry every other logo plate in the product uses.
+const PLATE = "flex h-11 w-24 shrink-0 items-center justify-center rounded-full px-2";
 // Real marks get the always-light plate (they are drawn in their own brand
 // colours and several are near-black); the lettermark stays theme-aware.
 const LOGO_PLATE = `${PLATE} bg-logo-plate`;
@@ -39,7 +44,7 @@ export function NewsThumbnail({ symbol }: { symbol: string | null }) {
     return (
       <span className={LOGO_PLATE} aria-hidden>
         {/* eslint-disable-next-line @next/next/no-img-element -- remote CDN mark; Brandfetch requires these URLs be hotlinked, so next/image optimization (which refetches server-side) is not an option */}
-        <img src={src} alt="" className="h-9 max-w-full object-contain" />
+        <img src={src} alt="" className="h-5 max-w-full object-contain" />
       </span>
     );
   }
