@@ -94,6 +94,28 @@
   /* Ambient light catching the top edge, applied as a border-image-free inset.
      Kept separate from --elev-* so a panel can take depth without the edge. */
   --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  /* The room the panels sit in, not just the panels themselves. Was a flat
+     fill with zero falloff, which is fine wherever a panel covers it but reads
+     as an unstyled template the moment it doesn't — the News empty tabs are a
+     lone message panel floating in ~700px of it. Same technique as
+     --surface-face (a color-mix toward canvas), read as light spilling down
+     from just above the frame rather than a spotlight.
+
+     The core carries the accent, deliberately: this is the second place
+     Signal Blue appears as a wash rather than as a token of state, extending
+     the AI Summary Card's own wash (see daily-summary-card.tsx) from one card
+     to the room itself. First measured at the card's own 9% intensity, it sat
+     at a 3-5 unit RGB delta over #0a0c11 — imperceptible, and confirmed as
+     under-shooting the brief, which asked for the room to genuinely read as
+     lit rather than for a trace to be technically present. 16% and a centre
+     pulled down into the actual viewport (-60px, not -160px, so the bulb
+     itself is on screen rather than implied) is the value that reads. */
+  --backdrop-face: radial-gradient(
+    1300px 620px at 50% -60px,
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-backdrop)) 0%,
+    color-mix(in srgb, var(--color-canvas) 38%, var(--color-backdrop)) 45%,
+    var(--color-backdrop) 100%
+  );
 }
 
 /* Every token above is redefined here — nothing may have its only definition
@@ -151,6 +173,17 @@
     var(--color-canvas) 140px
   );
   --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.07);
+  /* Lighter neutral mix than the light theme's (32% against 38%) — the same
+     reasoning as the panel shadows: a wash reads faster against near-black,
+     so it takes less of it to say the same thing. Same 16% accent core as
+     light; --color-primary is already the theme-tuned value, so the token
+     does the adjusting rather than a second hand-tuned percentage. */
+  --backdrop-face: radial-gradient(
+    1300px 620px at 50% -60px,
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-backdrop)) 0%,
+    color-mix(in srgb, var(--color-canvas) 32%, var(--color-backdrop)) 45%,
+    var(--color-backdrop) 100%
+  );
 }
 
 @theme inline {
@@ -252,6 +285,14 @@
   box-shadow: var(--edge-lit), var(--elev-3);
 }
 
+/* The field everything above sits on. Replaces the flat `bg-backdrop` fill on
+   <body> and <main> with the same color plus --backdrop-face — see the note
+   there for why. */
+@utility backdrop-field {
+  background-color: var(--color-backdrop);
+  background-image: var(--backdrop-face);
+}
+
 /* --- The editorial voice -------------------------------------------------
    The one h1 per page, set in the serif. Composed once rather than repeated as
    `font-serif text-display font-semibold tracking-…` across four files, for the
@@ -275,8 +316,9 @@
   letter-spacing: -0.012em;
 }
 
+/* Background lives on the backdrop-field class in layout.tsx now, not here —
+   a plain color here would silently drift from --backdrop-face. */
 body {
-  background: var(--color-backdrop);
   color: var(--color-ink);
 }
 

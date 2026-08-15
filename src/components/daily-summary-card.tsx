@@ -25,13 +25,22 @@ export function DailySummaryCard({
     // own text but still in front of the page, rather than disappearing under
     // the backdrop.
     <section className="panel-raised relative isolate overflow-hidden p-6 sm:p-8">
-      {/* The one authored surface in the system. A single wide, very low-alpha
-          wash of the accent bleeding in from the top-left corner — it does not
-          tint the text, it does not repeat anywhere else, and it exists so the
-          page's centrepiece is lit differently from the panels around it. */}
+      {/* The one authored surface in the system. A single wide wash of the
+          accent bleeding in from the top-left corner — it does not tint the
+          text, it does not repeat anywhere else, and it exists so the page's
+          centrepiece is lit differently from the panels around it.
+
+          Was opacity-[0.09] — the same intensity the page's own backdrop wash
+          started at and was raised past, once measured: at 9% over the near-
+          black canvas it sat at a 3-5 unit RGB delta, imperceptible rather
+          than felt. --backdrop-face settled on 16% for that reason. This wash
+          sits on a lighter panel face rather than the near-black backdrop, so
+          it does not need to travel as far to read; 14% is the value between
+          the two — enough to be a felt corner of light rather than a trace,
+          without competing with the narrative text it bleeds toward. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -left-24 -top-32 -z-10 size-96 rounded-full opacity-[0.09]"
+        className="pointer-events-none absolute -left-24 -top-32 -z-10 size-96 rounded-full opacity-[0.14]"
         style={{
           background:
             "radial-gradient(closest-side, var(--color-primary), transparent)",

@@ -35,7 +35,15 @@ export function ThemeToggle() {
       // size-9 (36px), not size-8 (32px). Both clear WCAG 2.2's 24px minimum,
       // so this was never a violation — but iPad is a named target and this is
       // the smallest hit area in the product, on glass. The icon stays 18px.
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-body transition-colors hover:bg-surface-soft hover:text-ink"
+      //
+      // Was borderless at rest, reading as a bare glyph rather than a control
+      // — invisible until hover told you it was clickable. That was fine
+      // beside the wordmark's own 18px of text, where the context alone said
+      // "header control"; alone on its own row with no neighbour, it read as
+      // a stray mark instead. The 1px Hairline border is the same one every
+      // container in the system already carries at rest — not a new idiom,
+      // just the first time this control has needed one.
+      className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-hairline text-body transition-colors hover:bg-surface-soft hover:text-ink"
     >
       <svg
         viewBox="0 0 24 24"

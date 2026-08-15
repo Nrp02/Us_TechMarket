@@ -63,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
-      <body className="flex min-h-full bg-backdrop">
+      <body className="flex min-h-full backdrop-field">
         {/* The sidebar is only 3 items, so this costs little on most visits —
             but it was still missing, on a codebase that otherwise author its
             own a11y fixes rather than skip them. First focusable element in
@@ -80,7 +80,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             content's min-content width — the 880px watchlist table and the
             560px intraday chart pushed the whole page sideways instead of
             scrolling inside their own overflow-x-auto wrappers. */}
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 bg-backdrop">
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 backdrop-field">
           {children}
         </main>
         <ChartGradients />
