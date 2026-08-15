@@ -139,6 +139,30 @@
   --blur-raised: 16px;
   --blur-overlay: 28px;
 
+  /* The opaque twin of each tier: exactly what that glass composites to over
+     the ambient field at its peak, which is what the accessibility fallbacks
+     at the foot of this file repaint with. Values are the contrast harness's
+     own output, not eyeballed.
+
+     They are tokens rather than literals inline in the media queries because
+     they are DERIVED: change a --glass-* colour or alpha, or the sky's peak,
+     and every one of these goes stale silently — a visitor who prefers reduced
+     transparency would get a surface in the wrong tone and nothing would fail.
+     One place to update, sitting directly beneath the values they mirror.
+     --solid-panel is --color-canvas, which is already defined as that
+     composite; it is aliased here so the set reads as one group. */
+  --solid-rail: #121a2c;
+  --solid-panel: var(--color-canvas);
+  --solid-raised: #192136;
+  --solid-overlay: #171e30;
+  /* The frosted plate's own composite, derived the same way and stale for the
+     same reason if --color-logo-plate moves without it. */
+  --solid-logo-plate: #cdd2da;
+  /* The glass rim as a drawn line, for prefers-contrast. Measured 3.02:1
+     against the panel face — the 1.4.11 floor for a boundary that has to be
+     seen, where --color-glass-edge is deliberately below notice. */
+  --edge-strong: #55627d;
+
   /* The rim where light catches the edge of the glass. Translucent white
      rather than a solid token, because it composites over the sky behind it
      and a solid border would read as a drawn line rather than an edge. */
@@ -475,25 +499,25 @@ a {
 
   .panel,
   .panel-track {
-    background-color: var(--color-canvas);
+    background-color: var(--solid-panel);
   }
 
   .panel-raised {
-    background-color: #192136;
+    background-color: var(--solid-raised);
   }
 
   .panel-overlay {
-    background-color: #171e30;
+    background-color: var(--solid-overlay);
   }
 
   .panel-rail {
-    background-color: #121a2c;
+    background-color: var(--solid-rail);
   }
 
   /* The plate is 90% opaque rather than glass, but "reduce transparency" means
      all of it, not the parts we think are small. */
   :root {
-    --color-logo-plate: #cdd2da;
+    --color-logo-plate: var(--solid-logo-plate);
   }
 
   /* The one translucent plate inside a surface. Baked back to the flat tint,
@@ -516,29 +540,29 @@ a {
   .panel-rail {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
-    border-color: #55627d;
+    border-color: var(--edge-strong);
   }
 
   .panel,
   .panel-track {
-    background-color: var(--color-canvas);
+    background-color: var(--solid-panel);
   }
 
   .panel-raised {
-    background-color: #192136;
+    background-color: var(--solid-raised);
   }
 
   .panel-overlay {
-    background-color: #171e30;
+    background-color: var(--solid-overlay);
   }
 
   .panel-rail {
-    background-color: #121a2c;
+    background-color: var(--solid-rail);
   }
 
   :root {
     --color-muted: var(--color-body);
-    --color-hairline: #55627d;
+    --color-hairline: var(--edge-strong);
     --color-logo-plate: #e9ebef;
   }
 
