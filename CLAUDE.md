@@ -318,12 +318,16 @@ That the projects really are separate is **measured, not assumed**: the deploy k
 
 | Key | Where it lives | Used by |
 |---|---|---|
-| **Test** | `.env.local` only | `npm run dev`, any manually triggered job from a laptop |
-| **Deploy** | Vercel env vars only | The live site and every Supabase Cron job |
+| **Deploy** | Vercel env vars, **and `.env.local` by default** | The live site, every Supabase Cron job, and anything run from a laptop unless the key is swapped first |
+| **Test** | Nowhere by default — swapped into `.env.local` when needed | Manual job triggers and heavy local testing |
 
-**The split exists because of what happened without it.** `.env.local` originally held the *deploy* key, so every locally triggered job drew on the same 20/day bucket as the live site. A single afternoon of testing exhausted it, and the scheduled jobs then failed with 429 for the rest of the day through no fault of their own — the laptop had already spent production's quota. Keeping a test key in `.env.local` is what stops a debugging session from starving the demo.
+**`.env.local` holds the deploy key as its resting state**, so a laptop and the live site share one 20/day bucket unless someone changes that deliberately. This is a known cost, not an oversight: it keeps local behaviour identical to production, which is what you want when reproducing a bug. The cost is real, though — it is exactly how the quota was exhausted once, and the scheduled jobs then failed with 429 for the rest of the day through no fault of their own, because the laptop had already spent production's allowance.
+
+**So swap the test key in before triggering a job by hand or testing anything that calls Gemini repeatedly**, and swap it back afterwards. A single manual `/api/daily-summary` run costs 1 of the day's 20; a full day's coverage costs 4.
 
 `src/lib/gemini.ts` reads one unlabelled `GEMINI_API_KEY` and knows nothing about environments — the split is entirely a config convention, and it holds only because `.env.local` is gitignored and never deployed. **`.env.local` carries a comment naming which key is currently in it**; that comment is the only way to tell the two apart from the file, so update it whenever the key is swapped. Never write either key into a tracked file, this one included.
+
+One thing that looks like a mismatch and is not: `vercel env pull` cannot read these values back, because every variable on this project is marked **Sensitive**. It writes a short placeholder instead — 12 characters against a real key's ~52 — so comparing a pulled file against `.env.local` proves nothing. Check with `vercel env ls production` that a name is *set*; there is no supported way to read what it is set to.
 
 **Testing locally is not isolated from production, and the keys do not change that.** Local and deployed both point at the *same* Supabase project, so a manually triggered job on a laptop writes real rows to the production database. Observed directly: during one local test run, `daily-summary` reported `alreadyDone: 15` when only 10 had been generated locally — the other 5 came from the Vercel cron writing to the same tables at the same time. Consequences to keep in mind:
 
