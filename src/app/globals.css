@@ -83,12 +83,25 @@
      bar. #707b8f measures 3.44:1 at the worst case. */
   --color-chart-bar: #707b8f;
 
-  /* Deliberately light, and the one opaque non-glass object in the product.
+  /* Deliberately light, and the one object in the product that must not invert.
      Brand marks arrive with hardcoded fills we cannot recolour — AAPL #000000,
      PLTR #101113, AMZN #221f1f are effectively black and vanish on anything
      dark. Lettermarks and category glyphs use surface-strong instead so their
-     text stays legible against the glass. */
-  --color-logo-plate: #e9ebef;
+     text stays legible against the glass.
+
+     Now frosted rather than a solid white sticker. At #e9ebef it was the single
+     loudest object on the page by a wide margin — a page full of other
+     companies' plates outshouting the prices they sit beside. 90% over the
+     surface behind it composites to about #cdd2da, a quarter less luminous,
+     and it joins the material instead of sitting on top of it.
+
+     Alpha is safe here despite the Baked Tint Rule for two reasons: at 0.9 the
+     surface underneath moves the result by under 2 RGB units across every
+     surface a plate lands on, and a brand mark is exempt from 1.4.11 as a
+     logotype anyway. Worth knowing that NVIDIA's green already measured 2.0:1
+     on the OLD white plate — mark contrast was never what this token was
+     holding, so dimming it forfeits nothing that was there. */
+  --color-logo-plate: rgb(226 230 237 / 0.9);
 
   /* Tinted plates, baked flat over --color-canvas at 16%, never written as
      `bg-primary/12`. An alpha composites against whatever is behind it, so the
@@ -437,6 +450,106 @@ a {
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+/* --- When the visitor does not want glass -------------------------------
+   A translucent UI has to have an answer for people who cannot use one, and
+   the answer is not "slightly less blur". Both queries below drop every
+   backdrop-filter entirely and repaint each tier with the solid colour it was
+   already composing to — the values are the harness's own output for each
+   tier over the ambient field at peak, so nothing shifts hue when the glass
+   comes off, it simply stops being translucent.
+
+   This is exactly why --color-canvas is defined as the worst-case composite
+   rather than as a colour someone chose: the fallback was already sitting in
+   the token, waiting. */
+@media (prefers-reduced-transparency: reduce) {
+  .panel,
+  .panel-track,
+  .panel-raised,
+  .panel-overlay,
+  .panel-rail {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .panel,
+  .panel-track {
+    background-color: var(--color-canvas);
+  }
+
+  .panel-raised {
+    background-color: #192136;
+  }
+
+  .panel-overlay {
+    background-color: #171e30;
+  }
+
+  .panel-rail {
+    background-color: #121a2c;
+  }
+
+  /* The plate is 90% opaque rather than glass, but "reduce transparency" means
+     all of it, not the parts we think are small. */
+  :root {
+    --color-logo-plate: #cdd2da;
+  }
+
+  /* The one translucent plate inside a surface. Baked back to the flat tint,
+     which is where the Baked Tint Rule wanted it in the first place. */
+  .nav-active {
+    background-color: var(--color-tint-primary);
+  }
+}
+
+/* Higher contrast: solid surfaces AND a border that is a drawn line rather
+   than a rim catching light. The glass edge sits at 9% white, which is
+   deliberately below the threshold of notice — precisely wrong for someone who
+   has asked for more contrast. Text tokens climb one tier so the quietest
+   readable step is Body rather than Muted. */
+@media (prefers-contrast: more) {
+  .panel,
+  .panel-track,
+  .panel-raised,
+  .panel-overlay,
+  .panel-rail {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: #55627d;
+  }
+
+  .panel,
+  .panel-track {
+    background-color: var(--color-canvas);
+  }
+
+  .panel-raised {
+    background-color: #192136;
+  }
+
+  .panel-overlay {
+    background-color: #171e30;
+  }
+
+  .panel-rail {
+    background-color: #121a2c;
+  }
+
+  :root {
+    --color-muted: var(--color-body);
+    --color-hairline: #55627d;
+    --color-logo-plate: #e9ebef;
+  }
+
+  .nav-active {
+    background-color: var(--color-tint-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary-active);
+  }
+
+  :focus-visible {
+    outline-width: 3px;
+  }
 }
 
 /* The only motion in the product is transition-colors plus the switcher
