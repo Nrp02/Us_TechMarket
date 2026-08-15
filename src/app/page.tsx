@@ -39,19 +39,31 @@ export default async function Home() {
           The session date sits below the heading rather than above it: a date
           set above a title is a kicker, and the heading carries its own weight.
 
-          The heading is capped so it breaks into three short lines and reads as
-          a block rather than a ribbon, which is what leaves room for the digest
-          beside it. Previously it ran the full width and the remaining ~800px
-          of the header held nothing at all.
+          The heading is capped so it reads as a block rather than a ribbon,
+          which is what leaves room for the digest beside it. Previously it ran
+          the full width and the remaining ~800px of the header held nothing.
+
+          **Two lines, not four.** The cap was 13ch, chosen against Inter, and
+          it broke the 33-character headline at every word: "What / happened to
+          / your stocks / today". The serif is the wider face, so a measure that
+          gave three lines in Inter gave four here, and four lines of display
+          type is a wall rather than an opening. At 20ch it breaks once, near
+          the middle, and `text-balance` evens the two halves.
+
+          Below about 1200px the heading column shrinks against the digest,
+          which is `shrink-0`, so this returns to three lines rather than
+          overflowing. That is the intended degradation, not a regression.
 
           The cap is on the h1 itself, not on the wrapper. `ch` resolves against
           the element's own font size, so the same number on a 16px wrapper
           means something completely different from what it means on a 52px
           heading — at 16ch the wrapper measured 270px and broke the headline
-          into six one-word lines. */}
+          into six one-word lines. Being in `ch` also makes the break points
+          scale-invariant: the clamp can move the size from 36px to 52px and the
+          line breaks stay where they are. */}
       <header className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
         <div>
-          <h1 className="max-w-[13ch] text-balance text-display font-semibold text-ink">
+          <h1 className="page-title max-w-[20ch] text-balance text-ink">
             What happened to your stocks today
           </h1>
           <p className="mt-4 max-w-[52ch] text-sm text-body">

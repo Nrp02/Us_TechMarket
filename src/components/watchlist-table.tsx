@@ -13,6 +13,7 @@ import {
   formatVolume,
 } from "@/lib/format";
 import type { Ticker } from "@/lib/queries";
+import { SIGNIFICANCE_RULE_TEXT } from "@/lib/significance";
 import { TOP_20 } from "@/lib/symbols";
 import { WATCHLIST_MAX, WATCHLIST_MIN } from "@/lib/watchlist";
 
@@ -60,9 +61,18 @@ export function WatchlistTable({
                 <th
                   key={heading}
                   scope="col"
+                  // The Status column's badge never explained its own rule
+                  // anywhere in the UI. Stated once here, on the header, rather
+                  // than on every row's badge — a screen reader hits it once
+                  // per table instead of once per stock, and a sighted visitor
+                  // gets it on hover exactly where the column is labelled.
+                  title={heading === "Status" ? SIGNIFICANCE_RULE_TEXT : undefined}
                   className="px-5 py-3 text-xs font-semibold text-muted"
                 >
                   {heading}
+                  {heading === "Status" && (
+                    <span className="sr-only"> — {SIGNIFICANCE_RULE_TEXT}</span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -85,6 +95,13 @@ export function WatchlistTable({
                         on a different stock), and hunt it down in a dropdown. */}
                     <Link
                       href={`/todays-activity/${ticker.symbol}`}
+                      // The symbol and company name render as two sibling divs
+                      // with no separator between them — measured via
+                      // textContent as "NVDANVIDIA", which a screen reader is
+                      // liable to announce as one run-together word rather
+                      // than the two-part identity a sighted reader gets from
+                      // the line break. The explicit name is the fix.
+                      aria-label={`${ticker.symbol} – ${ticker.name}`}
                       className="group flex items-center gap-3"
                     >
                       <CompanyLogo symbol={ticker.symbol} name={ticker.name} />

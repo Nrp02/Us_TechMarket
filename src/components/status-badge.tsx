@@ -1,9 +1,12 @@
+import { SIGNIFICANCE_RULE_TEXT } from "@/lib/significance";
+
 // Renders the shared Significant Movement rule's verdict. The rule itself lives
 // in lib/significance.ts — this only paints the result it is given.
 
 export function StatusBadge({ significant }: { significant: boolean }) {
   return (
     <span
+      title={SIGNIFICANCE_RULE_TEXT}
       // The tint is a flat token, not `bg-primary/10`. As an alpha it
       // composited against whatever sat behind it, so the same badge measured
       // 4.76:1 at rest and 4.49:1 on a hovered row — contrast that moved with

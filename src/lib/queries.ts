@@ -209,10 +209,17 @@ function toNewsItem(row: Record<string, unknown>): NewsItem {
  * stored column, so the tabs re-split the same stored articles per visitor. The
  * filter runs in Postgres so that `limit` still counts articles the tab will
  * actually show.
+ *
+ * `day` scopes to one ET trading day, using the same dayWindow-plus-JS-filter
+ * pattern as getSymbolNews and getIntraday below — the UTC window narrows the
+ * query, and the exact ET boundary is settled after. Null (the default) applies
+ * no date filter at all, which is what the Home teaser wants: it is not the
+ * News page's "today" default, it is "most recent regardless of day".
  */
 async function getNewsUncached(
   watchlist: string[],
   category?: NewsCategory,
+  day?: string | null,
   limit = 60,
 ): Promise<NewsItem[]> {
   let query = db
@@ -231,8 +238,16 @@ async function getNewsUncached(
       .not("related_symbols", "ov", `{${watchlist.join(",")}}`);
   }
 
+  if (day) {
+    const { from, to } = dayWindow(day);
+    query = query.gte("published_at", from).lt("published_at", to);
+  }
+
   const { data } = await query;
-  return (data ?? []).map((row) => toNewsItem(row));
+  const items = (data ?? []).map((row) => toNewsItem(row));
+  return day
+    ? items.filter((item) => tradingDay(new Date(item.publishedAt)) === day)
+    : items;
 }
 
 // The watchlist is an argument rather than a cookie read, so it lands in the
@@ -243,14 +258,44 @@ export const getNews = unstable_cache(getNewsUncached, ["news"], {
 
 /**
  * Market News teaser on the Home page. Reuses the same ordering as the News
- * page rather than computing a second ranking of its own.
+ * page rather than computing a second ranking of its own. Explicitly
+ * date-unfiltered: the teaser's job is "most recent 3, whatever day", not
+ * "today's 3" — a quiet morning before today's first news cycle should not
+ * empty out the Home page.
  */
 export async function getNewsTeaser(
   watchlist: string[],
   limit = 3,
 ): Promise<NewsItem[]> {
-  return getNews(watchlist, undefined, limit);
+  return getNews(watchlist, undefined, null, limit);
 }
+
+/**
+ * Every ET trading day that has at least one stored article, most recent
+ * first. Backs the News page's date filter. Reads one column across the whole
+ * table rather than a grouped SQL query — simplest thing that works at the
+ * size this table actually is (measured in the low hundreds of rows), and it
+ * avoids adding a Postgres function for one dropdown.
+ */
+async function getNewsAvailableDatesUncached(): Promise<string[]> {
+  const { data } = await db
+    .from("news")
+    .select("published_at")
+    .order("published_at", { ascending: false })
+    .limit(1000);
+
+  const days = new Set<string>();
+  for (const row of data ?? []) {
+    days.add(tradingDay(new Date(row.published_at as string)));
+  }
+  return [...days].sort().reverse();
+}
+
+export const getNewsDates = unstable_cache(
+  getNewsAvailableDatesUncached,
+  ["news-dates"],
+  { revalidate: CACHE_SECONDS },
+);
 
 // ---------------------------------------------------------------------------
 // Today's Activity

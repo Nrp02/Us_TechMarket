@@ -40,7 +40,7 @@ export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) 
           className="h-4 max-w-full object-contain"
         />
       ) : (
-        <span className="text-[11px] font-semibold text-body">
+        <span className="text-micro font-semibold text-body">
           {name.slice(0, 2).toUpperCase()}
         </span>
       )}

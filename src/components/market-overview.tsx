@@ -50,10 +50,10 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                 // promise the cell cannot keep.
                 className="border-l border-t border-hairline px-5 py-5"
               >
-                <h3 className="text-[11px] font-semibold text-ink">
+                <h3 className="text-micro font-semibold text-ink">
                   {card.label}
                 </h3>
-                <p className="mt-0.5 text-[11px] text-muted">{card.note}</p>
+                <p className="mt-0.5 text-micro text-muted">{card.note}</p>
 
                 {ticker ? (
                   <>

@@ -110,7 +110,7 @@ export function IntradayChart({
               <text
                 x={PLOT_RIGHT + 10}
                 y={y + 4}
-                className="fill-[var(--color-muted)] font-mono text-[11px]"
+                className="fill-[var(--color-muted)] font-mono text-micro"
               >
                 {formatPrice(value)}
               </text>
@@ -156,14 +156,14 @@ export function IntradayChart({
         <text
           x={PLOT_RIGHT + 10}
           y={VOLUME_TOP + 10}
-          className="fill-[var(--color-muted)] font-mono text-[11px]"
+          className="fill-[var(--color-muted)] font-mono text-micro"
         >
           {formatVolume(peakVolume)}
         </text>
         <text
           x={LEFT}
           y={VOLUME_TOP - 8}
-          className="fill-[var(--color-muted)] text-[11px] font-semibold"
+          className="fill-[var(--color-muted)] text-micro font-semibold"
         >
           Volume
         </text>
@@ -196,7 +196,7 @@ export function IntradayChart({
               y={AXIS_Y}
               // The end labels are anchored inward so neither runs off the plot.
               textAnchor={i === 0 ? "start" : i === last ? "end" : "middle"}
-              className="fill-[var(--color-muted)] font-mono text-[11px]"
+              className="fill-[var(--color-muted)] font-mono text-micro"
             >
               {formatEtTime(point.at).replace(" ET", "")}
             </text>

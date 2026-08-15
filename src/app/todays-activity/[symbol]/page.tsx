@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { ActivityStats } from "@/components/activity-stats";
 import { ActivityTimeline } from "@/components/activity-timeline";
+import { AddStockMenu } from "@/components/add-stock-menu";
 import { CompanyLogo } from "@/components/company-logo";
 import { DailySummaryCard } from "@/components/daily-summary-card";
 import { IntradayChart } from "@/components/intraday-chart";
@@ -65,15 +66,16 @@ export default async function TodaysActivityForSymbol({
                 Wrapped in an h1 because the page had no heading at all: the
                 ticker was a bare <button>, so a screen reader's heading list
                 gave this page no identity. The button keeps its own type
-                styling; the h1 is purely structural. */}
-            <h1>
-              <SymbolSwitcher
-                symbol={ticker.symbol}
-                symbols={watchlist}
-                min={WATCHLIST_MIN}
-                max={WATCHLIST_MAX}
-              />
-            </h1>
+                styling; the h1 is purely structural.
+
+                Adding a stock is a separate control from the switcher now —
+                see add-stock-menu.tsx for why the two were split. */}
+            <div className="flex flex-wrap items-center gap-2">
+              <h1>
+                <SymbolSwitcher symbol={ticker.symbol} symbols={watchlist} min={WATCHLIST_MIN} />
+              </h1>
+              <AddStockMenu symbols={watchlist} max={WATCHLIST_MAX} />
+            </div>
             <p className="px-2 text-sm text-body">
               {ticker.name} · session of {formatDay(activity.sessionDay)}
             </p>

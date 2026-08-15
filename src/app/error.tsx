@@ -38,7 +38,12 @@ export default function Error({
   return (
     <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-8 lg:px-10">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-ink">
+        {/* text-display, like every other page's h1. At text-2xl this sat 4px
+            above a section heading, so the one thing on the page read as a
+            subsection of nothing — two adjacent steps doing different jobs at
+            almost the same size, which is the hierarchy failure the ramp exists
+            to prevent. Display clamps down to 36px at narrow widths. */}
+        <h1 className="page-title text-ink">
           This page could not be loaded
         </h1>
         <p className="mt-1 text-sm text-body">

@@ -59,13 +59,43 @@ export function DailySummaryCard({
               reading as an appendix to the paragraph.
 
               Below lg they stack in source order and the divider flips from a
-              left border to a top one. */}
-          <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,58ch)_minmax(0,1fr)] lg:gap-10">
+              left border to a top one.
+
+              The size class on this grid container is load-bearing and is not
+              styling anything it renders — every child sets its own size. It is
+              here because the 58ch track resolves against *this* element's font
+              size, and it must be kept equal to the narrative's own size below.
+              It was inheriting 16px against a 20px paragraph, and the ch width
+              of the face cancels out of that ratio, so the error was exact: the
+              narrative rendered at 58 × 16/20 = 46 characters, not the 58 it
+              asks for — a fifth narrower than designed, on the one long passage
+              in the product.
+
+              Both are `text-lg` now. The narrative was 20px, which read as
+              shouty rather than as the centrepiece: the card already outranks
+              its neighbours by an elevation step, an accent wash and a
+              two-column split, so the type did not have to shout as well. At
+              18px it still sits two steps above the 14px body around it and
+              takes its own step in the ramp, where 20px collided with `title`.
+
+              This is the Measure-On-The-Text Rule, which DESIGN.md records as
+              having shipped once before. It shipped twice. The rule says a `ch`
+              cap belongs on the element whose font size it describes; where
+              that element is a grid track rather than the text itself, the
+              track has to be told what size it is measuring. */}
+          <div className="mt-5 grid gap-6 text-lg lg:grid-cols-[minmax(0,58ch)_minmax(0,1fr)] lg:gap-10">
             {/* text-pretty, not text-balance: balance is capped at a handful of
                 lines by every engine that implements it and is meant for
                 headings. This is a passage — pretty only fixes the orphan on
                 the last line. */}
-            <p className="text-pretty text-xl leading-[1.55] text-ink">
+            {/* `lede` is the hook the dark-theme compensation in globals.css
+                hangs on — see the note there for why only this passage gets it.
+                The classes here are the light-theme setting; in dark, the rule
+                in globals.css raises the leading past this `leading-[1.55]`,
+                which it can do because it is unlayered and Tailwind's utilities
+                are not. Change the base leading here and the dark value there
+                together, or the two themes drift apart. */}
+            <p className="lede text-pretty font-serif text-lg leading-[1.55] text-ink">
               {summary.narrative}
             </p>
 
@@ -94,7 +124,9 @@ export function DailySummaryCard({
               both on one element and the border stops where the text does,
               which reads as a stub rather than as the card's closing line. */}
           <div className="mt-6 border-t border-hairline pt-4">
-            <p className="max-w-[86ch] text-xs leading-relaxed text-muted">
+            {/* 75ch, not 86: 86 put this past the comfortable reading band at
+                any size, and at 12px it was the longest line in the product. */}
+            <p className="max-w-[75ch] text-xs leading-relaxed text-muted">
               Written by AI from {symbol}&apos;s recorded prices, volume, news
               and calendar for this session. It describes what happened — not
               why, and not what happens next. Not investment advice.

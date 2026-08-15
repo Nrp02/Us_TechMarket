@@ -24,11 +24,11 @@ colors:
   logo-plate: "#e9ebef"
 typography:
   display:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Source Serif 4, ui-serif, Georgia, serif"
     fontSize: "clamp(2.25rem, 4vw, 3.25rem)"
     fontWeight: 600
-    lineHeight: "1.02"
-    letterSpacing: "-0.03em"
+    lineHeight: "1.06"
+    letterSpacing: "-0.012em"
   figure:
     fontFamily: "JetBrains Mono, ui-monospace, monospace"
     fontSize: "clamp(1.75rem, 2.4vw, 2.375rem)"
@@ -49,11 +49,16 @@ typography:
     lineHeight: "1.75rem"
     letterSpacing: "-0.025em"
   lede:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "1.25rem"
+    fontFamily: "Source Serif 4, ui-serif, Georgia, serif"
+    fontSize: "1.125rem"
     fontWeight: 400
     lineHeight: "1.55"
     letterSpacing: "normal"
+  story:
+    fontFamily: "Source Serif 4, ui-serif, Georgia, serif"
+    fontSize: "1rem"
+    fontWeight: 600
+    lineHeight: "1.375"
   body:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
@@ -76,7 +81,7 @@ typography:
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.6875rem"
     fontWeight: 600
-    lineHeight: "1rem"
+    lineHeight: "inherit"
     letterSpacing: "normal"
 rounded:
   lg: "8px"
@@ -262,30 +267,62 @@ The neutral ramp climbs. `backdrop` is the floor, panels sit above it, hover sit
 
 ## Typography
 
-**Display / Body Font:** Inter (with `ui-sans-serif, system-ui, sans-serif`)
+**Editorial Font:** Source Serif 4 (with `ui-serif, Georgia, serif`)
+**Interface Font:** Inter (with `ui-sans-serif, system-ui, sans-serif`)
 **Numeric Font:** JetBrains Mono (with `ui-monospace, monospace`)
 
-**Character:** A deliberately plain pairing. Inter carries every word in the product with no stylistic opinion, tightened hard at display sizes; JetBrains Mono carries every number with tabular figures so that a column of prices, percentages and volumes forms a readable grid rather than a ragged list. The split between the two faces is the clearest signal the system sends about what kind of product this is: prose is prose, and figures are data.
+**Character:** Three faces, each with one job, and the split between them is the clearest statement the system makes about what this product is.
+
+The pairing used to be Inter and JetBrains Mono alone, described here as "deliberately plain… no stylistic opinion". That was the weakness, not the restraint: Inter is the most common interface face on the web, and a product with no typographic opinion reads as a template of itself.
+
+**Source Serif 4 carries the words.** The reasoning is about what the product does. It does not trade, does not tick, and does not advise — its output is written prose, a daily narrative and summarised news, produced after the close and read once. It is far nearer a financial paper's evening edition than a terminal, and terminal typography would actively misrepresent it by implying that something is still moving. A serif for the words against a grotesque for the instruments is the newspaper structure, and it says *read, edited, considered* — which is this product's whole claim, and precisely what a competitor optimising for a confident prediction cannot honestly say. Source Serif 4 specifically because it is drawn for reading on screens and is sober rather than mannered; a fashionable high-contrast display serif would have dated the product inside a year.
+
+**Inter carries the interface** — labels, tables, navigation, badges, buttons, empty states — where neutrality is the virtue and scanning beats voice. **JetBrains Mono carries every figure** with tabular numerals, so a column of prices, percentages and volumes forms a grid rather than a ragged list.
 
 ### Hierarchy
 
-- **Display** (600, `clamp(2.25rem, 4vw, 3.25rem)`, tracking −0.03em): the one `h1` per page — "What happened to your stocks today", "News" — and the price on Today's Activity, which is set in mono at the same step. Appears once, at the top.
+- **Display** (Source Serif 4, 600, `clamp(2.25rem, 4vw, 3.25rem)`, tracking −0.012em, leading 1.06): the one `h1` per page — "What happened to your stocks today", "News", and both error pages — applied through the `page-title` utility rather than reassembled per file. The price on Today's Activity is set at the same step in mono and keeps the `--text-display` token's own −0.03em.
+
+  **Its tracking and leading differ from the token on purpose.** −0.03em was tuned for Inter, and a serif does not want it: the serifs already do the optical work that tight tracking does for a grotesque, so the number that reads as composed on Inter reads as cramped here. The extra leading is for the larger x-height and the descenders.
+
+  Today's Activity is the one page whose `h1` is *not* display serif — it is a ticker symbol, an identifier the machine measured rather than a phrase somebody wrote, so it stays in Inter. See The Written-And-Measured Rule.
 - **Figure** (JetBrains Mono, 500, `clamp(1.75rem, 2.4vw, 2.375rem)`, tracking −0.02em): the Market Overview index levels. The size a number should be in a product whose content is numbers.
-- **Headline** (600, 1.875rem/30px, tracking −0.025em): reserved for the ticker symbol on Today's Activity, which is simultaneously the page title and the button that opens the stock switcher. It is a control.
+- **Headline** (600, 1.875rem/30px, tracking −0.025em): the ticker symbol on Today's Activity, which is simultaneously the page title and the button that opens the stock switcher — it is a control. The five stat readings below it are set at the same step in JetBrains Mono at 500, which is a different role at one size rather than a collision: the face and the weight are what separate them, and they sit in different regions of the page.
 - **Title** (600, 1.25rem/20px, tracking −0.025em): every section heading — Market Overview, My Watchlist, Top Movers Today, AI Daily Summary, Price & Volume, Today's Timeline, Upcoming Events.
-- **Lede** (400, 1.25rem/20px, line-height 1.55): the AI daily narrative, and nothing else. It is the single thing the whole pipeline exists to produce and it is the only prose in the product set above body size.
-- **Body** (400, 0.875rem/14px, line-height 1.625 in prose): article summaries, summary bullets, cell detail lines, company names.
+- **Lede** (400, 1.125rem/18px, line-height 1.55): the AI daily narrative, and nothing else. It is the single thing the whole pipeline exists to produce and it is the only prose in the product set above body size. It was 20px, which read as shouty rather than as the centrepiece and collided with `title`'s step — the card already outranks its neighbours through elevation, the accent wash and its two-column split, so the type does not have to carry that job as well. **Its size is set in two places that must move together**: the paragraph, and the grid track measuring it. See The Measure-On-The-Text Rule.
+- **Story** (Source Serif 4, 600, 1rem/16px, leading snug): an article headline, on the News page and in the Home teaser alike. It is one role on both surfaces — the same three articles should not change size and face between two screens, which they used to.
+- **Body** (400, 0.875rem/14px, line-height 1.625 in prose): article summaries, summary bullets, cell detail lines, company names. **Inter, not the serif**, and the boundary is deliberate: at 14px on a near-black canvas a serif's thin strokes thin out further, and the default theme is dark. The editorial voice stops at 16px.
 - **Label** (600, 0.75rem/12px): table column headers, badge text, menu group headers. Uppercase is *not* used — labels are set in sentence case and rely on weight and colour for their tier.
 - **Numeric** (JetBrains Mono, 500, tabular figures): every price, change, percentage, volume, relative volume, rank, timestamp and axis label. Sizes run from Micro on chart axes to Display on the Today's Activity price. The watchlist Price column is set one step above its neighbours (1rem) because it is what the row is about.
-- **Micro** (600, 0.6875rem/11px): cell labels, ticker chips, the index-card proxy notes, the lettermark fallback, and — set in JetBrains Mono rather than Inter — the intraday chart's axis labels.
+- **Micro** (600, 0.6875rem/11px, `text-micro`): cell labels, ticker chips, the index-card proxy notes, the session date, the lettermark fallback, and — set in JetBrains Mono rather than Inter — the intraday chart's axis labels. It is a real token rather than an arbitrary value: it was spelled as an 11px literal in ten places across six files, which made it a ramp step nothing could change. **It deliberately carries no line-height**, matching the literals it replaced; the leading at every one of those sites is inherited. Giving it an explicit one is an improvement worth making, and worth making with a browser open, because it moves ten line boxes.
 
 ### Named Rules
 
-**The Mono Numerals Rule.** Every number in the product renders in JetBrains Mono with `tabular-nums`. No exceptions — a figure set in Inter is a defect, because it breaks column alignment and severs the visual promise that numbers here are measured rather than written.
+**The Written-And-Measured Rule.** The three faces divide by provenance, and the rule states in one line: **what somebody or something *wrote* is set in the serif; what the machine *measured* is set in Inter or in mono.**
+
+Serif, therefore: page titles, article headlines, and the AI daily narrative. Inter: every label, table header, badge, button, nav item, tab and empty state — interface copy is interface, however carefully it is written. Mono: every figure.
+
+Two consequences that look like exceptions and are not. Today's Activity's `h1` is a ticker symbol, so it is Inter — an identifier, not a phrase. And the AI summary's own heading is Inter while the narrative beneath it is serif, because "AI Daily Summary" is a label naming a thing and the paragraph is the thing.
+
+The boundary has one practical floor: **the serif stops at 16px.** Article summaries and summary bullets are prose and would qualify on provenance, but they sit at 14px, and on the near-black default canvas a serif's thin strokes lose too much there. Legibility on dark wins over the taxonomy.
+
+**The Mono Numerals Rule.** Every number that is *data* renders in JetBrains Mono with `tabular-nums` — a figure set in Inter is a defect, because it breaks column alignment and severs the visual promise that numbers here are measured rather than written.
+
+The rule used to say "every number, no exceptions", and read that way it is wrong in its own terms. A numeral inside a sentence — "Pick up to 10 of the Top 20", "3 articles, 1 upcoming event", "remove one to go below 10" — is precisely a number that *is* written rather than measured, it sits in no column, and setting it in mono makes a sentence stutter. **The test is whether the figure is scanned or read.** A price, a change, a volume, a rank, a timestamp, an axis label and a counter checked against a cap are scanned, and take mono. The watchlist counters — "Edit watchlist (7/10)" and the switcher's "Watchlist (7/10)" — are counters, so they are mono and tabular, which also stops the control resizing as the count crosses from 9 to 10. Numerals inside running prose stay in Inter.
 
 **The Signed Value Rule.** Change values always carry an explicit `+` or `−` (U+2212, not a hyphen) and are formatted from the absolute value. Direction is therefore legible without colour, which is what keeps the change columns usable for a colour-blind reader.
 
-**The Measure-On-The-Text Rule.** A `ch` cap belongs on the element whose font size it is meant to describe, never on a wrapper. `ch` resolves against the element's *own* font size, so `max-w-[16ch]` on a 16px wrapper containing a 52px heading yields about 270px and shatters the heading into one-word lines. This shipped once. If a wrapper needs a width, give it px or rem.
+**The Dark-Compensation Rule.** Dark is the default theme, and both themes shipped byte-identical type metrics. Light-on-dark bleeds — the glyph spreads optically into the field, closing counters and tightening the gaps between letters — so a setting that reads as composed on white reads as slightly clotted on near-black.
+
+The compensation is confined to `lede`: the AI narrative is the one passage long enough for the effect to accumulate, and the only prose set at 20px/400. In dark it takes +0.003em of tracking and 1.59 leading against 1.55. Both are below conscious notice on a single line, which is the point — the two themes should read the same, and that is what they were not doing. **Weight is deliberately left alone**: one step up is the conventional third axis, but 500 would put the narrative at the same weight as the figures around it and cost more in voice than it buys in legibility.
+
+The rule lives unlayered in `globals.css` so it beats the layered `leading-` utility on the element. Change the base leading in the component and the dark value in the stylesheet together, or the themes drift.
+
+**The Measure-On-The-Text Rule.** A `ch` cap belongs on the element whose font size it is meant to describe, never on a wrapper. `ch` resolves against the element's *own* font size, so `max-w-[16ch]` on a 16px wrapper containing a 52px heading yields about 270px and shatters the heading into one-word lines.
+
+**This shipped twice.** The second time was a grid track: the AI summary's narrative column was declared `minmax(0,58ch)` on a container inheriting 16px while the paragraph inside it is 20px, so the passage rendered at 58 × 16/20 = **46 characters**, a fifth narrower than the 58 it asks for. Note the arithmetic is exact whatever the face, because the `ch` width cancels out of the ratio — which is what makes this class of bug worth a rule rather than an eyeball.
+
+Where the measure genuinely has to live on a container — a grid track cannot be moved onto the text — **tell the container what size it is measuring**: the summary's grid now carries `text-xl`, styling nothing (every child sets its own size) and existing only so `58ch` resolves against the type it describes.
 
 ## Layout
 

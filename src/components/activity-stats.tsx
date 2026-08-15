@@ -35,7 +35,7 @@ function Cell({
 
   return (
     <article className="border-l border-t border-hairline px-5 py-5">
-      <h3 className="text-[11px] font-semibold text-muted">{label}</h3>
+      <h3 className="text-micro font-semibold text-muted">{label}</h3>
       <p
         className={`mt-3 font-mono text-3xl font-medium tabular-nums ${toneClass}`}
       >

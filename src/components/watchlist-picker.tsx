@@ -42,7 +42,15 @@ export function WatchlistPicker({
         aria-expanded={open}
         className="rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline"
       >
-        Edit watchlist ({selected.length}/{cap})
+        {/* The count is a figure checked against a cap, not a number inside a
+            sentence, so it takes mono and tabular per the Mono Numerals Rule —
+            it also stops the button resizing as the count crosses from 9 to 10.
+            The prose in the popover keeps its numerals in Inter; see the rule
+            in DESIGN.md for where that line falls. */}
+        Edit watchlist{" "}
+        <span className="font-mono tabular-nums">
+          ({selected.length}/{cap})
+        </span>
       </button>
 
       {open && (

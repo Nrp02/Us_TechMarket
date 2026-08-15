@@ -3,17 +3,25 @@
 import { useRouter } from "next/navigation";
 
 import { useWatchlistMenu } from "@/components/use-watchlist-menu";
-import { TOP_20_SYMBOLS } from "@/lib/symbols";
 
 // The page header doubles as the navigation for this section: the ticker itself
 // is the button, and it opens the watchlist. There is deliberately no secondary
 // tab bar on Today's Activity — the sidebar plus this switcher is the whole of it.
 //
-// The menu also edits the watchlist, so a stock can be added or dropped without
-// going back to the Home page. The popover mechanics — open state, outside
-// click, Escape, focus return, and the mutation itself — are shared with the
-// Home picker in use-watchlist-menu.ts; what is left here is the row layout and
-// which bound applies to which group.
+// This popover now covers watching and removing only — selecting a row
+// navigates there, and every row can be dropped from the watchlist. Adding a
+// stock lives in its own standalone card (add-stock-menu.tsx), triggered by its
+// own button next to this one. The two used to share one popover, with the
+// current watchlist (up to 10 rows) and the remaining Top 20 (up to 19 rows)
+// stacked inside a single max-h-96 scroll — measured at roughly one addable row
+// visible before an unmarked internal scroll hid the other twelve. Splitting
+// them gives each list its own height budget instead of the watchlist crowding
+// out the add list every time.
+//
+// The popover mechanics — open state, outside click, Escape, focus return, and
+// the mutation itself — are shared with the Home picker and the Add Stock card
+// in use-watchlist-menu.ts; what is left here is the row layout and which bound
+// applies to it.
 //
 // This is a disclosure, not a menu. `role="menu"` used to sit on the popover
 // with `role="menuitem"` on only one of each row's two buttons, over a <ul> that
@@ -26,24 +34,19 @@ export function SymbolSwitcher({
   symbol,
   symbols,
   min,
-  max,
 }: {
   symbol: string;
   symbols: string[];
   min: number;
-  max: number;
 }) {
   const router = useRouter();
   const { open, close, toggleOpen, message, pending, container, trigger, mutate } =
     useWatchlistMenu();
 
-  const watched = new Set(symbols);
-  const unwatched = TOP_20_SYMBOLS.filter((s) => !watched.has(s));
   const atMin = symbols.length <= min;
-  const atMax = symbols.length >= max;
 
-  const row = (option: string, action: "add" | "remove") => {
-    const blocked = action === "add" ? atMax : atMin;
+  const row = (option: string) => {
+    const blocked = atMin;
 
     return (
       <li key={option} className="flex items-center">
@@ -65,25 +68,20 @@ export function SymbolSwitcher({
         <button
           type="button"
           disabled={pending || blocked}
-          onClick={() => mutate(option, action === "add" ? "POST" : "DELETE")}
-          aria-label={
-            action === "add"
-              ? `Add ${option} to your watchlist`
-              : `Remove ${option} from your watchlist`
-          }
+          onClick={() => mutate(option, "DELETE")}
+          aria-label={`Remove ${option} from your watchlist`}
           // opacity-30 resolved to 1.51:1 light / 1.58:1 dark against the
           // overlay — the disabled state was invisible, on the control whose
-          // disabled state was the *only* signal that the cap or the floor had
-          // been reached. At 50% it measures 2.08:1 / 2.26:1: still recessive,
+          // disabled state was the *only* signal that the floor had been
+          // reached. At 50% it measures 2.08:1 / 2.26:1: still recessive,
           // which is what a disabled control should be, but now perceptibly
           // different from the 5.24:1 enabled glyph beside it. The rest of the
-          // job is done in words by the group headers below, because a dimmed
+          // job is done in words by the group header below, because a dimmed
           // control cannot state a reason and `disabled` also drops the button
-          // out of the tab order, so a keyboard visitor at the cap would
-          // otherwise tab past thirteen `+` controls with no explanation.
+          // out of the tab order.
           className="min-h-10 px-3 text-sm font-semibold text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {action === "add" ? "+" : "−"}
+          −
         </button>
       </li>
     );
@@ -135,24 +133,15 @@ export function SymbolSwitcher({
           )}
 
           {/* The count alone did not say what the count *meant* once a bound was
-              reached. These two lines are where the cap and the floor are
-              actually communicated — the dimmed control can only show that
-              something is unavailable, never why. */}
+              reached. This is where the floor is actually communicated — the
+              dimmed control can only show that something is unavailable, never
+              why. */}
           <p className="px-4 py-1 text-xs font-semibold text-muted">
-            Watchlist ({symbols.length}/{max})
+            Watchlist{" "}
+            <span className="font-mono tabular-nums">({symbols.length})</span>
             {atMin && " · remove is unavailable at one stock"}
           </p>
-          <ul>{symbols.map((option) => row(option, "remove"))}</ul>
-
-          {unwatched.length > 0 && (
-            <>
-              <p className="mt-1 border-t border-hairline px-4 pb-1 pt-2 text-xs font-semibold text-muted">
-                Add from Top 20
-                {atMax && ` · remove one to go below ${max}`}
-              </p>
-              <ul>{unwatched.map((option) => row(option, "add"))}</ul>
-            </>
-          )}
+          <ul>{symbols.map((option) => row(option))}</ul>
         </div>
       )}
     </div>

@@ -9,13 +9,15 @@ function timeAgo(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
-export function NewsList({ items }: { items: NewsItem[] }) {
+export function NewsList({
+  items,
+  emptyMessage = "No articles in this category yet.",
+}: {
+  items: NewsItem[];
+  emptyMessage?: string;
+}) {
   if (!items.length) {
-    return (
-      <p className="panel px-5 py-10 text-sm text-muted">
-        No articles in this category yet.
-      </p>
-    );
+    return <p className="panel px-5 py-10 text-sm text-muted">{emptyMessage}</p>;
   }
 
   return (
@@ -53,7 +55,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
                   href={item.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-base font-semibold leading-snug text-ink transition-colors hover:text-primary"
+                  className="font-serif text-base font-semibold leading-snug text-ink transition-colors hover:text-primary"
                 >
                   {item.headline}
                   {/* Every headline leaves the app for the publisher, and
@@ -96,7 +98,7 @@ export function NewsList({ items }: { items: NewsItem[] }) {
               {item.relatedSymbols.slice(0, 4).map((ticker) => (
                 <span
                   key={ticker}
-                  className="rounded-full bg-surface-strong px-2.5 py-0.5 text-[11px] font-semibold text-body"
+                  className="rounded-full bg-surface-strong px-2.5 py-0.5 text-micro font-semibold text-body"
                 >
                   {ticker}
                 </span>

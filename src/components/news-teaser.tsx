@@ -33,7 +33,10 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
                 href={item.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-semibold text-ink hover:text-primary"
+                // text-base, matching the News page: a headline is one role, and
+                // it should not change size and face between two surfaces
+                // showing the same three articles.
+                className="font-serif text-base font-semibold leading-snug text-ink hover:text-primary"
               >
                 {item.headline}
                 <span className="sr-only"> (opens in a new tab)</span>

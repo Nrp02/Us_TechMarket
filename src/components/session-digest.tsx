@@ -60,7 +60,7 @@ export function SessionDigest({
           </span>
           {open ? "Market open" : "Market closed"}
         </span>
-        <span className="font-mono text-[11px] tabular-nums text-muted">
+        <span className="font-mono text-micro tabular-nums text-muted">
           {sessionDay ? formatDay(sessionDay) : "No session yet"}
         </span>
       </div>

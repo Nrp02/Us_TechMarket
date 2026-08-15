@@ -13,6 +13,17 @@ const PCT_COMBO = 3;
 const RVOL_COMBO = 1.5;
 
 /**
+ * Plain-language statement of the rule above, for the one place a visitor can
+ * ask what "Significant" means — a hover title on the badge. The badge itself
+ * never explained its own threshold anywhere in the UI; stating it in words
+ * here is the same move already used for the watchlist's +/- bounds, which a
+ * dimmed control also cannot explain on its own.
+ */
+export const SIGNIFICANCE_RULE_TEXT =
+  "Significant: price moved 5% or more, relative volume was 2.5x or more, " +
+  "or price moved 3% or more together with 1.5x relative volume or more.";
+
+/**
  * Normalised intensity of a move. Crosses 1.0 at exactly the thresholds above,
  * so `score >= 1` is the Significant/Normal test and the same number also
  * orders Top Movers — one rule, not a rule plus a separate ranking heuristic.

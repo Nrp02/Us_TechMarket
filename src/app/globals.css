@@ -176,6 +176,9 @@
   --color-accent-edge: var(--color-accent-edge);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
+  /* The editorial voice. See the note in layout.tsx for why the product has one
+     at all, and The Written-And-Measured Rule in DESIGN.md for where it goes. */
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
 
   --shadow-elev-1: var(--elev-1);
   --shadow-elev-2: var(--elev-2);
@@ -195,6 +198,19 @@
    `text-figure` were inert class names applying no size. Verified by grepping
    the served stylesheet, not by assuming. */
 @theme {
+  /* `micro` was a documented role with no token: DESIGN.md named it, and the
+     code spelled it as an arbitrary 11px literal in ten places across six
+     files — card
+     notes, chart axis labels, the lettermark, ticker chips, the session date.
+     A ramp step that can only be changed by find-and-replace is not a ramp
+     step, which is the same argument that turned the panel recipe into one
+     utility. Deliberately font-size only, with no `--text-micro--line-height`:
+     the ten literals it replaces set no line-height either, so this is a pure
+     rename that cannot shift a single line box. Giving micro an explicit
+     leading is a real improvement and a separate change, worth making with a
+     browser open — DESIGN.md's claim that it is already 1rem was wrong and is
+     now corrected there. */
+  --text-micro: 0.6875rem;
   --text-figure: clamp(1.75rem, 2.4vw, 2.375rem);
   --text-figure--line-height: 1.05;
   --text-figure--letter-spacing: -0.02em;
@@ -236,6 +252,29 @@
   box-shadow: var(--edge-lit), var(--elev-3);
 }
 
+/* --- The editorial voice -------------------------------------------------
+   The one h1 per page, set in the serif. Composed once rather than repeated as
+   `font-serif text-display font-semibold tracking-…` across four files, for the
+   same reason the panel material is one utility: four copies of a recipe drift.
+
+   It carries its own tracking rather than inheriting --text-display's −0.03em.
+   That value was tuned for Inter, and a serif does not want it — the serifs
+   already do the optical work that tight tracking does for a grotesque, so the
+   same number that looks composed on Inter reads as cramped here. Line height
+   is 1.06 against display's 1.02 for the same reason: the larger x-height and
+   the descenders need the room.
+
+   Note this deliberately does *not* apply to Today's Activity, whose h1 is a
+   ticker symbol. A ticker is an identifier the machine measured, not a phrase
+   somebody wrote, so it stays in Inter. See The Written-And-Measured Rule. */
+@utility page-title {
+  font-family: var(--font-serif);
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.012em;
+}
+
 body {
   background: var(--color-backdrop);
   color: var(--color-ink);
@@ -272,6 +311,30 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-body);
   background-clip: padding-box;
+}
+
+/* --- Light text on a dark surface ---------------------------------------
+   Dark is the default theme, and until now both themes used byte-identical
+   type metrics. Light-on-dark bleeds: the glyph spreads optically into the
+   field, which closes counters and tightens the gaps between letters, so the
+   same setting that reads as composed on white reads as slightly clotted on
+   near-black.
+
+   The compensation is deliberately confined to `lede` — the AI narrative, the
+   one passage in the product long enough for the effect to accumulate, and the
+   only prose set at 20px/400. Everything else here is a table cell, a label or
+   a figure, where the effect is present but too small to be worth a
+   theme-conditional rule against.
+
+   A third of a percent of tracking and four hundredths of leading. Both are
+   below the threshold of conscious notice on a single line, which is the
+   point: it should read the same in both themes, which is what it does not do
+   today. Weight is intentionally left alone — one step up is the usual third
+   axis, but 500 would put the narrative at the same weight as the figures
+   around it and cost more in voice than it buys in legibility. */
+:root[data-theme="dark"] .lede {
+  letter-spacing: 0.003em;
+  line-height: 1.59;
 }
 
 /* Headlines and source links run over descenders at the default offset. */
