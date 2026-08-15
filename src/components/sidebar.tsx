@@ -123,19 +123,24 @@ export function Sidebar() {
               aria-current={isActive ? "page" : undefined}
               // The active plate was surface-strong — grey — so the accent was
               // carried by 14px of text alone and the sidebar held no colour at
-              // any time. A tinted plate plus a ring makes the state a shape as
-              // well as a colour. The tint is baked over the glass's own
-              // worst-case composite, so the text measures 4.60:1 wherever on
-              // the sky the rail happens to be sitting.
+              // any time. A translucent plate, a lit ring and a soft glow make
+              // the state a shape as well as a colour — see `nav-active` in
+              // globals.css for why the label is primary-active rather than
+              // primary, which fails at every alpha.
               //
               // The icon carries no colour decision of its own — stroke is
               // currentColor, so it is exactly as blue as the label beside it
               // and exactly as grey when it isn't. Nothing added a fourth
               // place the accent can appear.
+              //
+              // Hover is a translucent white lift rather than the opaque
+              // surface-soft plate: that token is baked over the panel canvas,
+              // and a panel-coloured chip on the rail read as a patch of the
+              // wrong material sitting on the glass.
               className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-tint-primary text-primary ring-1 ring-accent-edge ring-inset"
-                  : "text-body hover:bg-surface-soft hover:text-ink"
+                  ? "nav-active text-primary-active"
+                  : "text-body hover:bg-white/[0.055] hover:text-ink"
               }`}
             >
               <Icon active={isActive} />

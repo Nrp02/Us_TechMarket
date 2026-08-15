@@ -109,7 +109,14 @@
      Alpha is the load-bearing number, not the blur: it sets how much of the
      ambient field bleeds through and therefore how far a text pair's contrast
      can drift. Blur only softens the stars. */
-  --glass-rail: rgb(12 17 28 / 0.82);
+  /* The rail reads as glass only if there is something behind it AND enough of
+     it comes through. At 0.82 over a tint darker than the sky it was neither:
+     18% bleed-through of a field that was itself nearly unlit, which composites
+     to a flat slab no matter how much blur sits on it. Lighter tint, and a
+     third of the sky now comes through. It still resolves DARKER than
+     --glass-panel, which is what §10 actually asks for — stable and recessive
+     relative to the content, not opaque. */
+  --glass-rail: rgb(15 21 35 / 0.66);
   --glass-panel: rgb(19 25 40 / 0.72);
   --glass-raised: rgb(26 33 51 / 0.72);
   --glass-overlay: rgb(23 30 47 / 0.94);
@@ -161,7 +168,12 @@
      invalidates every measured pair in the product. */
   --sky-core: color-mix(in srgb, var(--color-primary) 20%, transparent);
   --sky-halo: color-mix(in srgb, var(--color-primary) 9%, transparent);
-  --sky-low: color-mix(in srgb, var(--color-primary) 6%, transparent);
+  /* Was 6% and centred at 4% 82% — bottom-left, below the fold, so the
+     navigation rail sat in front of essentially unlit backdrop for its whole
+     height and had nothing to catch. Raised to 11% and lifted to 38% so the
+     light actually crosses the rail. Still well under --sky-core, so it does
+     not move the peak the contrast harness models. */
+  --sky-low: color-mix(in srgb, var(--color-primary) 11%, transparent);
 }
 
 @theme inline {
@@ -288,6 +300,27 @@
   box-shadow: var(--edge-lit), var(--elev-2);
 }
 
+/* The active navigation item. Translucent rather than a baked plate — the one
+   sanctioned exception to the Baked Tint Rule in the product, and it earns the
+   exception only by being measured at both ends of its range.
+
+   The label is --color-primary-active, NOT --color-primary, and that is the
+   whole reason this works. Measured across four alphas against the rail's own
+   bright end, --color-primary fails every one of them (4.49:1 at its most
+   generous) because adding accent to the plate pulls the plate TOWARD the text
+   it has to contrast with. --color-primary-active exists for exactly this —
+   accent text that has to climb away from an accent plate — and clears it at
+   5.43:1 here against 7.06:1 at the rail's dim end.
+
+   The ring and the glow are translucent for the same reason the rail's border
+   is: an edge on glass catches light, it is not a drawn line. */
+@utility nav-active {
+  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgb(141 176 255 / 0.22),
+    0 2px 16px -6px rgb(102 149 255 / 0.45);
+}
+
 /* --- The sky itself ------------------------------------------------------
    One fixed layer behind everything, painting the ambient blue and holding the
    starfield. Fixed rather than attached to <body> so scrolling does not drag
@@ -305,7 +338,7 @@
   background-image:
     radial-gradient(1200px 720px at 50% -90px, var(--sky-core), transparent 68%),
     radial-gradient(900px 900px at 88% 24%, var(--sky-halo), transparent 62%),
-    radial-gradient(1100px 820px at 4% 82%, var(--sky-low), transparent 58%);
+    radial-gradient(1000px 900px at 2% 38%, var(--sky-low), transparent 62%);
 }
 
 /* --- The editorial voice -------------------------------------------------
