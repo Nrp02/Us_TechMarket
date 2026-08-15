@@ -260,6 +260,21 @@
   box-shadow: var(--edge-lit), var(--elev-3);
 }
 
+/* A pill-shaped container of the same material — the News category track. It
+   exists as a variant rather than as `panel rounded-full` because both are
+   utilities and their border-radius would resolve by stylesheet order rather
+   than by class order, which is a coin flip. The One Material Rule's own
+   escape hatch: if it needs a variant, add one to the utility. */
+@utility panel-track {
+  background-color: var(--glass-panel);
+  background-image: var(--surface-face);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  border: 1px solid var(--color-glass-edge);
+  border-radius: 9999px;
+  box-shadow: var(--edge-lit), var(--elev-1);
+}
+
 /* The navigation rail. Darker and more opaque than the content glass so it
    stays visually stable while the page behind it changes — it is the one
    surface a visitor sees on every route. No radius: it is a full-height edge,

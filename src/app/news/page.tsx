@@ -112,7 +112,7 @@ export default async function News({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav
           aria-label="News categories"
-          className="inline-flex w-fit max-w-full flex-wrap gap-1 rounded-full border border-hairline bg-canvas p-1 shadow-[var(--edge-lit),var(--elev-1)]"
+          className="panel-track inline-flex w-fit max-w-full flex-wrap gap-1 p-1"
         >
           {TABS.map((t) => {
             const isActive = t.key === active;
