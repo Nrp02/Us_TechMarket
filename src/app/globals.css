@@ -1,189 +1,167 @@
 @import "tailwindcss";
 
-/* Drives the `dark:` variant off our own attribute rather than the OS setting,
-   because the theme is an explicit choice here and dark is the default. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* --- Midnight Glass ------------------------------------------------------
+   One theme, not two. Light mode was dropped deliberately: this world is a
+   midnight sky with frosted glass over it, and there is no honest daylight
+   counterpart to a starfield. What went with it — the `dark:` variant, the
+   pre-paint theme script, the toggle, and the second half of every colour
+   token — is gone rather than left inert.
 
-/* Light theme. Dark is the default (layout.tsx stamps data-theme="dark" on
-   <html>), so these tokens apply only once a visitor opts into light. */
+   The Two-Theme Rule is therefore dead. The rule that replaces it is stricter,
+   because glass is harder than flat colour: see The Worst-Case Composite Rule
+   below. */
+
 :root {
-  /* Tells the browser which way its own furniture should lean — form controls,
-     the caret, and the scrollbar in engines that do not take the rules below. */
-  color-scheme: light;
-  /* The thumb was --color-surface-strong, which measured 1.20:1 light and
-     1.28:1 dark against the canvas it sits on. That is a UI component under
-     1.4.11, and it is also the *only* affordance telling an iPad visitor the
-     880px watchlist table scrolls sideways — five of its eight columns are off
-     screen at portrait width. --color-muted measures 4.96-5.77:1 across every
-     surface a scrollbar lands on here. */
+  color-scheme: dark;
   scrollbar-color: var(--color-muted) transparent;
   scrollbar-width: thin;
 
-  /* The page field every panel sits on. Split out of --color-surface-soft,
-     which was doing two unrelated jobs — the field *behind* the cards and the
-     hover state *inside* them — and so could not move for one without moving
-     for the other. Cooler and a step deeper than the old #f7f7f7 so a white
-     panel has something to lift off. */
-  --color-backdrop: #eef1f6;
-  --color-canvas: #ffffff;
-  --color-surface-soft: #f6f8fb;
-  --color-surface-strong: #e7ebf2;
-  --color-ink: #0a0b0d;
-  --color-body: #565d6a;
-  /* Was #7c828a, which measured 3.88:1 on canvas — under AA for the table
-     headers, timestamps and stat labels that all render in this tier. */
-  --color-muted: #616873;
-  --color-hairline: #dce1ea;
-  --color-primary: #0052ff;
-  --color-primary-active: #003ecc;
-  /* Accent as a *filled plate* under white text, which is a different contrast
-     problem from accent-as-text and needs its own value. In dark, --color-primary
-     had to get lighter to stay readable ON a plate, which simultaneously made it
-     too light to sit UNDER white text. One token cannot do both jobs. */
-  --color-primary-fill: #0052ff;
-  /* The accent plate under white text on press. It must go *darker* in both
-     themes, unlike --color-primary-active, which goes lighter in dark so accent
-     *text* stays readable. The white-text buttons were reaching for
-     primary-active on hover and measured 2.15:1 in dark — the hover state of a
-     primary button was the worst contrast in the product. */
-  --color-primary-fill-hover: #0043d6;
-  /* Was #00875a, which measured 4.02:1 once a hovered Top Movers row put a gain
-     figure on surface-soft rather than on canvas. */
-  --color-semantic-up: #007a51;
-  --color-semantic-down: #c81d2c;
-  --color-logo-plate: #eef0f3;
-  /* The intraday volume bars encode data, so they answer to the 3:1 floor for
-     graphical objects rather than to the decorative-surface bar. surface-strong
-     sat at 1.14:1 here and the bars were nearly invisible against their card. */
-  --color-chart-bar: #8a92a0;
+  /* --- The sky ----------------------------------------------------------
+     Near-black, but deep navy rather than neutral — it reads as
+     near-black -> deep navy -> subtle blue rather than as a flat black
+     field. This is the only surface in the product that is NOT glass. */
+  --color-backdrop: #04060d;
 
-  /* Tinted plates, baked flat rather than written as `bg-primary/12`.
-     An alpha tint composites against whatever is behind it, so the Significant
-     badge on a *hovered* Top Movers row measured 4.49:1 while the same badge at
-     rest measured 4.76:1 — the component's contrast depended on the pointer.
-     Baked at 11% over canvas in light and 16% in dark, these are fixed. */
-  --color-tint-primary: #e3ecff;
-  --color-tint-up: #e3f0ec;
-  --color-tint-down: #f9e6e8;
-  /* The accent ring on the Significant badge, the active nav item and the
-     leading Top Movers rank. Was written as `ring-primary/25`, which is the
-     same alpha the Baked Tint Rule forbids one line above — baked here at 25%
-     over tint-primary, the only plate it is ever drawn on. Note this changes
-     nothing about how it *looks*: it measures 1.45:1 light / 1.50:1 dark
-     against that plate either way, which is why DESIGN.md no longer counts it
-     as one of the badge's distinguishing channels. The fill, the dot and the
-     word carry that; the ring is an edge, not a signal. */
-  --color-accent-edge: #aac6ff;
+  /* --- The Worst-Case Composite Rule ------------------------------------
+     Glass is alpha over a field that varies (the ambient blue radial, the
+     stars), so a panel's face is a RANGE, not a value. Every contrast pair in
+     the product is measured at the bright end of that range; if it passes
+     there, every pixel elsewhere passes.
 
-  /* --- Depth ------------------------------------------------------------
-     A real elevation scale, which DESIGN.md left open ("if rest-state depth is
-     wanted, the scale gets designed first and applied consistently"). Three
-     steps, each a tight contact shadow plus a wide ambient one, so a panel has
-     both a seam and a cast. Never a zero-offset halo. */
-  --elev-1: 0 1px 2px rgb(15 23 42 / 0.05), 0 4px 12px -2px rgb(15 23 42 / 0.07);
-  --elev-2: 0 2px 4px rgb(15 23 42 / 0.05), 0 14px 30px -8px rgb(15 23 42 / 0.11);
-  --elev-3: 0 4px 8px rgb(15 23 42 / 0.06), 0 26px 50px -12px rgb(15 23 42 / 0.18);
-  /* The lit face of a panel. In light the shadow does the modelling and this is
-     almost nothing; in dark it is what actually makes a surface read as a
-     surface, because a cast shadow on near-black has nothing to darken. */
-  --surface-face: linear-gradient(
-    180deg,
-    #ffffff 0%,
-    color-mix(in srgb, var(--color-canvas) 96%, var(--color-backdrop)) 100%
-  );
-  /* Ambient light catching the top edge, applied as a border-image-free inset.
-     Kept separate from --elev-* so a panel can take depth without the edge. */
-  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.9);
-  /* The room the panels sit in, not just the panels themselves. Was a flat
-     fill with zero falloff, which is fine wherever a panel covers it but reads
-     as an unstyled template the moment it doesn't — the News empty tabs are a
-     lone message panel floating in ~700px of it. Same technique as
-     --surface-face (a color-mix toward canvas), read as light spilling down
-     from just above the frame rather than a spotlight.
+     --color-canvas IS that bright end: the exact composite of --glass-panel
+     over the ambient field at its peak. It is not a colour anyone picked. It
+     does three jobs — it is what baked tints are computed over, what the
+     reduced-transparency fallback paints, and the number the contrast harness
+     measures against. Panel glass over the DIM end of the field composites to
+     #0f1420, so the real face drifts 13.6 RGB units at most; that small number
+     is the whole reason text can sit on glass at all here. */
+  --color-canvas: #141c2e;
 
-     The core carries the accent, deliberately: this is the second place
-     Signal Blue appears as a wash rather than as a token of state, extending
-     the AI Summary Card's own wash (see daily-summary-card.tsx) from one card
-     to the room itself. First measured at the card's own 9% intensity, it sat
-     at a 3-5 unit RGB delta over #0a0c11 — imperceptible, and confirmed as
-     under-shooting the brief, which asked for the room to genuinely read as
-     lit rather than for a trace to be technically present. 16% and a centre
-     pulled down into the actual viewport (-60px, not -160px, so the bulb
-     itself is on screen rather than implied) is the value that reads. */
-  --backdrop-face: radial-gradient(
-    1300px 620px at 50% -60px,
-    color-mix(in srgb, var(--color-primary) 16%, var(--color-backdrop)) 0%,
-    color-mix(in srgb, var(--color-canvas) 38%, var(--color-backdrop)) 45%,
-    var(--color-backdrop) 100%
-  );
-}
+  /* Surfaces INSIDE a panel. All opaque, all baked over --color-canvas — see
+     The One Translucent Layer Rule. Exactly one layer in the stack is
+     translucent (the panel's own face); nothing nested inside it is, or the
+     Baked Tint Rule's failure returns with a varying backdrop behind it. */
+  --color-surface-soft: #1a2334;
+  --color-surface-strong: #27314a;
+  /* Internal rules only — table dividers, grid lines, the timeline rail,
+     section rules. Solid, because it always lands on a known panel face.
+     Distinct from --color-glass-edge, which is the lit rim of the glass
+     itself and has to composite over whatever is behind it. */
+  --color-hairline: #2a3346;
 
-/* Every token above is redefined here — nothing may have its only definition
-   inside this block, or that colour would be missing in light mode. */
-:root[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* Dark inverted the depth reading: the field was #15181d and the panels on it
-     were #0d0f12, so every card was *darker* than its background and read as a
-     hole rather than an object. No shadow can rescue that arrangement, which is
-     why the system stayed flat. Panels are now the lighter tone in both themes
-     and the ramp below runs field -> panel -> hover -> chip, upward. */
-  --color-backdrop: #0a0c11;
-  --color-canvas: #141821;
-  --color-surface-soft: #1b2029;
-  --color-surface-strong: #262d39;
   --color-ink: #f2f4f7;
   --color-body: #a7afbd;
-  --color-muted: #848c9a;
-  --color-hairline: #2e3543;
-  /* Was #3d78ff, which measured 3.86:1 on surface-strong (the active sidebar
-     item, present on every page) and 4.42:1 on its own 10% tint (the Significant
-     badge). Both are small text and both were under AA in the *default* theme. */
+  /* Nudged up from #848c9a: it measured 4.51:1 on the lit top edge of the
+     raised card, which passes but with nothing to spare. */
+  --color-muted: #8d95a4;
+
+  /* --- The Two Blues Rule -----------------------------------------------
+     Blue does two jobs now and they must not blur together, or the Significant
+     badge stops meaning anything.
+
+     SIGNAL BLUE (these tokens) is saturated, always sits ON a surface, and
+     still means only "active" or "significant". AMBIENT BLUE (--sky-* below)
+     is desaturated, large-radius, always BEHIND glass, and never lands on an
+     object. The test: a blue inside a panel's content is a state; a blue
+     behind glass is light. */
   --color-primary: #6695ff;
   --color-primary-active: #8db0ff;
-  /* Darker than --color-primary on purpose: this one sits under white text.
-     See the note in the light block. */
+  /* Accent as a filled plate under white text, which is a different contrast
+     problem from accent-as-text. Measured 5.57:1 for white on this. */
   --color-primary-fill: #1e5fe0;
+  /* Goes DARKER on hover, not lighter — the counter-intuitive one. Reaching
+     for --color-primary-active on a white-text plate once measured 2.15:1,
+     the worst contrast in the product, on a control nobody thinks to check. */
   --color-primary-fill-hover: #1a52c4;
+
   --color-semantic-up: #24c98a;
   --color-semantic-down: #ff6672;
-  --color-chart-bar: #5b6577;
-  /* Deliberately light in BOTH themes. Brand marks carry hardcoded fills we
-     cannot recolour — AAPL #000000, PLTR #101113, AMZN #221f1f are effectively
-     black and vanish on a dark plate. Only real logos sit on this; lettermarks
-     and category icons use surface-strong so their text stays theme-aware. */
+
+  /* Was #5b6577, tuned against the old flat canvas. It measures 2.50:1 against
+     the navier glass composite — a failure, on bars that carry data and so
+     answer to the 3:1 floor for graphical objects rather than the decorative
+     bar. #707b8f measures 3.44:1 at the worst case. */
+  --color-chart-bar: #707b8f;
+
+  /* Deliberately light, and the one opaque non-glass object in the product.
+     Brand marks arrive with hardcoded fills we cannot recolour — AAPL #000000,
+     PLTR #101113, AMZN #221f1f are effectively black and vanish on anything
+     dark. Lettermarks and category glyphs use surface-strong instead so their
+     text stays legible against the glass. */
   --color-logo-plate: #e9ebef;
 
-  /* Dark takes a heavier tint than light — 16% against 11% — because a tint on
-     a near-black panel has to travel further before it reads as colour at all. */
-  --color-tint-primary: #212c45;
-  --color-tint-up: #173432;
-  --color-tint-down: #3a242e;
-  --color-accent-edge: #324674;
+  /* Tinted plates, baked flat over --color-canvas at 16%, never written as
+     `bg-primary/12`. An alpha composites against whatever is behind it, so the
+     Significant badge on a hovered row once measured 4.49:1 while the same
+     badge at rest measured 4.76:1 — contrast that depended on the pointer.
+     Under glass that failure would be worse, not better: the thing behind is
+     now a gradient. */
+  --color-tint-primary: #212f4f;
+  --color-tint-up: #17373d;
+  --color-tint-down: #3a2839;
+  --color-accent-edge: #33497b;
 
-  /* Dark shadows are near-opaque black because the field they fall on is
-     already near-black — a 7% shadow is invisible there. The lit top edge below
-     is doing at least half the work of separating a panel from the field. */
+  /* --- The glass ---------------------------------------------------------
+     Four tiers. Three are content (resting, raised, overlay); the rail is
+     shell, and is excepted the same way the sidebar has always been excepted
+     from the one-raised-element rule.
+
+     Alpha is the load-bearing number, not the blur: it sets how much of the
+     ambient field bleeds through and therefore how far a text pair's contrast
+     can drift. Blur only softens the stars. */
+  --glass-rail: rgb(12 17 28 / 0.82);
+  --glass-panel: rgb(19 25 40 / 0.72);
+  --glass-raised: rgb(26 33 51 / 0.72);
+  --glass-overlay: rgb(23 30 47 / 0.94);
+
+  --blur-rail: 20px;
+  --blur-panel: 14px;
+  --blur-raised: 16px;
+  --blur-overlay: 28px;
+
+  /* The rim where light catches the edge of the glass. Translucent white
+     rather than a solid token, because it composites over the sky behind it
+     and a solid border would read as a drawn line rather than an edge. */
+  --color-glass-edge: rgb(255 255 255 / 0.09);
+
+  /* --- Depth -------------------------------------------------------------
+     Soft ambient shadows, never a hard drop. Each step is a tight contact
+     shadow plus a wide ambient one, so a surface has both a seam and a cast.
+     Never a zero-offset halo. Alphas are high because the field they fall on
+     is near-black: a 7% shadow is invisible there. */
   --elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5);
   --elev-2: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6);
   --elev-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7);
+
+  /* The inner highlight along a glass surface's top edge. Barely noticeable
+     unless you look for it, which is the brief's own standard for it. */
+  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.09);
+
+  /* The lit face of the glass. MUST be translucent: an opaque gradient here
+     would paint over the backdrop-filter and the blur would do nothing. Was a
+     12%-toward-white wash running 140px down the panel, which is a strong
+     effect rather than the "subtle top-edge highlight" this material wants —
+     it also brightened exactly the band where section headings and table
+     headers sit, which is where contrast is tightest. 5.5% over 88px. */
   --surface-face: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--color-canvas) 88%, #ffffff) 0%,
-    var(--color-canvas) 140px
+    rgb(255 255 255 / 0.055) 0%,
+    rgb(255 255 255 / 0) 88px
   );
-  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.07);
-  /* Lighter neutral mix than the light theme's (32% against 38%) — the same
-     reasoning as the panel shadows: a wash reads faster against near-black,
-     so it takes less of it to say the same thing. Same 16% accent core as
-     light; --color-primary is already the theme-tuned value, so the token
-     does the adjusting rather than a second hand-tuned percentage. */
-  --backdrop-face: radial-gradient(
-    1300px 620px at 50% -60px,
-    color-mix(in srgb, var(--color-primary) 16%, var(--color-backdrop)) 0%,
-    color-mix(in srgb, var(--color-canvas) 32%, var(--color-backdrop)) 45%,
-    var(--color-backdrop) 100%
-  );
+
+  /* --- Ambient blue ------------------------------------------------------
+     The atmosphere, not a token of state. Three overlapping radials at very
+     large radius, so the light has a direction and a falloff rather than
+     reading as one symmetrical spotlight. Derived from --color-primary via
+     color-mix so the accent stays single-sourced, but note the rule above:
+     this is light in the room, and it never touches an object.
+
+     The peak of these three stacked is what the contrast harness models as
+     the bright end of the field. Raising any of them without re-running it
+     invalidates every measured pair in the product. */
+  --sky-core: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  --sky-halo: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  --sky-low: color-mix(in srgb, var(--color-primary) 6%, transparent);
 }
 
 @theme inline {
@@ -195,6 +173,7 @@
   --color-body: var(--color-body);
   --color-muted: var(--color-muted);
   --color-hairline: var(--color-hairline);
+  --color-glass-edge: var(--color-glass-edge);
   --color-primary: var(--color-primary);
   --color-primary-active: var(--color-primary-active);
   --color-primary-fill: var(--color-primary-fill);
@@ -209,8 +188,9 @@
   --color-accent-edge: var(--color-accent-edge);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  /* The editorial voice. See the note in layout.tsx for why the product has one
-     at all, and The Written-And-Measured Rule in DESIGN.md for where it goes. */
+  /* The editorial voice. See the note in layout.tsx for why the product has
+     one at all, and The Written-And-Measured Rule in DESIGN.md for where it
+     goes. Untouched by this pass: typography was explicitly out of scope. */
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
 
   --shadow-elev-1: var(--elev-1);
@@ -218,31 +198,13 @@
   --shadow-elev-3: var(--elev-3);
 }
 
-/* Two steps above the old ceiling. The ramp topped out at 30px and 82% of all
-   type in the product sat at 12-14px, so nothing was ever large — in a market
-   product whose content IS its numbers. `figure` is for a reading that should
-   be seen from across a desk; `display` is for the one thing per page that
-   earns the first look.
-
-   These live in a plain `@theme`, not in the `@theme inline` above. `inline`
+/* These live in a plain `@theme`, not in the `@theme inline` above. `inline`
    suppresses the var() indirection Tailwind normally emits, and font-size steps
    declared there did not register as theme values at all: the compiled CSS
    carried only Tailwind's stock --text-xs..xl, so `text-display` and
    `text-figure` were inert class names applying no size. Verified by grepping
    the served stylesheet, not by assuming. */
 @theme {
-  /* `micro` was a documented role with no token: DESIGN.md named it, and the
-     code spelled it as an arbitrary 11px literal in ten places across six
-     files — card
-     notes, chart axis labels, the lettermark, ticker chips, the session date.
-     A ramp step that can only be changed by find-and-replace is not a ramp
-     step, which is the same argument that turned the panel recipe into one
-     utility. Deliberately font-size only, with no `--text-micro--line-height`:
-     the ten literals it replaces set no line-height either, so this is a pure
-     rename that cannot shift a single line box. Giving micro an explicit
-     leading is a real improvement and a separate change, worth making with a
-     browser open — DESIGN.md's claim that it is already 1rem was wrong and is
-     now corrected there. */
   --text-micro: 0.6875rem;
   --text-figure: clamp(1.75rem, 2.4vw, 2.375rem);
   --text-figure--line-height: 1.05;
@@ -252,45 +214,83 @@
   --text-display--letter-spacing: -0.03em;
 }
 
-/* --- The panel -----------------------------------------------------------
-   Every container in the product was `rounded-3xl border border-hairline
-   bg-canvas`, repeated across sixteen components, so changing how a surface is
-   built meant sixteen edits and drift was guaranteed. It is one utility now,
-   and it is the only place the face gradient, the lit edge and the elevation
-   step are composed.
+/* --- The glass tiers -----------------------------------------------------
+   Every container in the product is built by applying one of these, and this
+   is the only place the tint, the blur, the lit edge, the face wash and the
+   elevation step are composed. The material was previously reassembled inline
+   across sixteen components, which is why nothing about it could be changed
+   system-wide. A component that inlines the recipe is drift even when the
+   result looks identical.
 
-   `panel` is the resting container. `panel-raised` is for the one element on a
-   page that outranks its neighbours. `panel-overlay` is for things that float
-   over the page and must detach from it completely. */
+   `saturate` is small and deliberate: it keeps the ambient blue reading as
+   colour through the glass instead of going grey once blurred. */
+
 @utility panel {
-  background-color: var(--color-canvas);
+  background-color: var(--glass-panel);
   background-image: var(--surface-face);
-  border: 1px solid var(--color-hairline);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  border: 1px solid var(--color-glass-edge);
   border-radius: 24px;
   box-shadow: var(--edge-lit), var(--elev-1);
 }
 
+/* The one element per page that outranks its neighbours — in practice only the
+   AI Daily Summary card. Lighter in tone than `panel` at the same alpha, so it
+   climbs the ramp without letting more of the sky through. */
 @utility panel-raised {
-  background-color: var(--color-canvas);
+  background-color: var(--glass-raised);
   background-image: var(--surface-face);
-  border: 1px solid var(--color-hairline);
+  -webkit-backdrop-filter: blur(var(--blur-raised)) saturate(1.15);
+  backdrop-filter: blur(var(--blur-raised)) saturate(1.15);
+  border: 1px solid var(--color-glass-edge);
   border-radius: 24px;
   box-shadow: var(--edge-lit), var(--elev-2);
 }
 
+/* Floats over the page and must detach from it completely, so it is nearly
+   opaque (0.94) and takes the heaviest blur. A menu you can read the sky
+   through is a menu whose text is fighting the sky. */
 @utility panel-overlay {
-  background-color: var(--color-canvas);
+  background-color: var(--glass-overlay);
   background-image: var(--surface-face);
-  border: 1px solid var(--color-hairline);
+  -webkit-backdrop-filter: blur(var(--blur-overlay)) saturate(1.15);
+  backdrop-filter: blur(var(--blur-overlay)) saturate(1.15);
+  border: 1px solid var(--color-glass-edge);
   box-shadow: var(--edge-lit), var(--elev-3);
 }
 
-/* The field everything above sits on. Replaces the flat `bg-backdrop` fill on
-   <body> and <main> with the same color plus --backdrop-face — see the note
-   there for why. */
-@utility backdrop-field {
+/* The navigation rail. Darker and more opaque than the content glass so it
+   stays visually stable while the page behind it changes — it is the one
+   surface a visitor sees on every route. No radius: it is a full-height edge,
+   not a card, so it takes the lit rim on its right border rather than the
+   card face wash, which is tuned to fade out inside a card's first 88px. */
+@utility panel-rail {
+  background-color: var(--glass-rail);
+  -webkit-backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
+  backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
+  border-right: 1px solid var(--color-glass-edge);
+  box-shadow: var(--edge-lit), var(--elev-2);
+}
+
+/* --- The sky itself ------------------------------------------------------
+   One fixed layer behind everything, painting the ambient blue and holding the
+   starfield. Fixed rather than attached to <body> so scrolling does not drag
+   the light down the page — the sky sits beyond the window, it is not
+   wallpaper glued to the document.
+
+   z-index -1 keeps it under the content while still leaving it inside the root
+   stacking context, which is what lets every backdrop-filter above sample it. */
+@utility night-sky {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background-color: var(--color-backdrop);
-  background-image: var(--backdrop-face);
+  background-image:
+    radial-gradient(1200px 720px at 50% -90px, var(--sky-core), transparent 68%),
+    radial-gradient(900px 900px at 88% 24%, var(--sky-halo), transparent 62%),
+    radial-gradient(1100px 820px at 4% 82%, var(--sky-low), transparent 58%);
 }
 
 /* --- The editorial voice -------------------------------------------------
@@ -301,13 +301,11 @@
    It carries its own tracking rather than inheriting --text-display's −0.03em.
    That value was tuned for Inter, and a serif does not want it — the serifs
    already do the optical work that tight tracking does for a grotesque, so the
-   same number that looks composed on Inter reads as cramped here. Line height
-   is 1.06 against display's 1.02 for the same reason: the larger x-height and
-   the descenders need the room.
+   same number that looks composed on Inter reads as cramped here.
 
-   Note this deliberately does *not* apply to Today's Activity, whose h1 is a
-   ticker symbol. A ticker is an identifier the machine measured, not a phrase
-   somebody wrote, so it stays in Inter. See The Written-And-Measured Rule. */
+   Deliberately does *not* apply to Today's Activity, whose h1 is a ticker
+   symbol. A ticker is an identifier the machine measured, not a phrase somebody
+   wrote, so it stays in Inter. See The Written-And-Measured Rule. */
 @utility page-title {
   font-family: var(--font-serif);
   font-size: var(--text-display);
@@ -316,10 +314,11 @@
   letter-spacing: -0.012em;
 }
 
-/* Background lives on the backdrop-field class in layout.tsx now, not here —
-   a plain color here would silently drift from --backdrop-face. */
 body {
   color: var(--color-ink);
+  /* The sky layer paints the atmosphere; this is only what shows through
+     overscroll at the edges of the document. */
+  background-color: var(--color-backdrop);
 }
 
 /* --- Browser surfaces ----------------------------------------------------
@@ -331,9 +330,12 @@ body {
   color: var(--color-ink);
 }
 
-/* Firefox takes scrollbar-color; WebKit needs the pseudo-elements. Both
-   are scoped to a thin, unpainted track so a scrolling table does not gain a
-   grey slab down its edge. */
+/* Firefox takes scrollbar-color; WebKit needs the pseudo-elements. Both are
+   scoped to a thin, unpainted track so a scrolling table does not gain a grey
+   slab down its edge. The thumb is --color-muted rather than a surface token:
+   at 1.28:1 a surface-toned thumb was a UI component under 1.4.11, and it is
+   also the only affordance telling an iPad visitor the 880px watchlist table
+   scrolls sideways. */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
@@ -356,25 +358,21 @@ body {
 }
 
 /* --- Light text on a dark surface ---------------------------------------
-   Dark is the default theme, and until now both themes used byte-identical
-   type metrics. Light-on-dark bleeds: the glyph spreads optically into the
-   field, which closes counters and tightens the gaps between letters, so the
-   same setting that reads as composed on white reads as slightly clotted on
-   near-black.
+   Light-on-dark bleeds: the glyph spreads optically into the field, which
+   closes counters and tightens the gaps between letters, so a setting that
+   reads as composed on white reads as slightly clotted on near-black.
 
-   The compensation is deliberately confined to `lede` — the AI narrative, the
-   one passage in the product long enough for the effect to accumulate, and the
-   only prose set at 20px/400. Everything else here is a table cell, a label or
-   a figure, where the effect is present but too small to be worth a
-   theme-conditional rule against.
+   This used to be conditional on [data-theme="dark"]. With one theme it is
+   simply the setting — the compensation is now unconditional rather than a
+   correction applied to one half of a pair.
 
-   A third of a percent of tracking and four hundredths of leading. Both are
-   below the threshold of conscious notice on a single line, which is the
-   point: it should read the same in both themes, which is what it does not do
-   today. Weight is intentionally left alone — one step up is the usual third
-   axis, but 500 would put the narrative at the same weight as the figures
-   around it and cost more in voice than it buys in legibility. */
-:root[data-theme="dark"] .lede {
+   Confined to `lede` — the AI narrative, the one passage in the product long
+   enough for the effect to accumulate. It sits unlayered so it beats the
+   layered `leading-` utility on the element; change the base leading in the
+   component and this together, or the two drift. Weight is intentionally left
+   alone: 500 would put the narrative at the same weight as the figures around
+   it and cost more in voice than it buys in legibility. */
+.lede {
   letter-spacing: 0.003em;
   line-height: 1.59;
 }
@@ -386,18 +384,17 @@ a {
 }
 
 /* PRODUCT.md commits to WCAG 2.1 AA, which requires a visible focus indicator.
-   Nothing in the product authored one, so every button, link and menu row fell
-   back to the user agent's default ring — which on a near-black canvas is
-   effectively invisible. One rule covers every control in the app; it uses
-   :focus-visible so a mouse click does not leave a ring behind. */
+   Measured at 4.50:1 or better against every surface it can land on, including
+   the brightest composite of the glass. */
 :focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 /* The only motion in the product is transition-colors plus the switcher
-   chevron's rotate, but honouring the preference is free and its absence was
-   total. */
+   chevron's rotate. The stars do not twinkle and nothing else animates —
+   a product reporting a completed session would be lying with its motion
+   design if anything on screen moved. Honouring the preference is still free. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

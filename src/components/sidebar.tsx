@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { ThemeToggle } from "@/components/theme-toggle";
-
-// Same drawing convention as the theme toggle's sun/moon: 24x24 viewBox,
+// One drawing convention for every glyph in the product: 24x24 viewBox,
 // currentColor stroke, round caps and joins, no fill. Nothing here is an icon
 // package — three glyphs, authored to sit beside three labels.
 //
@@ -60,37 +58,23 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    // The rail is a panel too: it sits on the backdrop like everything else, so
-    // it takes the same lit top edge and casts to the right. Without the shadow
-    // the 1px border was the only thing separating a 240px column of canvas
-    // from a page field it now differs from by six points of lightness.
-    //
-    // Was shadow-[var(--elev-2)] alone — the comment above already claimed the
-    // lit edge, the shadow never actually carried it. Matches the composed
-    // form the News category track uses for the same reason: a non-panel-
-    // shaped surface can take --edge-lit without pulling in the full `panel`
-    // utility's face gradient, which is tuned to a 24px-radius card and fades
-    // out within its own top 140px — meaningless spread down a full-height
-    // rail with no radius to catch light on.
-    <aside className="relative z-10 flex w-60 shrink-0 flex-col border-r border-hairline bg-canvas px-4 py-6 shadow-[var(--edge-lit),var(--elev-2)]">
-      {/* Was one row: wordmark and toggle fighting `justify-between` for a
-          208px budget (240 rail − 32 rail padding), then losing 16px more to
-          this block's own px-2. The toggle's 36px plus its gap left the
-          wordmark span about 148px, and "US TechMarket" at 18px/600 needs
-          roughly 135 — close enough that it wrapped the moment font
-          rendering nudged either number. Splitting the row removes the
-          contest rather than trimming it to a fit that would break again the
-          next time either piece changes. It also gives the mark its own
-          rhythm on the way into the nav below, instead of sharing a line with
-          a utility control that has nothing to do with brand. */}
+    // The rail is the darkest, most opaque tier of the glass — see `panel-rail`
+    // in globals.css. It is the one surface a visitor sees on every route, so
+    // it stays visually stable while the page behind it changes, and it holds
+    // its own lit rim on the right border rather than taking the card face
+    // wash, which is tuned to fade out inside a card's first 88px and would
+    // mean nothing spread down a full-height edge with no radius to catch.
+    <aside className="panel-rail relative z-10 flex w-60 shrink-0 flex-col px-4 py-6">
       {/* No horizontal padding of its own — `nav` below has none either, and
           its Links stretch edge to edge across the rail's full 208px inner
-          width (flex-col's default align-items: stretch). This block used to
-          carry its own px-2, which put the badge's left edge and the
-          toggle's right edge 8px inside where every nav pill's edge actually
-          falls. One rail, one pair of edges: everything in it now measures
-          from the same two verticals. */}
-      <div className="flex flex-col gap-3 pb-8">
+          width (flex-col's default align-items: stretch). One rail, one pair
+          of edges: everything in it measures from the same two verticals.
+
+          This was a two-row flex column, split so the wordmark and the theme
+          toggle stopped contesting a 208px budget. With the toggle gone the
+          contest is gone with it, so the wrapper collapses back to the one
+          thing it now holds. */}
+      <div className="pb-8">
         <span className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-ink">
           {/* The product had no mark of its own anywhere — the sidebar opened
               with plain text, on a page otherwise full of other companies'
@@ -98,14 +82,11 @@ export function Sidebar() {
               opacities: a wordmark that is also the thing the product
               measures.
 
-              Freed from sharing a row with the toggle, the mark now sits in a
-              tinted circle with an inset accent ring — the exact plate-and-
-              ring recipe every other identity or state token in the system
-              already carries (the active sidebar item below, the Significant
-              badge, Top Movers' leading rank). The Pill-For-Tokens Rule calls
-              for a full pill on anything standing for an identity, and this
-              mark had never actually gotten one; the bars themselves are
-              unchanged.
+              The mark sits in a tinted circle with an inset accent ring — the
+              exact plate-and-ring recipe every other identity or state token
+              in the system already carries (the active sidebar item below, the
+              Significant badge, Top Movers' leading rank). The Pill-For-Tokens
+              Rule calls for a full pill on anything standing for an identity.
 
               Gap to the wordmark text is 2.5 (10px), not 3 (12px) — matching
               the icon-to-label gap every nav item below uses. Both are a
@@ -120,14 +101,6 @@ export function Sidebar() {
           </span>
           US TechMarket
         </span>
-        {/* Was wrapped in flex justify-end, pushed to the rail's right edge
-            alone on its row with ~150px of empty space to its left and
-            nothing adjacent to read it against — an isolated mark rather
-            than a positioned control. No wrapper needed: ThemeToggle sets
-            its own fixed size, so as a bare flex-col child it falls to the
-            column's natural start — the same left edge the badge, the
-            wordmark and every nav pill already share. */}
-        <ThemeToggle />
       </div>
       {/* Labelled because the News page carries a second <nav> (its category
           tabs), and a landmark list offering "navigation" twice with nothing to
@@ -151,8 +124,9 @@ export function Sidebar() {
               // The active plate was surface-strong — grey — so the accent was
               // carried by 14px of text alone and the sidebar held no colour at
               // any time. A tinted plate plus a ring makes the state a shape as
-              // well as a colour. Measured 5.18:1 dark / 4.76:1 light for the
-              // text on the composited tint.
+              // well as a colour. The tint is baked over the glass's own
+              // worst-case composite, so the text measures 4.60:1 wherever on
+              // the sky the rail happens to be sitting.
               //
               // The icon carries no colour decision of its own — stroke is
               // currentColor, so it is exactly as blue as the label beside it

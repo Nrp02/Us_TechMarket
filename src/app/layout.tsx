@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { ChartGradients } from "@/components/chart-gradients";
+import { NightSky } from "@/components/night-sky";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
 
@@ -42,28 +43,21 @@ export const metadata: Metadata = {
   description: "Daily AI intelligence for US Technology stocks.",
 };
 
-// Dark is the default theme, so <html> ships with data-theme="dark" and this
-// script only downgrades to light for a visitor who chose it. Running before
-// first paint is the whole point: set it in an effect instead and every page
-// load flashes dark before correcting itself. Keep the storage key in sync with
-// THEME_STORAGE_KEY in components/theme-toggle.tsx.
-const THEME_INIT = `try{if(localStorage.getItem("theme")==="light")document.documentElement.dataset.theme="light"}catch(e){}`;
-
+// There is one theme. The pre-paint script that used to sit here read a stored
+// "light" preference and rewrote data-theme before hydration; with light mode
+// dropped it has nothing to decide, so the script, the attribute and the
+// suppressHydrationWarning it required are all gone rather than left inert.
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      data-theme="dark"
-      // The script below rewrites data-theme before React hydrates, so for a
-      // light-mode visitor the server HTML and the live DOM legitimately differ
-      // on this one attribute. Scoped to <html>'s own attributes, not the tree.
-      suppressHydrationWarning
       className={`${inter.variable} ${jetbrainsMono.variable} ${sourceSerif.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-      </head>
-      <body className="flex min-h-full backdrop-field">
+      <body className="flex min-h-full">
+        {/* The sky sits behind everything, fixed, at z-index -1 — inside the
+            root stacking context so every backdrop-filter above it has
+            something to sample. It is the first child so it paints first. */}
+        <NightSky />
         {/* The sidebar is only 3 items, so this costs little on most visits —
             but it was still missing, on a codebase that otherwise author its
             own a11y fixes rather than skip them. First focusable element in
@@ -80,7 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             content's min-content width — the 880px watchlist table and the
             560px intraday chart pushed the whole page sideways instead of
             scrolling inside their own overflow-x-auto wrappers. */}
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 backdrop-field">
+        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
           {children}
         </main>
         <ChartGradients />
