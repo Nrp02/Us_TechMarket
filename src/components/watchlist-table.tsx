@@ -23,7 +23,8 @@ import { WATCHLIST_MAX, WATCHLIST_MIN } from "@/lib/watchlist";
 // The owner asked for Rel. Volume to be dropped outright, to buy the width that
 // lets this table sit beside Top Movers at more screen sizes. Folding it in
 // buys exactly the same width — measured, 788px of min-content down to 736px,
-// identical either way — and keeps the figure, which matters because relative
+// identical either way, and 746px once the header row was told not to wrap —
+// and keeps the figure, which matters because relative
 // volume is one of the three inputs to the Significant rule. Delete it and the
 // badge in the next column but one can no longer be explained by anything the
 // table shows.
@@ -65,7 +66,7 @@ export function WatchlistTable({
       </SectionHeading>
 
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[736px] border-collapse text-left">
+        <table className="w-full min-w-[746px] border-collapse text-left">
           <thead>
             {/* The header row was the same canvas as the body, separated by one
                 hairline, so a scrolled table lost its column labels into the
@@ -81,7 +82,14 @@ export function WatchlistTable({
                   // per table instead of once per stock, and a sighted visitor
                   // gets it on hover exactly where the column is labelled.
                   title={heading === "Status" ? SIGNIFICANCE_RULE_TEXT : undefined}
-                  className="px-3 py-3 text-xs font-semibold text-muted"
+                  // nowrap: "Change %" broke after the word and, because a row
+                  // is as tall as its tallest cell, that one wrap set the
+                  // height of the entire header band — 57px for a row of
+                  // single-line labels. A column label that wraps is also just
+                  // wrong in a data table: the header should be the one thing
+                  // in the column that never reflows. Costs 10px of table
+                  // min-content, which is paid for in the breakpoint below.
+                  className="whitespace-nowrap px-3 py-3 text-xs font-semibold text-muted"
                 >
                   {heading}
                   {heading === "Status" && (
@@ -184,12 +192,12 @@ export function WatchlistTable({
           existed.
 
           The breakpoint is arithmetic, not a guess, and it moves whenever the
-          shell or the column set does. The table's panel needs 738px; the
+          shell or the column set does. The table's panel needs 748px; the
           content column is viewport − 48 shell padding − 240 rail − 24 gap, so
-          it clears at 1050px. Tailwind's nearest steps (1024, 1280) would both
+          it clears at 1060px. Tailwind's nearest steps (1024, 1280) would both
           show this line at widths where it is false. */}
       {tickers.length > 0 && (
-        <p className="mt-3 px-1 text-xs text-muted min-[1050px]:hidden">
+        <p className="mt-3 px-1 text-xs text-muted min-[1060px]:hidden">
           Scroll the table sideways for volume, status and the day chart.
         </p>
       )}

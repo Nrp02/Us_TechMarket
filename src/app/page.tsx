@@ -78,15 +78,15 @@ export default async function Home() {
           rather than chosen — it is the smallest viewport at which both can be
           themselves at once.
 
-          The table's panel needs 738px (736px of min-content plus its own 1px
+          The table's panel needs 748px (746px of min-content plus its own 1px
           borders — the track sizes a border box while min-width sizes a content
           box, and at 788 against 790 that 2px difference alone made the table
           scroll). Top Movers needs about 300px: below that its two-line row runs
           out of room for the company name, since a 24px rank, an 80px logo
           plate and the padding are fixed before any text.
 
-          738 + 24 gap + 300 + 240 rail + 24 shell gap + 48 shell padding =
-          1374px of viewport. Hence 1380.
+          748 + 24 gap + 300 + 240 rail + 24 shell gap + 48 shell padding =
+          1384px of viewport. Hence 1390.
 
           It was 1440 until Rel. Volume was folded into the Volume cell, which
           took the table from 788px to 736px and bought 60px of breakpoint.
@@ -94,7 +94,7 @@ export default async function Home() {
           scrolls sideways permanently — and the table is the page's primary
           object while Top Movers is a digest of it. A digest does not get to
           cost the thing it summarises. */}
-      <div className="grid grid-cols-1 gap-10 min-[1380px]:grid-cols-[minmax(738px,1fr)_minmax(300px,360px)] min-[1380px]:gap-6">
+      <div className="grid grid-cols-1 gap-10 min-[1390px]:grid-cols-[minmax(748px,1fr)_minmax(300px,360px)] min-[1390px]:gap-6">
         <WatchlistTable tickers={watched} selected={watchlist} />
         <TopMovers tickers={top20} />
       </div>
