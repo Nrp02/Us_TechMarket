@@ -34,10 +34,14 @@ function Cell({
         : "text-ink";
 
   return (
-    <article className="border-l border-t border-hairline px-5 py-5">
+    <article className="panel px-5 py-5">
       <h3 className="text-micro font-semibold text-muted">{label}</h3>
+      {/* text-figure, not text-3xl. Both resolved to a large mono reading in a
+          stat card, but Market Overview's ran at a clamp topping out at 38px
+          while these sat at 30px — the same role at two sizes on two pages of
+          one product. The token is the shared step now and both import it. */}
       <p
-        className={`mt-3 font-mono text-3xl font-medium tabular-nums ${toneClass}`}
+        className={`mt-3 font-mono text-figure font-medium tabular-nums ${toneClass}`}
       >
         {value}
       </p>
@@ -58,52 +62,52 @@ export function ActivityStats({ activity }: { activity: Activity }) {
     <section>
       <h2 className="sr-only">Today&apos;s statistics</h2>
 
-      {/* Same one-panel construction as Market Overview — see the note there
-          for why the cells draw their own top and left edge instead of using
-          divide-x. */}
-      <div className="panel overflow-hidden">
-        <div className="-ml-px -mt-px grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          <Cell
-            label="Price Movement"
-            value={formatPercent(ticker.changePercent)}
-            detail={`${formatPrice(ticker.price)} at last close`}
-            tone={tone(ticker.changePercent)}
-          />
+      {/* Five cards rather than one divided band, and the same gap Market
+          Overview uses — see the note at the top of that file for why the
+          earlier merge was reversed. These two rows are the same object on two
+          pages and must stay identical; changing one alone is the drift the
+          shared step above was introduced to stop. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <Cell
+          label="Price Movement"
+          value={formatPercent(ticker.changePercent)}
+          detail={`${formatPrice(ticker.price)} at last close`}
+          tone={tone(ticker.changePercent)}
+        />
 
-          <Cell
-            label="Trading Activity"
-            value={formatRelVolume(ticker.relativeVolume)}
-            detail={
-              ticker.volume == null
-                ? "Volume unavailable"
-                : `${formatVolume(ticker.volume)} shares vs 10-day average`
-            }
-            // Heavy volume is not good or bad in itself, so this cell stays
-            // neutral rather than borrowing the up/down colours.
-          />
+        <Cell
+          label="Trading Activity"
+          value={formatRelVolume(ticker.relativeVolume)}
+          detail={
+            ticker.volume == null
+              ? "Volume unavailable"
+              : `${formatVolume(ticker.volume)} shares vs 10-day average`
+          }
+          // Heavy volume is not good or bad in itself, so this cell stays
+          // neutral rather than borrowing the up/down colours.
+        />
 
-          <Cell
-            label="Sector Performance"
-            value={sector ? formatPercent(sector.changePercent) : "—"}
-            detail="Technology sector (XLK)"
-            tone={tone(sector?.changePercent)}
-          />
+        <Cell
+          label="Sector Performance"
+          value={sector ? formatPercent(sector.changePercent) : "—"}
+          detail="Technology sector (XLK)"
+          tone={tone(sector?.changePercent)}
+        />
 
-          <Cell
-            label="Market Performance"
-            value={market ? formatPercent(market.changePercent) : "—"}
-            detail="S&P 500 (SPY)"
-            tone={tone(market?.changePercent)}
-          />
+        <Cell
+          label="Market Performance"
+          value={market ? formatPercent(market.changePercent) : "—"}
+          detail="S&P 500 (SPY)"
+          tone={tone(market?.changePercent)}
+        />
 
-          <Cell
-            label="News & Events"
-            value={String(news.length + events.length)}
-            detail={`${news.length} article${news.length === 1 ? "" : "s"}, ${
-              events.length
-            } upcoming event${events.length === 1 ? "" : "s"}`}
-          />
-        </div>
+        <Cell
+          label="News & Events"
+          value={String(news.length + events.length)}
+          detail={`${news.length} article${news.length === 1 ? "" : "s"}, ${
+            events.length
+          } upcoming event${events.length === 1 ? "" : "s"}`}
+        />
       </div>
     </section>
   );

@@ -255,7 +255,16 @@
    the served stylesheet, not by assuming. */
 @theme {
   --text-micro: 0.6875rem;
-  --text-figure: clamp(1.75rem, 2.4vw, 2.375rem);
+  /* The one step for a large mono reading in a stat card, and it is now
+     genuinely one step: Market Overview's levels ran at a clamp topping out at
+     38px while the Today's Activity stat cells beside them sat at text-3xl,
+     30px. Two sizes for the same role on two pages of the same product, which
+     read as bigger on Home for no reason anyone could name. Flat 1.875rem —
+     the smaller of the two — and both surfaces now import this token rather
+     than one of them spelling the size itself. The tight leading and negative
+     tracking stay: they are what a large tabular number wants, and applying
+     them to the stat cells as well is the point of sharing the step. */
+  --text-figure: 1.875rem;
   --text-figure--line-height: 1.05;
   --text-figure--letter-spacing: -0.02em;
   --text-display: clamp(2.25rem, 4vw, 3.25rem);
