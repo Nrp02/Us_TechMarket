@@ -74,26 +74,27 @@ export default async function Home() {
 
       <MarketOverview tickers={indices} />
 
-      {/* Watchlist and Top Movers side by side — and the breakpoint is measured
-          rather than chosen. The watchlist table's real min-content width is
-          788px (916px before this pass tightened its cells), and Top Movers
-          stops being readable under about 260px. 788 + 24 gap + 260 = 1072px of
-          inner content, which needs 1072 + 80 padding + 272 rail = 1424px of
-          viewport. Hence 1440: the first standard step that clears it.
+      {/* Watchlist and Top Movers side by side, and the breakpoint is measured
+          rather than chosen — it is the smallest viewport at which both can be
+          themselves at once.
 
-          Below that they stack, because the alternative is a watchlist that
-          scrolls sideways permanently and hides two of its eight columns. The
-          table is the page's primary object; Top Movers is a digest of it, and
-          a digest does not get to cost the thing it summarises.
+          The table's panel needs 738px (736px of min-content plus its own 1px
+          borders — the track sizes a border box while min-width sizes a content
+          box, and at 788 against 790 that 2px difference alone made the table
+          scroll). Top Movers needs about 300px: below that its two-line row runs
+          out of room for the company name, since a 24px rank, an 80px logo
+          plate and the padding are fixed before any text.
 
-          minmax on the second track lets Top Movers give its slack back to the
-          table between 1440 and about 1600, where the table is still the
-          tighter of the two. */}
-      {/* 790px, not 788: the track sizes the panel's border box while the
-          table's min-width sizes its content box, and the panel carries a 1px
-          border on each side. At 788 the table scrolled by exactly 2px — the
-          borders — which is invisible to the eye and not to the scrollbar. */}
-      <div className="grid grid-cols-1 gap-10 min-[1440px]:grid-cols-[minmax(790px,1fr)_minmax(260px,340px)] min-[1440px]:gap-6">
+          738 + 24 gap + 300 + 240 rail + 24 shell gap + 48 shell padding =
+          1374px of viewport. Hence 1380.
+
+          It was 1440 until Rel. Volume was folded into the Volume cell, which
+          took the table from 788px to 736px and bought 60px of breakpoint.
+          Below 1360 they stack, because the alternative is a watchlist that
+          scrolls sideways permanently — and the table is the page's primary
+          object while Top Movers is a digest of it. A digest does not get to
+          cost the thing it summarises. */}
+      <div className="grid grid-cols-1 gap-10 min-[1380px]:grid-cols-[minmax(738px,1fr)_minmax(300px,360px)] min-[1380px]:gap-6">
         <WatchlistTable tickers={watched} selected={watchlist} />
         <TopMovers tickers={top20} />
       </div>

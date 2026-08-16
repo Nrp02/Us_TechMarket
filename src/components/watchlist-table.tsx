@@ -17,13 +17,27 @@ import { SIGNIFICANCE_RULE_TEXT } from "@/lib/significance";
 import { TOP_20 } from "@/lib/symbols";
 import { WATCHLIST_MAX, WATCHLIST_MIN } from "@/lib/watchlist";
 
+// Seven columns carrying eight fields: Rel. Volume folded into the Volume cell
+// rather than getting a column of its own.
+//
+// The owner asked for Rel. Volume to be dropped outright, to buy the width that
+// lets this table sit beside Top Movers at more screen sizes. Folding it in
+// buys exactly the same width — measured, 788px of min-content down to 736px,
+// identical either way — and keeps the figure, which matters because relative
+// volume is one of the three inputs to the Significant rule. Delete it and the
+// badge in the next column but one can no longer be explained by anything the
+// table shows.
+//
+// It also reads better than it did as a column. Relative volume IS today's
+// volume divided by the 10-day average, so the two are one measurement and its
+// scale — "26.1M, which is 0.43x normal" — rather than two independent facts
+// that happened to be adjacent.
 const HEADINGS = [
   "Symbol",
   "Price",
   "Change",
   "Change %",
   "Volume",
-  "Rel. Volume",
   "Status",
   "Chart (Day)",
 ];
@@ -51,7 +65,7 @@ export function WatchlistTable({
       </SectionHeading>
 
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[788px] border-collapse text-left">
+        <table className="w-full min-w-[736px] border-collapse text-left">
           <thead>
             {/* The header row was the same canvas as the body, separated by one
                 hairline, so a scrolled table lost its column labels into the
@@ -129,9 +143,17 @@ export function WatchlistTable({
                   </td>
                   <td className="px-3 py-3 font-mono text-sm tabular-nums text-body">
                     {formatVolume(ticker.volume)}
-                  </td>
-                  <td className="px-3 py-3 font-mono text-sm tabular-nums text-body">
-                    {formatRelVolume(ticker.relativeVolume)}
+                    {/* Muted and a step down, so the cell reads as one figure
+                        with its scale underneath rather than as two values of
+                        equal rank. Neutral colour either way: heavy volume is
+                        neither good news nor bad, and colouring it would assert
+                        a judgement the product is not allowed to make. */}
+                    {/* nowrap: at the column's natural width "0.43x avg" broke
+                        after the figure and put "avg" on a third line, which
+                        made every row 31px tall for a two-word label. */}
+                    <span className="block whitespace-nowrap text-micro text-muted">
+                      {formatRelVolume(ticker.relativeVolume)} avg
+                    </span>
                   </td>
                   <td className="px-3 py-3">
                     <StatusBadge significant={ticker.significant} />
@@ -161,14 +183,14 @@ export function WatchlistTable({
           is already under way. A visitor had no way to know Status and Chart
           existed.
 
-          The breakpoint is arithmetic, not a guess: the content column is
-          min(1200, viewport − 240 sidebar) − 80 padding, so the table stops
-          scrolling at exactly 1200px of viewport. Tailwind's xl (1280) would
-          have shown this line at widths where it is not true. */}
+          The breakpoint is arithmetic, not a guess, and it moves whenever the
+          shell or the column set does. The table's panel needs 738px; the
+          content column is viewport − 48 shell padding − 240 rail − 24 gap, so
+          it clears at 1050px. Tailwind's nearest steps (1024, 1280) would both
+          show this line at widths where it is false. */}
       {tickers.length > 0 && (
-        <p className="mt-3 px-1 text-xs text-muted min-[1200px]:hidden">
-          Scroll the table sideways for volume, relative volume, status and the
-          day chart.
+        <p className="mt-3 px-1 text-xs text-muted min-[1050px]:hidden">
+          Scroll the table sideways for volume, status and the day chart.
         </p>
       )}
     </section>
