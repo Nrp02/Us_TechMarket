@@ -26,6 +26,35 @@ import { INDEX_CARDS } from "@/lib/symbols";
 // needed: each card now draws its own border on all four sides, which is the
 // `panel` utility's job and no longer this component's.
 
+// Drawn, not a Unicode arrow: the product has no icon package and every glyph
+// in it is authored SVG on one convention — 24x24 viewBox, currentColor stroke,
+// round caps and joins. A "↑" would be the text face's arrow, which is a
+// different weight and a different vertical centre from everything else here.
+//
+// 1.75 rather than 1.5, the top of the range the system allows, because this is
+// the smallest icon in the product at 12px and the bottom of the range goes
+// thin at that size.
+function TrendArrow({ up }: { up: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="size-3 shrink-0"
+      aria-hidden
+    >
+      {up ? (
+        <path d="M12 19V5M12 5l-5.5 5.5M12 5l5.5 5.5" />
+      ) : (
+        <path d="M12 5v14M12 19l-5.5-5.5M12 19l5.5-5.5" />
+      )}
+    </svg>
+  );
+}
+
 export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
   const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
 
@@ -61,40 +90,89 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
               <h3 className="text-micro font-semibold text-ink">
                 {card.label}
               </h3>
-              <p className="mt-0.5 text-micro text-muted">{card.note}</p>
 
               {ticker ? (
                 <>
-                  <p className="mt-4 font-mono text-figure font-medium tabular-nums text-ink">
+                  <p className="mt-2 font-mono text-figure font-medium tabular-nums text-ink">
                     {ticker.price.toFixed(2)}
                   </p>
-                  {/* The change was loose text at the same size as the note
-                      above it. As a tinted pill it becomes the cell's second
-                      object, and the tint is the only place a card carries a
-                      field of colour rather than a line of it. */}
-                  <p
-                    className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs font-medium tabular-nums ${
-                      ticker.changePercent >= 0
-                        ? "bg-tint-up text-semantic-up"
-                        : "bg-tint-down text-semantic-down"
-                    }`}
-                  >
-                    {formatChange(ticker.change)} (
-                    {formatPercent(ticker.changePercent)})
-                  </p>
-                  <div className="mt-4">
-                    <Sparkline
-                      values={ticker.spark}
-                      up={ticker.changePercent >= 0}
-                      width={140}
-                      height={36}
-                    />
+
+                  {/* The change and the sparkline are one row, not two stacked
+                      ones. They are the same fact at two resolutions — where
+                      the session ended up, and the shape of how it got there —
+                      so reading them together is the point, and putting the
+                      trace on its own full-width line below made the card a
+                      third taller for no extra meaning.
+
+                      items-end so the figure and the sparkline's baseline
+                      agree rather than their box tops, which differ by the
+                      chart's own headroom. */}
+                  <div className="mt-3 flex items-end gap-3">
+                    <span
+                      // Loose coloured text with an arrow rather than the
+                      // tinted pill this used to carry. The pill made the
+                      // change the card's second object; at five cards across
+                      // that is five filled plates competing with five large
+                      // figures. The arrow is what replaces the plate as the
+                      // thing that catches the eye, and it is a better one —
+                      // it is a second, non-colour channel for direction,
+                      // which the Don't list explicitly asks for.
+                      className={`inline-flex shrink-0 items-center gap-1 font-mono text-xs font-semibold tabular-nums ${
+                        ticker.changePercent >= 0
+                          ? "text-semantic-up"
+                          : "text-semantic-down"
+                      }`}
+                    >
+                      <TrendArrow up={ticker.changePercent >= 0} />
+                      {formatPercent(ticker.changePercent)}
+                    </span>
+
+                    {/* The sparkline is a flexible track capped at 100px, not a
+                        fixed 100px box. At a fixed size it overflowed its own
+                        card between 1280 and 1400, where five columns leave
+                        only 141px of inner width against the 171px the change,
+                        the gap and the chart needed together — measured, and
+                        invisible on a screenshot because the panel clips.
+
+                        It scales rather than truncating because the SVG carries
+                        a viewBox, so a narrower box redraws the whole session
+                        instead of cropping the end off it. `ml-auto` keeps it
+                        on the right edge once it stops filling the space. */}
+                    <span className="ml-auto flex min-w-0 max-w-[100px] flex-1 justify-end [&>svg]:h-auto [&>svg]:w-full">
+                      <Sparkline
+                        values={ticker.spark}
+                        up={ticker.changePercent >= 0}
+                        width={100}
+                        height={30}
+                      />
+                    </span>
                   </div>
+
+                  {/* The absolute change sits here rather than beside the
+                      percentage. Both are required by the content contract,
+                      but they are not equal reads: the percentage is what the
+                      card is compared on and the points figure is the detail
+                      behind it. It shares the line with the proxy note, which
+                      is the same tier of information — provenance. */}
+                  <p className="mt-2 text-micro text-muted">
+                    <span className="font-mono tabular-nums">
+                      {formatChange(ticker.change)}
+                    </span>
+                    {" · "}
+                    {card.note}
+                  </p>
                 </>
               ) : (
-                <p className="mt-4 text-sm text-muted">
-                  No level stored for this session yet.
-                </p>
+                <>
+                  <p className="mt-2 text-sm text-muted">
+                    No level stored for this session yet.
+                  </p>
+                  {/* The proxy note survives the empty state: VIXY tracking
+                      futures rather than spot is true whether or not a level
+                      was recorded, and it is the one thing here the interface
+                      must not imply otherwise about. */}
+                  <p className="mt-2 text-micro text-muted">{card.note}</p>
+                </>
               )}
             </article>
           );
