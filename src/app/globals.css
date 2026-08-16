@@ -325,6 +325,33 @@
      cause. The light around a panel now comes from the cloud behind it and
      from the rim it catches — see --edge-rim below. These three steps are
      shadow only, which is all a shadow ever was. */
+  /* --- The instruments wait for the room ---------------------------------
+     One number, and it is the whole motion budget.
+
+     Everything used to start at t=0: the masthead sweeping, four sections
+     rising, twelve sparklines drawing, the breadth bar growing and two meteors
+     crossing the sky — measured at SEVEN animation families over about fifty
+     elements between 700 and 900ms. Nothing there was wrong on its own; they
+     were simply all happening at once, and a page where fifty things move
+     together reads as unsettled however gentle each one is.
+
+     Nothing is removed. The arrival is sequenced instead: the room arrives
+     first (title, sections, weather, all done by 1000ms), and only then do the
+     instruments draw. Peak concurrency falls from seven families to three, and
+     the page keeps every animation it had.
+
+     800ms rather than a round 1000: the watchlist is the second or third
+     section, so it lands at 800-900ms, and its charts begin drawing exactly as
+     the panel holding them finishes arriving. Later would leave visible empty
+     chart cells; earlier puts a line drawing itself inside a panel that is
+     still travelling, which is two motions on the same pixels.
+
+     The cost is 800ms of extra tail — the page now stops moving at ~2.1s
+     rather than 1.3s. That is the trade that was chosen: nothing is faster,
+     nothing is gone, less happens at any one instant. Note the durations
+     below are untouched; only delays moved. */
+  --enter-instruments: 800ms;
+
   --elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5);
   --elev-2: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6);
   --elev-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7);
@@ -1073,16 +1100,23 @@ a {
 
 .chart-line {
   stroke-dasharray: 1;
-  animation: chart-draw 1100ms cubic-bezier(0.33, 1, 0.4, 1) backwards;
+  animation: chart-draw 1100ms cubic-bezier(0.33, 1, 0.4, 1)
+    var(--enter-instruments) backwards;
 }
 
-/* The area under the line and the closing dot both wait for the line. */
+/* The area under the line and the closing dot both wait for the line, and the
+   line now waits for its panel — so these two carry the same offset rather than
+   absolute delays of their own. Written as calc rather than as new numbers so
+   the internal rhythm of a chart (line, then area at +700, then the closing dot
+   at +1000) stays readable and moves as one if the offset ever changes. */
 .chart-area {
-  animation: chart-fade 500ms ease-out 700ms backwards;
+  animation: chart-fade 500ms ease-out calc(var(--enter-instruments) + 700ms)
+    backwards;
 }
 
 .chart-point {
-  animation: chart-fade 320ms ease-out 1000ms backwards;
+  animation: chart-fade 320ms ease-out calc(var(--enter-instruments) + 1000ms)
+    backwards;
 }
 
 /* --- Breadth ------------------------------------------------------------
@@ -1095,9 +1129,15 @@ a {
   }
 }
 
+/* The breadth bar is an instrument too, so it joins the second phase rather
+   than growing at 250ms while the sections around it are still arriving. The
+   extra 100ms puts it just behind the sparklines: the two are the same kind of
+   object and reading them as one movement, slightly fanned, is calmer than
+   reading them as two that happen to coincide. */
 .bar-advancing,
 .bar-declining {
-  animation: bar-grow 850ms cubic-bezier(0.16, 1, 0.3, 1) 250ms backwards;
+  animation: bar-grow 850ms cubic-bezier(0.16, 1, 0.3, 1)
+    calc(var(--enter-instruments) + 100ms) backwards;
 }
 
 .bar-advancing {

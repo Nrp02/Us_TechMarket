@@ -19,8 +19,17 @@ import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
 // visitor respectively.
 
 export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number }) {
-  const { open, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
-    useWatchlistMenu();
+  const {
+    open,
+    toggleOpen,
+    message,
+    busy,
+    busyMessage,
+    container,
+    trigger,
+    mutate,
+    menuProps,
+  } = useWatchlistMenu();
 
   const watched = new Set(symbols);
   const unwatched = TOP_20_SYMBOLS.filter((s) => !watched.has(s));
@@ -32,6 +41,7 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
         ref={trigger}
         type="button"
         onClick={toggleOpen}
+        aria-haspopup="menu"
         aria-expanded={open}
         className="panel-control inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-body hover:text-ink"
       >
@@ -65,7 +75,7 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
             </p>
           )}
 
-          <p className="px-4 py-2 text-xs font-semibold text-muted">
+          <p id="add-stock-heading" className="px-4 py-2 text-xs font-semibold text-muted">
             Add from the Top 20{" "}
             <span className="font-mono tabular-nums">
               ({unwatched.length} available)
@@ -77,11 +87,17 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
               scroll container's own bottom edge, not inside it, so it never
               scrolls with the content it is signalling. */}
           <div className="relative">
-            <ul className="max-h-72 overflow-y-auto">
+            <ul
+              {...menuProps}
+              aria-labelledby="add-stock-heading"
+              className="max-h-72 overflow-y-auto"
+            >
               {unwatched.map((option) => (
-                <li key={option}>
+                <li key={option} role="none" data-menu-row data-menu-key={option}>
                   <button
                     type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     disabled={busy || atMax}
                     onClick={() => mutate(option, "POST")}
                     aria-label={`Add ${option} to your watchlist`}

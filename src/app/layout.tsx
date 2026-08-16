@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { ChartGradients } from "@/components/chart-gradients";
+import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { Meteors } from "@/components/meteors";
 import { NightSky } from "@/components/night-sky";
 import { Sidebar } from "@/components/sidebar";
@@ -131,6 +132,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </main>
         </div>
         <ChartGradients />
+        {/* Renders nothing. It is here rather than in the sidebar because the
+            shortcuts are a property of the document, and the rail is a
+            component that could stop existing at a narrower width. */}
+        <KeyboardShortcuts />
       </body>
     </html>
   );

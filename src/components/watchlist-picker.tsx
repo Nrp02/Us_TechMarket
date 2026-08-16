@@ -21,8 +21,17 @@ export function WatchlistPicker({
   // No `close` here: unlike the switcher, picking a stock does not dismiss this
   // popover — the visitor is usually choosing several — so the only ways out
   // are the trigger, Escape and an outside click, all of which live in the hook.
-  const { open, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
-    useWatchlistMenu();
+  const {
+    open,
+    toggleOpen,
+    message,
+    busy,
+    busyMessage,
+    container,
+    trigger,
+    mutate,
+    menuProps,
+  } = useWatchlistMenu();
 
   const chosen = new Set(selected);
   const full = selected.length >= cap;
@@ -36,9 +45,10 @@ export function WatchlistPicker({
         ref={trigger}
         type="button"
         onClick={toggleOpen}
-        // aria-expanded alone is the disclosure contract. `aria-haspopup="menu"`
-        // used to sit here and promised a menu the popover never declared —
-        // it rendered no role at all, so the promise was never kept.
+        // The promise is kept now: the list below is a real menu — role,
+        // focus-on-open, arrow keys, type-ahead over the twenty tickers, and
+        // Tab handing focus back out. See use-watchlist-menu.ts.
+        aria-haspopup="menu"
         aria-expanded={open}
         className="panel-control px-4 py-2 text-sm font-semibold text-ink"
       >
@@ -91,19 +101,30 @@ export function WatchlistPicker({
             </p>
           )}
 
-          <ul className="mt-3 max-h-80 overflow-y-auto">
+          <ul
+            {...menuProps}
+            aria-label="Top 20 US technology stocks"
+            className="mt-3 max-h-80 overflow-y-auto"
+          >
             {universe.map((stock) => {
               const isChosen = chosen.has(stock.symbol);
               const blocked = isChosen ? atMin : full;
 
               return (
-                <li key={stock.symbol}>
+                <li
+                  key={stock.symbol}
+                  role="none"
+                  data-menu-row
+                  data-menu-key={stock.symbol}
+                >
                   {/* `blocked` used to change the word's colour and nothing
                       else, so at the cap the row still looked live, fired a real
                       POST and came back 409. The switcher already refused the
                       click; now both do. */}
                   <button
                     type="button"
+                    role="menuitem"
+                    tabIndex={-1}
                     disabled={busy || blocked}
                     aria-label={
                       isChosen

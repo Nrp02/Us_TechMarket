@@ -348,13 +348,21 @@ The rail is a card, not a slab: same 24px geometry and same material as every ot
 
 Items are 44px tall, `8px` radius, Body text with an 18px icon at 1.5 stroke. The active item is `nav-active` — a translucent 18% accent plate, a lit inset ring, a soft cast — with **Signal Blue Active** text and a 1.75 stroke on the icon. The icon carries no colour decision of its own; its stroke is `currentColor`, so it is exactly as blue as the label beside it. `aria-current="page"` is always set: the active state is a plate and a colour, and neither is reported by a screen reader.
 
+Each row prints its shortcut — `g h`, `g n`, `g a` — in muted mono at the trailing edge, and carries the same string in `aria-keyshortcuts`. Two channels for two visitors; a shortcut nobody is told about is not a feature.
+
 `nav-active` is the one sanctioned exception to The Baked Tint Rule, and it earns it only by being measured at both ends of its range: `primary` fails every alpha (4.49:1 at its most generous), `primary-active` clears at 5.43:1 against the rail's bright end and 7.06:1 against its dim end.
 
 ### Menus and Disclosures
 
 Every popover is `panel-overlay`: the heaviest blur in the product (16px), nearly opaque at 0.82, `elev-3`, a plain border rather than the lit rim, and `4px` of padding around `12px` rows. It is nearly opaque for a reason the other tiers do not share — what shows through it is *text*, and text through glass is unreadable in a way weather never is.
 
-The selected row takes `surface-strong` with **Signal Blue Active** text (4.82:1). Two of these are `<details>`/`<summary>` — every option is a link, so opening costs no JavaScript — and two are client popovers sharing one hook that owns open/close, outside-click, Escape-with-focus-return, and the busy state. Busy and blocked are never the same signal: dimming says "you cannot", and "working on it" is said in words, in the same live region the errors use.
+The selected row takes `surface-strong` with **Signal Blue Active** text (4.82:1). One is a `<details>`/`<summary>` — every option is a link, so opening costs no JavaScript — and three are client popovers sharing one hook. Busy and blocked are never the same signal: dimming says "you cannot", and "working on it" is said in words, in the same live region the errors use.
+
+Those three declare `role="menu"` on the list (not on the panel — the panel also holds a group header and a `role="status"` line, neither of which is a menu item), and they keep the promise the role makes: focus enters on open, landing on the row marked current where there is one; Up/Down move between rows and Left/Right between the two controls on a row; Home/End jump the ends; a typed ticker jumps to it (`n`, `v` → NVDA, with a 700ms buffer); Escape closes and returns focus to the trigger; Tab returns focus to the trigger and then keeps going, because a menu does not trap. Nothing inside is in the tab order — focus is moved, not tabbed.
+
+### Named Rules
+
+**The Kept-Promise Rule.** An ARIA role is a specification, not a label. `role="menu"` and `aria-haspopup="menu"` commit you to focus-on-open, arrow navigation, type-ahead and Tab-exits; ship the attribute without the behaviour and a screen-reader visitor is told to press keys that do nothing, which is worse than declaring a plain disclosure. Either build the pattern or use `aria-expanded` alone and mean it.
 
 ### Data Table
 
@@ -370,11 +378,15 @@ Two invariants: the **bright** stars are excluded from the union of every panel 
 
 One authored moment, and it belongs to the material rather than to a component: **the pane focusing.** An overlay enters slightly small, a little high, and nearly clear — 2px of blur against its resting 16 — so for a fifth of a second the sky behind it is almost sharp and then frosts over as the surface settles. Blur is the one property in this system that literally means "there is glass here", so it is the honest thing to animate when glass appears.
 
-Everything else is arrival: sections rise 14px over 700ms on a 100ms stagger (budgeted so the last one lands at exactly 1.00s), the masthead resolves behind a travelling mask, sparklines and the intraday line draw themselves left to right in the direction of the session they plot, and the breadth bar's two segments grow from the outside toward the split between them. The only loop in the product is the bright stars breathing.
+Everything else is arrival, and it arrives in **two phases**. First the room: the masthead resolves behind a travelling mask, four sections rise 14px over 700ms on a 100ms stagger (budgeted so the last lands at exactly 1.00s), and two meteors cross the sky. Then the instruments: at `--enter-instruments` (800ms) the sparklines and the intraday line draw themselves left to right in the direction of the session they plot, and the breadth bar's segments grow from the outside toward the split between them.
+
+The phase split is the entire motion budget. Every one of these used to start at t=0 — measured at **seven animation families over about fifty elements** between 700 and 900ms. None was wrong alone; a page where fifty things move at once simply reads as unsettled however gentle each one is. Sequencing drops peak concurrency to **three**, and no animation was shortened or removed to get there: only delays moved, and the page's tail grew from 1.3s to ~2.1s. The only loop in the product is the bright stars breathing.
 
 `prefers-reduced-motion` is honoured with an **alternative, not a kill**: ambient motion stops entirely, but feedback keeps an arrival — the overlay still fades in over 160ms, because a menu that blinks into existence is harder to follow than one that arrives, not easier.
 
 ### Named Rules
+
+**The Room-Then-Instruments Rule.** Arrival happens in two phases and never in one. Structure first — masthead, panels, weather — then the things drawn inside the panels, offset by `--enter-instruments`. When the budget is too loud, **sequence before you shorten and shorten before you delete**: a slower page that moves in one place at a time reads calmer than a fast page that moves everywhere at once, and it costs nothing anyone asked for.
 
 **The Arrival-Not-Recurrence Rule.** Arrival is allowed; recurrence is not. A line drawing itself once, as the page appears, is the same event as the panel under it arriving — it says "here is the session". The same line redrawing on a timer would say "the session is still running", which is the lie this product's whole motion design exists to prevent.
 
@@ -394,6 +406,8 @@ Everything else is arrival: sections rise 14px over 700ms on a 100ms stagger (bu
 - **Do** give anything with a hard minimum width its own `overflow-x-auto` island — and a sentence telling the visitor it scrolls.
 - **Do** derive breakpoints from the shell arithmetic, not from the nearest Tailwind step.
 - **Do** state a busy state in words. Dimming can only say "no", never "wait".
+- **Do** sequence a loud arrival into phases before shortening or deleting any of it.
+- **Do** print a keyboard shortcut where the thing it operates is, and declare it in `aria-keyshortcuts` as well.
 - **Do** theme the browser surfaces: selection, scrollbars, focus rings, underline offset, and the cursor on `<button>` and `<summary>` (Tailwind v4's preflight dropped `cursor: pointer`).
 
 ### Don't:
@@ -403,6 +417,8 @@ Everything else is arrival: sections rise 14px over 700ms on a 100ms stagger (bu
 - **Don't** put a coloured glow around a panel. A pane does not emit; the light comes from the cloud behind it and the rim it catches.
 - **Don't** animate anything behind the glass. Every pane on the page re-samples on every frame.
 - **Don't** loop, tick, pulse, or auto-refresh anything. The session being described is over.
+- **Don't** start every animation at t=0. Structure arrives, then the instruments inside it.
+- **Don't** declare an ARIA role you have not implemented the keyboard model for.
 - **Don't** let Signal Blue become decorative. Outside a token of state, a dot, tick or rule in the accent colour is a violation even when it looks good.
 - **Don't** split a heading into per-character boxes. The kerning does not survive it.
 - **Don't** author the weather anywhere but `night-sky.tsx`, or mirror its colours into a CSS token that nothing can check.

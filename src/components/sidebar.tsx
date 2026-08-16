@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { SHORTCUTS } from "@/components/keyboard-shortcuts";
+
 // One drawing convention for every glyph in the product: 24x24 viewBox,
 // currentColor stroke, round caps and joins, no fill. Nothing here is an icon
 // package — three glyphs, authored to sit beside three labels.
@@ -54,6 +56,11 @@ const NAV_ITEMS = [
   { href: "/todays-activity", label: "Today's Activity", icon: ActivityIcon },
 ] as const;
 
+// The shortcut list is imported rather than restated so the hint printed on a
+// row and the key that actually navigates cannot drift apart — the same
+// single-source reasoning the significance rule already gets.
+const KEY_BY_HREF = new Map(SHORTCUTS.map((s) => [s.href, s.key]));
+
 export function Sidebar() {
   const pathname = usePathname();
 
@@ -92,11 +99,17 @@ export function Sidebar() {
                 ? pathname === "/"
                 : pathname.startsWith(item.href);
             const Icon = item.icon;
+            const key = KEY_BY_HREF.get(item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                // The shortcut, twice, for two different visitors: printed on
+                // the row for anyone who can see it, and declared here for a
+                // screen reader, which announces it with the link. A shortcut
+                // nobody is told about is not a feature.
+                aria-keyshortcuts={key ? `g ${key}` : undefined}
                 // Active state was a plate plus a colour, neither of which a
                 // screen reader reports.
                 aria-current={isActive ? "page" : undefined}
@@ -138,6 +151,19 @@ export function Sidebar() {
               >
                 <Icon active={isActive} />
                 {item.label}
+                {/* aria-hidden because the same information reaches a screen
+                    reader through aria-keyshortcuts above; announcing "g h"
+                    twice per row would be noise. Mono, because these are keys
+                    on a keyboard — glyphs to be matched one for one, which is
+                    the same job the Mono Numerals Rule gives a figure. */}
+                {key && (
+                  <span
+                    aria-hidden
+                    className="ml-auto font-mono text-micro text-muted"
+                  >
+                    g {key}
+                  </span>
+                )}
               </Link>
             );
           })}

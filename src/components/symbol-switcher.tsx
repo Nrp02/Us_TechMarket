@@ -40,8 +40,18 @@ export function SymbolSwitcher({
   min: number;
 }) {
   const router = useRouter();
-  const { open, close, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
-    useWatchlistMenu();
+  const {
+    open,
+    close,
+    toggleOpen,
+    message,
+    busy,
+    busyMessage,
+    container,
+    trigger,
+    mutate,
+    menuProps,
+  } = useWatchlistMenu();
 
   const atMin = symbols.length <= min;
 
@@ -49,9 +59,27 @@ export function SymbolSwitcher({
     const blocked = atMin;
 
     return (
-      <li key={option} className="flex items-center">
+      <li
+        key={option}
+        // The three data attributes are the keyboard model's whole contract with
+        // this component: `data-menu-row` marks the unit Up/Down moves between,
+        // `data-menu-key` is what a typed letter matches, and
+        // `data-menu-current` is where focus lands when the menu opens — the
+        // stock being viewed, which is the row a visitor opening this menu is
+        // most often navigating away from.
+        role="none"
+        data-menu-row
+        data-menu-key={option}
+        data-menu-current={option === symbol}
+        className="flex items-center"
+      >
         <button
           type="button"
+          role="menuitem"
+          // Roving focus: nothing in the menu is in the tab order, because the
+          // menu owns its own navigation and hands Tab back out. Focus is moved
+          // programmatically by the hook.
+          tabIndex={-1}
           onClick={() => {
             close();
             router.push(`/todays-activity/${option}`);
@@ -81,6 +109,8 @@ export function SymbolSwitcher({
 
         <button
           type="button"
+          role="menuitem"
+          tabIndex={-1}
           disabled={busy || blocked}
           onClick={() => mutate(option, "DELETE")}
           aria-label={`Remove ${option} from your watchlist`}
@@ -107,8 +137,12 @@ export function SymbolSwitcher({
         ref={trigger}
         type="button"
         onClick={toggleOpen}
-        // aria-expanded alone is the disclosure contract. `aria-haspopup="menu"`
-        // used to sit here and promised a menu the popover never declared.
+        // `aria-haspopup="menu"` is back, and this time the promise is kept:
+        // the list below declares role="menu", takes focus when it opens, moves
+        // on the arrow keys, jumps on a typed ticker and hands Tab back out.
+        // It was removed once precisely because none of that was true — the
+        // attribute is only honest alongside the behaviour.
+        aria-haspopup="menu"
         aria-expanded={open}
         className="flex items-center gap-2 rounded-xl px-2 py-1 text-3xl font-semibold tracking-tight text-ink transition-colors hover:bg-surface-strong"
       >
@@ -163,12 +197,14 @@ export function SymbolSwitcher({
               reached. This is where the floor is actually communicated — the
               dimmed control can only show that something is unavailable, never
               why. */}
-          <p className="px-4 py-1 text-xs font-semibold text-muted">
+          <p id="switcher-heading" className="px-4 py-1 text-xs font-semibold text-muted">
             Watchlist{" "}
             <span className="font-mono tabular-nums">({symbols.length})</span>
             {atMin && " · remove is unavailable at one stock"}
           </p>
-          <ul>{symbols.map((option) => row(option))}</ul>
+          <ul {...menuProps} aria-labelledby="switcher-heading">
+            {symbols.map((option) => row(option))}
+          </ul>
         </div>
       )}
     </div>
