@@ -19,11 +19,23 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
         Market News
       </SectionHeading>
 
-      <div className="panel overflow-hidden">
+      {/* Three cards across, not three rows down. The teaser used to be a
+          stacked list inside a half-width column; full width it would have run
+          three short headlines across a 1100px measure with most of each row
+          empty, which is the dead-right-hand-column problem the Filled Right
+          Rule already names. Across, each headline gets its own column and a
+          measure it can actually use.
+
+          Equal columns rather than a scroller: there are exactly three, the
+          count is fixed by the content contract, and a three-item carousel is
+          a control nobody needs. */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {items.map((item) => (
           <article
             key={item.id}
-            className="border-b border-hairline px-5 py-4 transition-colors last:border-0 hover:bg-surface-soft"
+            // flex-col so the summary can push nothing around: cards in a row
+            // are equal height by default and the headline lengths differ.
+            className="panel flex flex-col px-5 py-4 transition-colors hover:bg-surface-soft"
           >
             {/* h3, not h2: this list sits under the "Market News" section
                 heading, which is the h2. Same structural-only fix as the News
@@ -50,8 +62,11 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
           </article>
         ))}
 
+        {/* The empty state spans the whole grid rather than sitting in the
+            first of three columns, where it would read as one missing card
+            beside two that never existed. */}
         {!items.length && (
-          <p className="px-5 py-8 text-sm text-muted">
+          <p className="panel px-5 py-8 text-sm text-muted md:col-span-3">
             No articles for these stocks yet. News is collected four times a day
             and summarised on arrival.
           </p>

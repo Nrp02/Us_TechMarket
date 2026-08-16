@@ -51,7 +51,7 @@ export function WatchlistTable({
       </SectionHeading>
 
       <div className="panel overflow-x-auto">
-        <table className="w-full min-w-[880px] border-collapse text-left">
+        <table className="w-full min-w-[788px] border-collapse text-left">
           <thead>
             {/* The header row was the same canvas as the body, separated by one
                 hairline, so a scrolled table lost its column labels into the
@@ -67,7 +67,7 @@ export function WatchlistTable({
                   // per table instead of once per stock, and a sighted visitor
                   // gets it on hover exactly where the column is labelled.
                   title={heading === "Status" ? SIGNIFICANCE_RULE_TEXT : undefined}
-                  className="px-5 py-3 text-xs font-semibold text-muted"
+                  className="px-3 py-3 text-xs font-semibold text-muted"
                 >
                   {heading}
                   {heading === "Status" && (
@@ -87,7 +87,7 @@ export function WatchlistTable({
                   key={ticker.symbol}
                   className="border-b border-hairline transition-colors last:border-0 hover:bg-surface-soft"
                 >
-                  <td className="px-5 py-4">
+                  <td className="px-3 py-3">
                     {/* The route to this stock's own page. Home's whole job is
                         to say which stock is worth looking at, and until this
                         link existed the answer led nowhere: the visitor had to
@@ -116,27 +116,27 @@ export function WatchlistTable({
                   {/* Price is what the row is about, so it carries the one size
                       step above the rest of the cells. Change % is the second
                       read and takes the weight instead of a third size. */}
-                  <td className="px-5 py-4 font-mono text-base font-medium tabular-nums text-ink">
+                  <td className="px-3 py-3 font-mono text-base font-medium tabular-nums text-ink">
                     {formatPrice(ticker.price)}
                   </td>
-                  <td className={`px-5 py-4 font-mono text-sm tabular-nums ${moveColor}`}>
+                  <td className={`px-3 py-3 font-mono text-sm tabular-nums ${moveColor}`}>
                     {formatChange(ticker.change)}
                   </td>
                   <td
-                    className={`px-5 py-4 font-mono text-sm font-semibold tabular-nums ${moveColor}`}
+                    className={`px-3 py-3 font-mono text-sm font-semibold tabular-nums ${moveColor}`}
                   >
                     {formatPercent(ticker.changePercent)}
                   </td>
-                  <td className="px-5 py-4 font-mono text-sm tabular-nums text-body">
+                  <td className="px-3 py-3 font-mono text-sm tabular-nums text-body">
                     {formatVolume(ticker.volume)}
                   </td>
-                  <td className="px-5 py-4 font-mono text-sm tabular-nums text-body">
+                  <td className="px-3 py-3 font-mono text-sm tabular-nums text-body">
                     {formatRelVolume(ticker.relativeVolume)}
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-3 py-3">
                     <StatusBadge significant={ticker.significant} />
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-3 py-3">
                     <Sparkline values={ticker.spark} up={up} />
                   </td>
                 </tr>
@@ -146,7 +146,7 @@ export function WatchlistTable({
         </table>
 
         {!tickers.length && (
-          <p className="px-5 py-8 text-sm text-muted">
+          <p className="px-3 py-8 text-sm text-muted">
             No prices stored for this session yet. Prices are recorded every 15
             minutes while the US market is open.
           </p>

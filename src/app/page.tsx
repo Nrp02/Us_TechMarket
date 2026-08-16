@@ -75,12 +75,36 @@ export default async function Home() {
       </header>
 
       <MarketOverview tickers={indices} />
-      <WatchlistTable tickers={watched} selected={watchlist} />
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
+      {/* Watchlist and Top Movers side by side — and the breakpoint is measured
+          rather than chosen. The watchlist table's real min-content width is
+          788px (916px before this pass tightened its cells), and Top Movers
+          stops being readable under about 260px. 788 + 24 gap + 260 = 1072px of
+          inner content, which needs 1072 + 80 padding + 272 rail = 1424px of
+          viewport. Hence 1440: the first standard step that clears it.
+
+          Below that they stack, because the alternative is a watchlist that
+          scrolls sideways permanently and hides two of its eight columns. The
+          table is the page's primary object; Top Movers is a digest of it, and
+          a digest does not get to cost the thing it summarises.
+
+          minmax on the second track lets Top Movers give its slack back to the
+          table between 1440 and about 1600, where the table is still the
+          tighter of the two. */}
+      {/* 790px, not 788: the track sizes the panel's border box while the
+          table's min-width sizes its content box, and the panel carries a 1px
+          border on each side. At 788 the table scrolled by exactly 2px — the
+          borders — which is invisible to the eye and not to the scrollbar. */}
+      <div className="grid grid-cols-1 gap-10 min-[1440px]:grid-cols-[minmax(790px,1fr)_minmax(260px,340px)] min-[1440px]:gap-6">
+        <WatchlistTable tickers={watched} selected={watchlist} />
         <TopMovers tickers={top20} />
-        <NewsTeaser items={news} />
       </div>
+
+      {/* Market News runs full width now, its three articles in a row rather
+          than a column. It was sharing a two-up row with Top Movers, and losing
+          that slot is what freed the width — the teaser is three headlines, and
+          three headlines read better across than stacked in a half-column. */}
+      <NewsTeaser items={news} />
     </div>
   );
 }

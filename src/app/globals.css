@@ -17,10 +17,16 @@
   scrollbar-width: thin;
 
   /* --- The sky ----------------------------------------------------------
-     Near-black, but deep navy rather than neutral — it reads as
-     near-black -> deep navy -> subtle blue rather than as a flat black
-     field. This is the only surface in the product that is NOT glass. */
-  --color-backdrop: #04060d;
+     Reads near-black -> deep navy -> subtle blue rather than as flat black.
+     The only surface in the product that is NOT glass.
+
+     Was #04060d, which is very nearly neutral black — the navy was there in
+     the numbers but not on the screen, and against the reference the whole
+     field read as switched-off rather than as a night sky. Lifted and turned
+     toward blue: the hue is now legible as navy at rest, before the ambient
+     radials add anything. Every contrast pair was re-measured against the
+     brighter field it produces. */
+  --color-backdrop: #070d1c;
 
   /* --- The Worst-Case Composite Rule ------------------------------------
      Glass is alpha over a field that varies (the ambient blue radial, the
@@ -33,9 +39,9 @@
      does three jobs — it is what baked tints are computed over, what the
      reduced-transparency fallback paints, and the number the contrast harness
      measures against. Panel glass over the DIM end of the field composites to
-     #0f1420, so the real face drifts 13.6 RGB units at most; that small number
-     is the whole reason text can sit on glass at all here. */
-  --color-canvas: #141c2e;
+     #101728, so the real face drifts about 17 RGB units at most; that small
+     number is the whole reason text can sit on glass at all here. */
+  --color-canvas: #151e33;
 
   /* Surfaces INSIDE a panel. All opaque, all baked over --color-canvas — see
      The One Translucent Layer Rule. Exactly one layer in the stack is
@@ -51,9 +57,10 @@
 
   --color-ink: #f2f4f7;
   --color-body: #a7afbd;
-  /* Nudged up from #848c9a: it measured 4.51:1 on the lit top edge of the
-     raised card, which passes but with nothing to spare. */
-  --color-muted: #8d95a4;
+  /* Twice nudged up, both times by the same surface: the lit top edge of the
+     raised card is where this tier is tightest. #848c9a measured 4.51:1 there,
+     then #8d95a4 fell to 4.37:1 once the field was lifted toward navy. */
+  --color-muted: #939bab;
 
   /* --- The Two Blues Rule -----------------------------------------------
      Blue does two jobs now and they must not blur together, or the Significant
@@ -103,16 +110,22 @@
      holding, so dimming it forfeits nothing that was there. */
   --color-logo-plate: rgb(226 230 237 / 0.9);
 
-  /* Tinted plates, baked flat over --color-canvas at 16%, never written as
+  /* Tinted plates, baked flat over --color-canvas at 12%, never written as
      `bg-primary/12`. An alpha composites against whatever is behind it, so the
      Significant badge on a hovered row once measured 4.49:1 while the same
      badge at rest measured 4.76:1 — contrast that depended on the pointer.
      Under glass that failure would be worse, not better: the thing behind is
-     now a gradient. */
-  --color-tint-primary: #212f4f;
-  --color-tint-up: #17373d;
-  --color-tint-down: #3a2839;
-  --color-accent-edge: #33497b;
+     now a gradient.
+
+     12%, down from 16%: against the lifted navy field the accent plate came
+     up with the canvas under it, and `primary` on it measured 4.47:1 — a fail
+     on the Significant badge. Thinning the plate rather than brightening
+     `primary` keeps a token that is already measured correct in nine other
+     places, and buys 4.79:1 here. */
+  --color-tint-primary: #1f2c4b;
+  --color-tint-up: #17333d;
+  --color-tint-down: #32273a;
+  --color-accent-edge: #314678;
 
   /* --- The glass ---------------------------------------------------------
      Four tiers. Three are content (resting, raised, overlay); the rail is
@@ -151,10 +164,10 @@
      One place to update, sitting directly beneath the values they mirror.
      --solid-panel is --color-canvas, which is already defined as that
      composite; it is aliased here so the set reads as one group. */
-  --solid-rail: #121a2c;
+  --solid-rail: #131c32;
   --solid-panel: var(--color-canvas);
-  --solid-raised: #192136;
-  --solid-overlay: #171e30;
+  --solid-raised: #1b243b;
+  --solid-overlay: #171f31;
   /* The frosted plate's own composite, derived the same way and stale for the
      same reason if --color-logo-plate moves without it. */
   --solid-logo-plate: #cdd2da;
@@ -203,8 +216,8 @@
      The peak of these three stacked is what the contrast harness models as
      the bright end of the field. Raising any of them without re-running it
      invalidates every measured pair in the product. */
-  --sky-core: color-mix(in srgb, var(--color-primary) 20%, transparent);
-  --sky-halo: color-mix(in srgb, var(--color-primary) 9%, transparent);
+  --sky-core: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  --sky-halo: color-mix(in srgb, var(--color-primary) 12%, transparent);
   /* Was 6% and centred at 4% 82% — bottom-left, below the fold, so the
      navigation rail sat in front of essentially unlit backdrop for its whole
      height and had nothing to catch. Raised to 11% and lifted to 38% so the
