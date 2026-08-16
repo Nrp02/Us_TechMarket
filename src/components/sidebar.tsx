@@ -58,65 +58,33 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    // The <aside> is now only the gutter; the card inside it is the object.
-    //
-    // 272px = the card's 240px plus 16px of padding either side, so the card
-    // keeps the exact width the old flush rail had. That is deliberate rather
-    // than tidy: the wordmark measures 172px intrinsic against 207px of inner
-    // width, and an earlier pass already lost that fight once when the budget
-    // shrank. Widening the shell rather than narrowing the card means the
-    // 35px of headroom is untouched and nothing inside can reflow.
-    //
-    // py-8 matches the content column's own top padding, so the card's top
-    // edge lines up with the page title beside it instead of floating at some
-    // unrelated height.
+    // The <aside> is the gutter; the name and the nav card are the two objects
+    // in it. The card no longer has to fit the wordmark, which is what let its
+    // vertical padding come down from py-6 to py-4 — it holds three rows now
+    // and nothing else, so the old headroom was measuring a thing that had
+    // moved out.
     <aside className="relative z-10 w-60 shrink-0">
+      {/* No wordmark and no mark of our own in here. The name is the page's
+          masthead now (see `app/page.tsx`), and the glyph that used to sit
+          beside it is gone entirely.
+
+          Dropping the glyph follows from what this interface is full of: a logo
+          plate on every watchlist row, every Top Movers rank and every news
+          thumbnail. A small blue mark of our own was competing inside that
+          crowd rather than standing apart from it, and a product whose screen
+          is covered in other companies' logos differentiates by not adding one
+          more in the same place.
+
+          The consequence worth knowing: the product's name now appears on Home
+          only. News opens with "News" and Today's Activity with a ticker, so a
+          visitor landing on either has the rail's three items for orientation
+          and nothing that says what this is. That is a deliberate trade, not an
+          oversight. */}
       {/* Sticky, because a card is only as tall as its content and the page
           beside it is several thousand pixels long. The <aside> stretches to
           full height as a flex item, which is what gives this something to
           stick within. */}
-      <div className="panel-rail sticky top-6 flex flex-col px-4 py-6">
-        {/* No horizontal padding of its own — `nav` below has none either, and
-            its Links stretch edge to edge across the rail's full 208px inner
-            width (flex-col's default align-items: stretch). One rail, one pair
-            of edges: everything in it measures from the same two verticals.
-
-            This was a two-row flex column, split so the wordmark and the theme
-            toggle stopped contesting a 208px budget. With the toggle gone the
-            contest is gone with it, so the wrapper collapses back to the one
-            thing it now holds. */}
-        <div className="pb-8">
-          <span className="flex items-center gap-2.5 text-lg font-semibold tracking-tight text-ink">
-            {/* The product had no mark of its own anywhere — the sidebar opened
-                with plain text, on a page otherwise full of other companies'
-                logos. Three bars at the session's own scale, in stepped accent
-                opacities: a wordmark that is also the thing the product
-                measures.
-
-                The mark sits in a tinted circle with an inset accent ring — the
-                exact plate-and-ring recipe every other identity or state token
-                in the system already carries (the active sidebar item below, the
-                Significant badge, Top Movers' leading rank). The Pill-For-Tokens
-                Rule calls for a full pill on anything standing for an identity.
-
-                Gap to the wordmark text is 2.5 (10px), not 3 (12px) — matching
-                the icon-to-label gap every nav item below uses. Both are a
-                small mark beside its text; there was no reason for the two to
-                measure differently. */}
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-tint-primary ring-1 ring-accent-edge ring-inset">
-              <span className="flex h-5 items-end gap-[3px]" aria-hidden>
-                <span className="w-[3px] rounded-full bg-primary/40" style={{ height: "10px" }} />
-                <span className="w-[3px] rounded-full bg-primary/70" style={{ height: "16px" }} />
-                <span className="w-[3px] rounded-full bg-primary" style={{ height: "20px" }} />
-              </span>
-            </span>
-            US TechMarket
-          </span>
-        </div>
-        {/* Labelled because the News page carries a second <nav> (its category
-            tabs), and a landmark list offering "navigation" twice with nothing to
-            tell them apart makes the visitor enter both to find out which is
-            which. */}
+      <div className="panel-rail sticky top-6 flex flex-col px-4 py-4">
         <nav aria-label="Main" className="flex flex-col gap-1">
           {NAV_ITEMS.map((item) => {
             const isActive =
@@ -144,14 +112,28 @@ export function Sidebar() {
                 // and exactly as grey when it isn't. Nothing added a fourth
                 // place the accent can appear.
                 //
-                // Hover is a translucent white lift rather than the opaque
+                // Hover is a translucent lift rather than the opaque
                 // surface-soft plate: that token is baked over the panel canvas,
                 // and a panel-coloured chip on the rail read as a patch of the
-                // wrong material sitting on the glass.
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                // wrong material sitting on the glass. It is the same blue-white
+                // the glass rim is made of (--color-glass-lift), not plain
+                // white — on a field this saturated, neutral white light reads
+                // as grey paint smeared on the pane.
+                // py-3, not py-2, and the reason is the iPad rather than the
+                // laptop. These three rows are the product's whole navigation
+                // and they measured 206x36 — legal under WCAG 2.2 AA, which
+                // asks 24x24, but six pixels under the 44 a finger is drawn
+                // against on a touch screen, on the one control a visitor has
+                // to hit before they can do anything else. The rail has the
+                // room: it holds three items and nothing else, so the height
+                // comes out of slack rather than out of density. The dense
+                // controls — table rows, dropdown rows, the picker pill — keep
+                // their size; this is a navigation fix, not a blanket inflation
+                // of a product that is meant to be read close.
+                className={`flex items-center gap-2.5 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
                   isActive
                     ? "nav-active text-primary-active"
-                    : "text-body hover:bg-white/[0.055] hover:text-ink"
+                    : "text-body hover:bg-glass-lift hover:text-ink"
                 }`}
               >
                 <Icon active={isActive} />

@@ -123,10 +123,13 @@ export function IntradayChart({
             the same drawing at two scales. Closed to the price panel's own
             floor, not to the volume panel below it. */}
         <polygon
+          className="chart-area"
           points={`${line.join(" ")} ${PLOT_RIGHT},${PRICE_BOTTOM} ${LEFT},${PRICE_BOTTOM}`}
           fill={up ? "url(#session-up)" : "url(#session-down)"}
         />
         <polyline
+          className="chart-line"
+          pathLength={1}
           points={line.join(" ")}
           fill="none"
           stroke={stroke}
@@ -136,6 +139,7 @@ export function IntradayChart({
         />
         {/* The session's last recorded price, marked so the line has an end. */}
         <circle
+          className="chart-point"
           cx={x(last)}
           cy={priceY(points[last].price)}
           r={3.5}

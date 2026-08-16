@@ -31,13 +31,48 @@ export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) 
         // eslint-disable-next-line @next/next/no-img-element -- remote CDN mark; Brandfetch requires these URLs be hotlinked, so next/image optimization (which refetches server-side) is not an option
         <img
           src={src}
-          alt=""
+          // NOT alt="". The empty string is what made an unreachable CDN a
+          // SILENT total failure: a broken image with no alt collapses to
+          // nothing, so every plate in the product went blank at once and the
+          // page looked designed that way. It happens — it happened during a
+          // working session, and the codebase records it as a known hole with
+          // "adding a fallback would require an onError handler and so a client
+          // component". It does not. A non-empty alt is rendered by the browser
+          // in the image's place when the image fails, which is a lettermark
+          // fallback with no JavaScript at all.
+          //
+          // The alt alone was not enough, and the measurement is why: a broken
+          // image has an intrinsic width of ZERO, so under the old
+          // `max-w-full` the box collapsed to 0x16 and the browser had nowhere
+          // to draw the text. Verified against a genuinely dead host — the
+          // first attempt pointed at a nonsense Brandfetch path and quietly
+          // SUCCEEDED, because that CDN answers 200 with a placeholder for
+          // anything, which is the same trap CLAUDE.md records for curl. With
+          // `w-full` the box is the plate's full 72x16 and the ticker appears.
+          //
+          // `w-full` costs the loaded marks nothing. `object-contain` fits
+          // within both axes, so a square symbol is still height-limited at
+          // 16px and a 6.9:1 wordmark still width-limited at 72px — the same
+          // drawn sizes the note above records.
+          //
+          // No accessibility cost: the plate above is `aria-hidden`, so the
+          // whole subtree is out of the a11y tree whatever this string says,
+          // and the symbol is already stated in the adjacent text. This alt is
+          // for the eye, in one failure mode, and for nothing else.
+          alt={symbol}
           // Same reasoning as news-thumbnail: the fixed h-8 w-20 plate already
           // reserves the box, so lazy loading costs no layout stability and
           // saves the CDN round trips for rows below the fold.
           loading="lazy"
           decoding="async"
-          className="h-4 max-w-full object-contain"
+          // The colour and size are for the alt text and are invisible while
+          // the image loads. Without them the fallback inherits Ink on the
+          // always-light plate — white on near-white, which is a silent failure
+          // wearing a different hat. `backdrop` rather than a new token: it is
+          // the darkest value the system has, it is already documented, and a
+          // token invented for one failure mode is an abstraction nobody asked
+          // for.
+          className="h-4 w-full object-contain text-micro font-semibold text-backdrop"
         />
       ) : (
         <span className="text-micro font-semibold text-body">

@@ -58,10 +58,13 @@ export function Sparkline({
       )}, session low ${min.toFixed(2)}, high ${max.toFixed(2)}`}
     >
       <polygon
+        className="chart-area"
         points={area}
         fill={up ? "url(#session-up)" : "url(#session-down)"}
       />
       <polyline
+        className="chart-line"
+        pathLength={1}
         points={points}
         fill="none"
         stroke={up ? "var(--color-semantic-up)" : "var(--color-semantic-down)"}
@@ -72,6 +75,7 @@ export function Sparkline({
       {/* The session's closing point, so the eye has somewhere to land and the
           line reads as having an end rather than running off the plate. */}
       <circle
+        className="chart-point"
         cx={coords[coords.length - 1][0]}
         cy={coords[coords.length - 1][1]}
         r={2}

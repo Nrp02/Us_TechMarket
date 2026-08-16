@@ -69,7 +69,7 @@ export default function Error({
         <button
           type="button"
           onClick={reset}
-          className="mt-5 rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline"
+          className="panel-control mt-5 px-4 py-2 text-sm font-semibold text-ink"
         >
           Try again
         </button>

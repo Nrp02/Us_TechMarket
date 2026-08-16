@@ -19,7 +19,7 @@ import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
 // visitor respectively.
 
 export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number }) {
-  const { open, toggleOpen, message, pending, container, trigger, mutate } =
+  const { open, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
     useWatchlistMenu();
 
   const watched = new Set(symbols);
@@ -33,7 +33,7 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
         type="button"
         onClick={toggleOpen}
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-3 py-1.5 text-xs font-semibold text-body transition-colors hover:bg-hairline hover:text-ink"
+        className="panel-control inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-body hover:text-ink"
       >
         <span className="font-mono" aria-hidden>
           +
@@ -42,7 +42,20 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
       </button>
 
       {open && (
-        <div className="panel-overlay absolute left-0 z-20 mt-2 w-72 rounded-2xl py-1">
+        <div className="panel-overlay absolute left-0 z-20 mt-2 w-72 rounded-2xl p-1">
+          {/* Busy and blocked used to be one signal — a dimmed control — so a
+              visitor could not tell "working" from "not allowed". This says
+              which, in words, in the same live region the errors use. It never
+              appears at the same time as an error: a request is either in
+              flight or it has come back. */}
+          {busyMessage && (
+            <p
+              role="status"
+              className="mt-2 rounded-xl bg-surface-soft px-3 py-2 text-xs font-medium text-body"
+            >
+              {busyMessage}
+            </p>
+          )}
           {message && (
             <p
               role="status"
@@ -69,10 +82,10 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
                 <li key={option}>
                   <button
                     type="button"
-                    disabled={pending || atMax}
+                    disabled={busy || atMax}
                     onClick={() => mutate(option, "POST")}
                     aria-label={`Add ${option} to your watchlist`}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-surface-soft disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="min-w-0">
                       <span className="font-semibold text-ink">{option}</span>

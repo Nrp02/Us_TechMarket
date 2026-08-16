@@ -40,7 +40,7 @@ export function SymbolSwitcher({
   min: number;
 }) {
   const router = useRouter();
-  const { open, close, toggleOpen, message, pending, container, trigger, mutate } =
+  const { open, close, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
     useWatchlistMenu();
 
   const atMin = symbols.length <= min;
@@ -56,9 +56,23 @@ export function SymbolSwitcher({
             close();
             router.push(`/todays-activity/${option}`);
           }}
-          className={`flex-1 px-4 py-2 text-left text-sm font-medium transition-colors ${
+          // rounded on the leading end only: this row is two buttons, and
+          // rounding both would read as two pills with a seam rather than as
+          // one row with a control on the end.
+          //
+          // primary-active rather than primary on the selected row, and this is
+          // a contrast fix rather than a preference: --color-primary (#6695ff)
+          // on surface-strong (#2b3f6c) measures 3.60:1 at 14px, under the
+          // 4.5:1 AA floor, on the one row in the menu that has to read as
+          // current. primary-active (#8db0ff) measures 4.82:1 on the same
+          // plate. The system had already made this exact call once —
+          // `nav-active text-primary-active` in the sidebar, with the note in
+          // globals.css saying primary "fails at every alpha" — and the
+          // dropdowns simply never followed. Same fix now applies to the three
+          // date-filter rows in `app/news/page.tsx`.
+          className={`flex-1 rounded-l-xl px-3 py-2 text-left text-sm font-medium transition-colors ${
             option === symbol
-              ? "bg-surface-strong text-primary"
+              ? "bg-surface-strong text-primary-active"
               : "text-body hover:bg-surface-soft hover:text-ink"
           }`}
         >
@@ -67,7 +81,7 @@ export function SymbolSwitcher({
 
         <button
           type="button"
-          disabled={pending || blocked}
+          disabled={busy || blocked}
           onClick={() => mutate(option, "DELETE")}
           aria-label={`Remove ${option} from your watchlist`}
           // opacity-30 resolved to 1.51:1 light / 1.58:1 dark against the
@@ -79,7 +93,7 @@ export function SymbolSwitcher({
           // job is done in words by the group header below, because a dimmed
           // control cannot state a reason and `disabled` also drops the button
           // out of the tab order.
-          className="min-h-10 px-3 text-sm font-semibold text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          className="min-h-10 rounded-r-xl px-3 text-sm font-semibold text-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           −
         </button>
@@ -117,7 +131,20 @@ export function SymbolSwitcher({
       </button>
 
       {open && (
-        <div className="panel-overlay absolute left-0 z-20 mt-2 max-h-96 w-60 overflow-y-auto rounded-2xl py-1">
+        <div className="panel-overlay absolute left-0 z-20 mt-2 max-h-96 w-60 overflow-y-auto rounded-2xl p-1">
+          {/* Busy and blocked used to be one signal — a dimmed control — so a
+              visitor could not tell "working" from "not allowed". This says
+              which, in words, in the same live region the errors use. It never
+              appears at the same time as an error: a request is either in
+              flight or it has come back. */}
+          {busyMessage && (
+            <p
+              role="status"
+              className="mt-2 rounded-xl bg-surface-soft px-3 py-2 text-xs font-medium text-body"
+            >
+              {busyMessage}
+            </p>
+          )}
           {message && (
             // role="status" so a refused mutation is announced rather than only
             // drawn. bg-tint-down rather than bg-semantic-down/10: an alpha

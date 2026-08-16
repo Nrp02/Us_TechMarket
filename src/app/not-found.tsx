@@ -21,13 +21,19 @@ export default function NotFound() {
       <div className="flex flex-wrap gap-2 pt-1">
         <Link
           href="/"
+          // The primary stays a filled accent plate while the secondary beside
+          // it became glass, and that is the distinction rather than an
+          // oversight: a filled button is an OBJECT you press, which the system
+          // documents as its one primary-action treatment. The News tabs lost
+          // their identical fill in the same session because they were marking
+          // a STATE, and state in this world is translucent.
           className="rounded-full bg-primary-fill px-4 py-2 text-sm font-semibold text-white shadow-[var(--elev-1)] transition-colors hover:bg-primary-fill-hover"
         >
           Go to the watchlist
         </Link>
         <Link
           href="/todays-activity"
-          className="rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline"
+          className="panel-control px-4 py-2 text-sm font-semibold text-ink"
         >
           Browse today&apos;s activity
         </Link>

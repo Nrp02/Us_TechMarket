@@ -25,31 +25,45 @@ export function DailySummaryCard({
     // own text but still in front of the page, rather than disappearing under
     // the backdrop.
     <section className="panel-raised relative isolate overflow-hidden p-6 sm:p-8">
-      {/* The one authored surface in the system. A single wide wash of the
-          accent bleeding in from the top-left corner — it does not tint the
-          text, it does not repeat anywhere else, and it exists so the page's
-          centrepiece is lit differently from the panels around it.
+      {/* The one authored surface in the system: the centrepiece catching the
+          weather. A single wide wash bleeding in from the top-left corner — the
+          same corner every panel rim is lit from — so the page's most important
+          panel is lit differently from the ones around it.
 
-          Was opacity-[0.09] — the same intensity the page's own backdrop wash
-          started at and was raised past, once measured: at 9% over the near-
-          black canvas it sat at a 3-5 unit RGB delta, imperceptible rather
-          than felt. --backdrop-face settled on 16% for that reason. This wash
-          sits on a lighter panel face rather than the near-black backdrop, so
-          it does not need to travel as far to read; 14% is the value between
-          the two — enough to be a felt corner of light rather than a trace,
-          without competing with the narrative text it bleeds toward. */}
+          It was --color-primary, and swapping it for --color-weather is not a
+          tonal preference. A wash of the accent was the accent used as
+          decoration, which is the one thing The Reserved Accent Rule forbids,
+          and it was also the wrong physics: what falls on this card is the
+          light in the room, and the light in this room is cloud.
+
+          The swap pays for itself twice. Measured over the raised face, 18% of
+          --color-weather lifts the corner almost entirely in chroma and barely
+          at all in luminance, where 14% of the accent lifted it 10/14/23 and
+          cost the narrative a third of its contrast headroom. The corner reads
+          bluer AND the text under it reads better. A wash should add colour,
+          not brightness. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute -left-24 -top-32 -z-10 size-96 rounded-full opacity-[0.14]"
+        className="pointer-events-none absolute -left-24 -top-32 -z-10 size-96 rounded-full opacity-[0.18]"
         style={{
           background:
-            "radial-gradient(closest-side, var(--color-primary), transparent)",
+            "radial-gradient(closest-side, var(--color-weather), transparent)",
         }}
       />
 
+      {/* The product's own question, on the one surface that answers it in
+          prose. It was "AI Daily Summary", which named the mechanism rather
+          than the value — the card led with the technology while the thing a
+          visitor came for was the sentence underneath.
+
+          Nothing is lost by dropping "AI" from the heading: the provenance line
+          at the foot of this card already opens with "Written by AI from...",
+          which is where the attribution belongs and where the product's
+          boundary is stated in the same breath. A heading is for what this is;
+          a provenance line is for where it came from. */}
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-xl font-semibold tracking-tight text-ink">
-          AI Daily Summary
+          What happened to {symbol} today
         </h2>
         {summary && (
           <span className="font-mono text-xs tabular-nums text-muted">

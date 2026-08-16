@@ -32,11 +32,26 @@ import {
 // Every route shared the one <title> from layout.tsx, so NVDA and AAPL were
 // indistinguishable in the tab strip, in history and in a bookmark — on a
 // product whose unit of value is one page per stock.
+//
+// The tab now carries the session's move as well as the symbol, and that is
+// utility rather than decoration. This is a once-a-day product: the realistic
+// visit leaves three or four of these open across a lunch break, and a tab
+// strip reading "NVDA −0.06%  AAPL +0.22%  AVGO −5.93%" answers the page's own
+// question without any of them being focused. It stays inside the product's
+// rules — a figure the ingestion job already stored, signed, stated, with no
+// claim about why or what next.
+//
+// It reads from the same `unstable_cache`d query the page body uses, so within
+// the 60s window it costs nothing. If the symbol is untracked the page 404s
+// anyway; the fallback keeps the tab sane on the way there.
 export async function generateMetadata({
   params,
 }: PageProps<"/todays-activity/[symbol]">) {
   const { symbol } = await params;
-  return { title: `${symbol.toUpperCase()} — Today's Activity · US TechMarket` };
+  const upper = symbol.toUpperCase();
+  const activity = await getActivity(upper);
+  if (!activity) return { title: upper };
+  return { title: `${upper} ${formatPercent(activity.ticker.changePercent)}` };
 }
 
 export default async function TodaysActivityForSymbol({
@@ -57,7 +72,7 @@ export default async function TodaysActivityForSymbol({
   const up = ticker.changePercent >= 0;
 
   return (
-    <div className="flex flex-col gap-10 pb-10">
+    <div className="page-enter flex flex-col gap-10 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
         <div className="flex items-center gap-4">
           <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
@@ -82,14 +97,25 @@ export default async function TodaysActivityForSymbol({
           </div>
         </div>
 
-        {/* The page's display element. This is the number the visitor came for
-            and it was set at 24px, the same size as a section heading. The
-            change beneath it takes the same tinted plate the Market Overview
-            cells use, so the one figure that carries direction on this page
-            carries it as a field of colour rather than as coloured text. */}
+        {/* The number the visitor came for, and it now sits at `text-figure`
+            like every other large reading in the product.
+
+            It was `text-display` — 52px, measured, which is the size of the
+            Home page's h1 and 22px above the five stat cells directly beneath
+            it. That inverted the page's own hierarchy twice over: the h1 here
+            is the ticker at 30px, so the value shouted louder than the thing it
+            describes, and the same figure appeared at two sizes depending on
+            which card it was in.
+
+            One step for a large mono reading, everywhere: Market Overview's
+            index levels, the five stat cells, and this. What separates the
+            price from the readings below is now position, the tinted change
+            plate under it and the badge beside it — three channels, none of
+            them size, which is the right way round for a value that is already
+            the only figure in the header. */}
         <div className="flex items-center gap-5">
           <div className="flex flex-col items-end">
-            <p className="font-mono text-display font-medium tabular-nums text-ink">
+            <p className="font-mono text-figure font-medium tabular-nums text-ink">
               {formatPrice(ticker.price)}
             </p>
             <p
@@ -103,7 +129,7 @@ export default async function TodaysActivityForSymbol({
             </p>
           </div>
           {/* Same shared rule as the Home page badge and Top Movers ranking. */}
-          <StatusBadge significant={ticker.significant} />
+          <StatusBadge significant={ticker.significant} onGlass />
         </div>
       </header>
 

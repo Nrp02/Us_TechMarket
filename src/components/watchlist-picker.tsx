@@ -21,7 +21,7 @@ export function WatchlistPicker({
   // No `close` here: unlike the switcher, picking a stock does not dismiss this
   // popover — the visitor is usually choosing several — so the only ways out
   // are the trigger, Escape and an outside click, all of which live in the hook.
-  const { open, toggleOpen, message, pending, container, trigger, mutate } =
+  const { open, toggleOpen, message, busy, busyMessage, container, trigger, mutate } =
     useWatchlistMenu();
 
   const chosen = new Set(selected);
@@ -40,7 +40,7 @@ export function WatchlistPicker({
         // used to sit here and promised a menu the popover never declared —
         // it rendered no role at all, so the promise was never kept.
         aria-expanded={open}
-        className="rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline"
+        className="panel-control px-4 py-2 text-sm font-semibold text-ink"
       >
         {/* The count is a figure checked against a cap, not a number inside a
             sentence, so it takes mono and tabular per the Mono Numerals Rule —
@@ -54,7 +54,7 @@ export function WatchlistPicker({
       </button>
 
       {open && (
-        <div className="panel-overlay absolute right-0 z-20 mt-2 w-80 rounded-3xl p-4">
+        <div className="panel-overlay absolute right-0 z-20 mt-2 w-80 rounded-3xl p-4 [--overlay-origin:top_right]">
           {/* Says what the bound is *and*, at a bound, what to do about it. A
               disabled row can only show that something is unavailable. */}
           <p className="px-1 text-xs text-body">
@@ -69,6 +69,19 @@ export function WatchlistPicker({
 
               bg-tint-down rather than bg-semantic-down/10 — see the Baked Tint
               Rule; the alpha's contrast moved with whatever sat behind it. */}
+          {/* Busy and blocked used to be one signal — a dimmed control — so a
+              visitor could not tell "working" from "not allowed". This says
+              which, in words, in the same live region the errors use. It never
+              appears at the same time as an error: a request is either in
+              flight or it has come back. */}
+          {busyMessage && (
+            <p
+              role="status"
+              className="mt-2 rounded-xl bg-surface-soft px-3 py-2 text-xs font-medium text-body"
+            >
+              {busyMessage}
+            </p>
+          )}
           {message && (
             <p
               role="status"
@@ -91,7 +104,7 @@ export function WatchlistPicker({
                       click; now both do. */}
                   <button
                     type="button"
-                    disabled={pending || blocked}
+                    disabled={busy || blocked}
                     aria-label={
                       isChosen
                         ? `Remove ${stock.symbol} from your watchlist`

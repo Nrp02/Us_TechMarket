@@ -76,11 +76,15 @@ export function WatchlistTable({
                 <th
                   key={heading}
                   scope="col"
-                  // The Status column's badge never explained its own rule
-                  // anywhere in the UI. Stated once here, on the header, rather
-                  // than on every row's badge — a screen reader hits it once
-                  // per table instead of once per stock, and a sighted visitor
-                  // gets it on hover exactly where the column is labelled.
+                  // Kept as a hover affordance on the column label. The rule
+                  // itself now reads out loud in the note under the table, so
+                  // the `sr-only` copy that used to sit here has gone — with
+                  // both, a screen reader heard the same sentence twice.
+                  //
+                  // Worth recording what the old arrangement got right and
+                  // wrong: screen readers WERE served, by that sr-only span.
+                  // The people it missed were sighted keyboard and touch users,
+                  // for whom a `title` does not exist at all.
                   title={heading === "Status" ? SIGNIFICANCE_RULE_TEXT : undefined}
                   // nowrap: "Change %" broke after the word and, because a row
                   // is as tall as its tallest cell, that one wrap set the
@@ -92,9 +96,6 @@ export function WatchlistTable({
                   className="whitespace-nowrap px-3 py-3 text-xs font-semibold text-muted"
                 >
                   {heading}
-                  {heading === "Status" && (
-                    <span className="sr-only"> — {SIGNIFICANCE_RULE_TEXT}</span>
-                  )}
                 </th>
               ))}
             </tr>
@@ -182,6 +183,28 @@ export function WatchlistTable({
           </p>
         )}
       </div>
+
+      {/* The product's one act of judgement, written where it is used.
+      
+          `Significant` sits on every row of this table and decides the Top
+          Movers ranking, and its rule lived ONLY in a `title` attribute — which
+          never appears on touch, is unreachable by keyboard, and is not
+          reliably announced. The single number this product computes for itself
+          was the one thing a visitor could not look up.
+
+          The wording comes from `SIGNIFICANCE_RULE_TEXT` rather than being
+          retyped here, so the badge's tooltip and this line can never disagree.
+
+          The volume sentence rides along because it fixes the same class of
+          gap: the cells read `0.43x avg` and never say what the average is of,
+          while the same figure on Today's Activity spells out "vs 10-day
+          average". One number, two levels of explanation, is a defect. */}
+      {tickers.length > 0 && (
+        <p className="mt-3 max-w-[86ch] px-1 text-xs leading-relaxed text-muted">
+          Volume is shown against each stock&apos;s 10-day average.{" "}
+          {SIGNIFICANCE_RULE_TEXT}
+        </p>
+      )}
 
       {/* The Scrolling Island Rule works — the table scrolls inside its own
           wrapper instead of widening the page — but nothing ever *said* so. At

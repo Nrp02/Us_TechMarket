@@ -17,60 +17,107 @@
   scrollbar-width: thin;
 
   /* --- The sky ----------------------------------------------------------
-     Reads near-black -> deep navy -> subtle blue rather than as flat black.
-     The only surface in the product that is NOT glass.
+     Deep space, not a dark room. The only surface in the product that is NOT
+     glass.
 
-     Was #04060d, which is very nearly neutral black — the navy was there in
-     the numbers but not on the screen, and against the reference the whole
-     field read as switched-off rather than as a night sky. Lifted and turned
-     toward blue: the hue is now legible as navy at rest, before the ambient
-     radials add anything. Every contrast pair was re-measured against the
-     brighter field it produces. */
-  --color-backdrop: #070d1c;
+     Was #070d1c — a lift applied to make the navy legible in the base colour
+     itself. That fixed the wrong thing: raising the base raised red alongside
+     blue (7/13/28), so the field read as slate, the panels sat only a shade
+     above it, and the whole world came out as grey rectangles with a blue idea
+     behind them. The colour of a night sky is not in its darkest pixel.
+
+     So the base drops back to almost black and holds a near-pure blue cast
+     (1/4/12 — red is effectively absent, and stays that way right up to the
+     brightest cloud, which measures 24/43/96 on the built page). Every trace
+     of colour in the sky comes from the weather painted over this, never from
+     the base: empty sky is meant to read as empty.
+
+     The gain is separation. A panel sits at 4.5x this luminance over unlit sky
+     and 15.3x over a lit cloud, against 2.4x flat before — and it is that range,
+     rather than any single value, that makes the material read as glass. */
+  --color-backdrop: #01040c;
 
   /* --- The Worst-Case Composite Rule ------------------------------------
-     Glass is alpha over a field that varies (the ambient blue radial, the
-     stars), so a panel's face is a RANGE, not a value. Every contrast pair in
-     the product is measured at the bright end of that range; if it passes
-     there, every pixel elsewhere passes.
+     Glass is alpha over a field that varies — the clouds, the stars — so a
+     panel's face is a RANGE, not a value. Every contrast pair in the product
+     is measured at the bright end of that range; if it passes there, every
+     pixel elsewhere passes.
 
-     --color-canvas IS that bright end: the exact composite of --glass-panel
-     over the ambient field at its peak. It is not a colour anyone picked. It
-     does three jobs — it is what baked tints are computed over, what the
-     reduced-transparency fallback paints, and the number the contrast harness
-     measures against. Panel glass over the DIM end of the field composites to
-     #101728, so the real face drifts about 17 RGB units at most; that small
-     number is the whole reason text can sit on glass at all here. */
-  --color-canvas: #151e33;
+     --color-canvas IS that bright end: --glass-panel composited over the
+     brightest cloud a panel can sit in front of. It is not a colour anyone
+     picked. It does three jobs — it is what baked tints are computed over,
+     what the reduced-transparency fallback paints, and the number the contrast
+     harness measures against.
+
+     The peak behind it is now MEASURED rather than modelled, and that changed
+     with the clouds. A stack of radial-gradients can be composited on paper; a
+     seeded fractal cannot, and pretending otherwise would put every pair in
+     this file on an estimate. The number comes from the rendered page with
+     `main` and `aside` removed, taking the brightest 24px tile of bare sky.
+     It is re-taken after ANY change to the weather, and it has caught a real
+     regression once: spreading the masses out to the frame edges raised the
+     peak past its own model, and five pairs failed the moment the true number
+     was fed back in. The measurement is the only reason that was not shipped.
+     Currently:
+     the brightest cloud measures #0d172f, and the model sits at #1a2740 —
+     headroom of about 13/16/17, which is deliberately generous: it is the
+     allowance for a DIM star sitting behind the same pane. Bright stars cannot
+     be there (see `night-sky.tsx`), but dim ones can and now survive the blur,
+     so the field a panel sits on is cloud PLUS point source.
+
+     Panel glass over the DIM end composites to #070e1f, so the face drifts
+     about 46 RGB units, nearly all of it blue — where it was 41 before, and 24
+     before that. The drift is the point now rather than something to minimise:
+     it is what a pane over weather does. What keeps text safe is not a small
+     range, it is measuring at the top of whatever range there is. */
+  --color-canvas: #16243f;
 
   /* Surfaces INSIDE a panel. All opaque, all baked over --color-canvas — see
      The One Translucent Layer Rule. Exactly one layer in the stack is
      translucent (the panel's own face); nothing nested inside it is, or the
-     Baked Tint Rule's failure returns with a varying backdrop behind it. */
-  --color-surface-soft: #1a2334;
-  --color-surface-strong: #27314a;
+     Baked Tint Rule's failure returns with a varying backdrop behind it.
+
+     These climb in blue rather than in grey. A neutral step over a blue face
+     reads as dirt on the glass; the ramp has to be made of the same light the
+     panel is. */
+  --color-surface-soft: #1c2f52;
+  --color-surface-strong: #2b3f6c;
   /* Internal rules only — table dividers, grid lines, the timeline rail,
      section rules. Solid, because it always lands on a known panel face.
      Distinct from --color-glass-edge, which is the lit rim of the glass
      itself and has to composite over whatever is behind it. */
-  --color-hairline: #2a3346;
+  --color-hairline: #25395e;
 
   --color-ink: #f2f4f7;
-  --color-body: #a7afbd;
-  /* Twice nudged up, both times by the same surface: the lit top edge of the
-     raised card is where this tier is tightest. #848c9a measured 4.51:1 there,
-     then #8d95a4 fell to 4.37:1 once the field was lifted toward navy. */
-  --color-muted: #939bab;
+  /* Both text tiers below Ink carry a little more blue than they used to
+     (#a7afbd, #939bab). On a field this saturated a neutral grey reads as
+     washed rather than as quiet — the secondary tiers have to be made of the
+     room's own light too. Both gained contrast rather than spending it: the
+     field went down as they went blue, so Body measures 6.6:1 and Muted 5.5:1
+     against the brightest panel face in the product, where both used to sit at
+     4.5-ish. That headroom is what paid for the clouds: a translucent panel
+     over lit weather is a brighter surface than a flat one, and the text tiers
+     had to be able to afford it. */
+  --color-body: #aeb7c8;
+  --color-muted: #9ca6b9;
 
   /* --- The Two Blues Rule -----------------------------------------------
      Blue does two jobs now and they must not blur together, or the Significant
      badge stops meaning anything.
 
-     SIGNAL BLUE (these tokens) is saturated, always sits ON a surface, and
-     still means only "active" or "significant". AMBIENT BLUE (--sky-* below)
-     is desaturated, large-radius, always BEHIND glass, and never lands on an
-     object. The test: a blue inside a panel's content is a state; a blue
-     behind glass is light. */
+     SIGNAL BLUE (these tokens) is light and saturated, always sits ON a
+     surface, and still means only "active" or "significant". WEATHER BLUE is
+     deep, lives in the cloud gradient in `night-sky.tsx`, is always BEHIND
+     glass, and never lands on an object. The test: a blue inside a panel's
+     content is a state; a blue behind glass is light.
+
+     The ambient used to be color-mixed out of --color-primary "so the accent
+     stays single-sourced", which sounds tidy and was the reason the sky read as
+     dust: #6695ff is a light periwinkle, and 22% of it into near-black lands at
+     23/37/68 — a colour whose red is a third of its blue. Light that pale
+     cannot make a night sky whatever radius it is given. The two blues are now
+     separated by living in different files, which is a stronger guarantee than
+     a rule anyone has to remember. */
   --color-primary: #6695ff;
   --color-primary-active: #8db0ff;
   /* Accent as a filled plate under white text, which is a different contrast
@@ -84,11 +131,25 @@
   --color-semantic-up: #24c98a;
   --color-semantic-down: #ff6672;
 
-  /* Was #5b6577, tuned against the old flat canvas. It measures 2.50:1 against
-     the navier glass composite — a failure, on bars that carry data and so
-     answer to the 3:1 floor for graphical objects rather than the decorative
-     bar. #707b8f measures 3.44:1 at the worst case. */
-  --color-chart-bar: #707b8f;
+  /* Weather blue, as a CSS token. The clouds themselves are painted in
+     `night-sky.tsx` and that file stays their only source; this is the one
+     surface in the DOM that has to catch the same light — the AI summary
+     card's corner — and it is hand-paired with the cloud gradient's body stop
+     rather than derived from it, because nothing can derive a value across
+     that boundary. If the weather is ever recoloured, this moves with it.
+
+     It is deliberately deep. A wash wants to add chroma without adding
+     luminance: at 22% this lifts the surface it lands on by −1/+6/+22, which
+     is a colour change the eye reads as light, at almost no cost to the text
+     sitting in it. */
+  --color-weather: #1a4fc4;
+
+  /* The intraday volume bars, and nothing else. Separate from surface-strong
+     because these bars ARE data and so answer to the 3:1 floor for graphical
+     objects, where a decorative surface does not. Turned blue with the rest of
+     the neutral ramp — a grey column on a blue face reads as a different
+     material — and measured at 3.99:1 against the worst-case panel. */
+  --color-chart-bar: #7c8dab;
 
   /* Deliberately light, and the one object in the product that must not invert.
      Brand marks arrive with hardcoded fills we cannot recolour — AAPL #000000,
@@ -98,59 +159,117 @@
 
      Now frosted rather than a solid white sticker. At #e9ebef it was the single
      loudest object on the page by a wide margin — a page full of other
-     companies' plates outshouting the prices they sit beside. 90% over the
-     surface behind it composites to about #cdd2da, a quarter less luminous,
-     and it joins the material instead of sitting on top of it.
+     companies' plates outshouting the prices they sit beside. Dropped again
+     from 0.9 to 0.85 with this pass, because the field went darker underneath
+     it and loudness is relative: the same plate on a deeper sky is a brighter
+     object than it was. 85% composites to about #c3c9d5.
 
-     Alpha is safe here despite the Baked Tint Rule for two reasons: at 0.9 the
-     surface underneath moves the result by under 2 RGB units across every
-     surface a plate lands on, and a brand mark is exempt from 1.4.11 as a
-     logotype anyway. Worth knowing that NVIDIA's green already measured 2.0:1
-     on the OLD white plate — mark contrast was never what this token was
+     Alpha is safe here despite the Baked Tint Rule for two reasons: even at
+     0.85 the surface underneath moves the result by about 3 RGB units across
+     every surface a plate lands on, and a brand mark is exempt from 1.4.11 as
+     a logotype anyway. Worth knowing that NVIDIA's green already measured
+     2.0:1 on the OLD white plate — mark contrast was never what this token was
      holding, so dimming it forfeits nothing that was there. */
-  --color-logo-plate: rgb(226 230 237 / 0.9);
+  --color-logo-plate: rgb(226 230 237 / 0.85);
 
-  /* Tinted plates, baked flat over --color-canvas at 12%, never written as
-     `bg-primary/12`. An alpha composites against whatever is behind it, so the
+  /* Tinted plates, baked flat over --color-canvas at 8%, never written as
+     `bg-primary/8`. An alpha composites against whatever is behind it, so the
      Significant badge on a hovered row once measured 4.49:1 while the same
      badge at rest measured 4.76:1 — contrast that depended on the pointer.
      Under glass that failure would be worse, not better: the thing behind is
      now a gradient.
 
-     12%, down from 16%: against the lifted navy field the accent plate came
-     up with the canvas under it, and `primary` on it measured 4.47:1 — a fail
-     on the Significant badge. Thinning the plate rather than brightening
-     `primary` keeps a token that is already measured correct in nine other
-     places, and buys 4.79:1 here. */
-  --color-tint-primary: #1f2c4b;
-  --color-tint-up: #17333d;
-  --color-tint-down: #32273a;
-  --color-accent-edge: #314678;
+     10%, down from 12%. The dose keeps falling for the same reason each time:
+     adding accent to a plate pulls the plate toward the very text it has to
+     contrast with, so the tighter the badge gets, the thinner the plate has to
+     be. 10% measured 4.45:1 once the glass thinned to 0.40 and the weather
+     moved — a fail, on the Significant badge — so it is 8% now and clears at
+     4.66:1. This pair has been the binding constraint on three consecutive
+     passes: it is the one to re-run FIRST whenever the glass or the weather
+     changes, because it fails before anything else does. */
+  --color-tint-primary: #1d2d4e;
+  --color-tint-up: #173145;
+  --color-tint-down: #292943;
+  --color-accent-edge: #2f477a;
 
   /* --- The glass ---------------------------------------------------------
      Four tiers. Three are content (resting, raised, overlay); the rail is
      shell, and is excepted the same way the sidebar has always been excepted
      from the one-raised-element rule.
 
-     Alpha is the load-bearing number, not the blur: it sets how much of the
-     ambient field bleeds through and therefore how far a text pair's contrast
-     can drift. Blur only softens the stars. */
-  /* The rail reads as glass only if there is something behind it AND enough of
-     it comes through. At 0.82 over a tint darker than the sky it was neither:
-     18% bleed-through of a field that was itself nearly unlit, which composites
-     to a flat slab no matter how much blur sits on it. Lighter tint, and a
-     third of the sky now comes through. It still resolves DARKER than
-     --glass-panel, which is what §10 actually asks for — stable and recessive
-     relative to the content, not opaque. */
-  --glass-rail: rgb(15 21 35 / 0.66);
-  --glass-panel: rgb(19 25 40 / 0.72);
-  --glass-raised: rgb(26 33 51 / 0.72);
-  --glass-overlay: rgb(23 30 47 / 0.94);
+     Alpha and blur are the two dials, and they do different jobs. ALPHA sets
+     how much of the field bleeds through, and therefore how far a text pair's
+     contrast can drift — it is what the harness answers to. BLUR sets what
+     survives that bleed-through as an identifiable THING rather than as a
+     tone, and it is the one that decides whether a visitor can see a star.
 
-  --blur-rail: 20px;
-  --blur-panel: 14px;
-  --blur-raised: 16px;
-  --blur-overlay: 28px;
+     The brief for this pass was exact: thin enough to see the stars behind it,
+     opaque enough to read the content in front of it. That is a sentence about
+     both dials, and both moved.
+
+     Alpha, 0.50 to 0.40: 60% of the sky is now in the material. Blur, 22px to
+     10px on a panel — and that halving is the change that actually shows the
+     stars. A star is about a pixel across; at 22px of blur its energy spreads
+     over roughly five hundred square pixels and it stops being a point at all,
+     so the old glass could be as thin as it liked and still show nothing but
+     weather. What keeps a thin, lightly blurred pane safe is that a star is
+     TINY: the same arithmetic that erased it also means what remains cannot
+     shift a text pair — and the bright stars, the ones that could, are held
+     outside the content column by `night-sky.tsx`.
+
+     What that costs is drift. A panel's face now moves about 55 RGB units
+     between the darkest sky and the brightest cloud behind it. A wide table
+     can be lit at one end and dark at the other, and that is the point — a
+     pane whose tone does not change with what is behind it is a painted
+     rectangle. It is safe for exactly one reason: every pair is measured at
+     the bright end. See The Worst-Case Composite Rule. */
+  /* The rail is the most transparent tier in the product, because it is the
+     one with a full page-height of sky moving behind it. It still resolves
+     DARKER than --glass-panel, which is what §10 actually asks for — stable
+     and recessive relative to the content, not opaque. */
+  --glass-rail: rgb(7 17 40 / 0.34);
+  --glass-panel: rgb(15 30 60 / 0.34);
+  --glass-raised: rgb(24 43 78 / 0.34);
+  /* The floating tier, and the one that answers to a different constraint: it
+     covers page content rather than sky, so what shows through it is text, and
+     text through glass is unreadable in a way weather never is. It came down
+     from 0.93 to 0.82 — enough that the material is visibly the same family as
+     the panels under it, not so much that the menu stops being a menu. The
+     heaviest blur in the product does the rest. */
+  --glass-overlay: rgb(14 28 56 / 0.82);
+
+  /* The hover state for a control made of glass. It is a tier of its own
+     rather than a lift layered on top, because two translucent layers cannot
+     be composited in a `background-color` — and the alternative, dropping an
+     opaque plate on hover, is exactly the "patch of the wrong material" the
+     rail's nav items already had to be rescued from. Lighter AND slightly less
+     transparent, so a hovered control reads as glass that has caught more
+     light rather than as a different object. */
+  --glass-control-hover: rgb(34 56 98 / 0.52);
+
+  /* Halved once, and halved again — and the second time came with the
+     arithmetic that should have driven the first.
+
+     A Gaussian blur of standard deviation s reduces a disc of radius r to
+     roughly r²/(r²+2s²) of its peak. Chrome's `blur(Npx)` is about s = N/2, so
+     the old 10px blur left a 1.3px star at SIX PER CENT of its brightness.
+     That is why thinning the glass twice never revealed a single star: the
+     alpha was never the binding constraint, the blur was, and no amount of
+     transparency shows something the blur has already erased.
+
+     Both halves are fixed together. Blur down to 7px on a panel, and the star
+     radii in `night-sky.tsx` up to 2.2-3.2 units — which puts the same formula
+     at about a fifth rather than a sixteenth, a threefold gain that is the
+     difference between a visible point and a rumour. Anything smaller is not
+     worth drawing behind glass at all.
+
+     The rail takes more blur than a panel because it is the one surface a
+     visitor sees on every route and it should stay quiet; the overlay takes
+     the most because what is behind IT is page content rather than sky. */
+  --blur-rail: 10px;
+  --blur-panel: 7px;
+  --blur-raised: 8px;
+  --blur-overlay: 16px;
 
   /* The opaque twin of each tier: exactly what that glass composites to over
      the ambient field at its peak, which is what the accessibility fallbacks
@@ -164,66 +283,117 @@
      One place to update, sitting directly beneath the values they mirror.
      --solid-panel is --color-canvas, which is already defined as that
      composite; it is aliased here so the set reads as one group. */
-  --solid-rail: #131c32;
+  --solid-rail: #142038;
   --solid-panel: var(--color-canvas);
-  --solid-raised: #1b243b;
-  --solid-overlay: #171f31;
+  --solid-raised: #192845;
+  --solid-overlay: #101e39;
   /* The frosted plate's own composite, derived the same way and stale for the
      same reason if --color-logo-plate moves without it. */
-  --solid-logo-plate: #cdd2da;
-  /* The glass rim as a drawn line, for prefers-contrast. Measured 3.02:1
+  --solid-logo-plate: #c3c9d3;
+  /* The glass rim as a drawn line, for prefers-contrast. Measured 3.27:1
      against the panel face — the 1.4.11 floor for a boundary that has to be
      seen, where --color-glass-edge is deliberately below notice. */
-  --edge-strong: #55627d;
+  --edge-strong: #6b80ad;
 
-  /* The rim where light catches the edge of the glass. Translucent white
-     rather than a solid token, because it composites over the sky behind it
-     and a solid border would read as a drawn line rather than an edge. */
-  --color-glass-edge: rgb(255 255 255 / 0.09);
+  /* The base border: the pane's shape, present on all four sides at the same
+     faint value. It is deliberately quiet — a tenth of what the lit corner
+     reaches — because the directional light is --edge-rim's job and a strong
+     uniform border would flatten it back out. Translucent rather than a solid
+     token, because it composites over whatever sky is behind it and a solid
+     border would read as a drawn line rather than an edge. */
+  --color-glass-edge: rgb(150 190 255 / 0.07);
+
+  /* The same light as a fill rather than as a rim: the hover lift for a control
+     that sits ON glass, where the opaque surface-soft plate cannot be used
+     because it is baked over the panel canvas and reads as a patch of the wrong
+     material. Only the rail's nav items need it today. It is a token rather
+     than an inline alpha so the two places light lands on glass — the edge and
+     the lift — cannot drift to different colours. */
+  --color-glass-lift: rgb(150 190 255 / 0.07);
 
   /* --- Depth -------------------------------------------------------------
      Soft ambient shadows, never a hard drop. Each step is a tight contact
      shadow plus a wide ambient one, so a surface has both a seam and a cast.
      Never a zero-offset halo. Alphas are high because the field they fall on
-     is near-black: a 7% shadow is invisible there. */
+     is near-black: a 7% shadow is invisible there.
+
+     A blue pool was briefly added under each step, on the theory that glass
+     over a lit field spills light. It was removed, and the reasoning it came
+     from was simply wrong: a pane does not emit. Every panel carrying its own
+     coloured halo also meant the page's light source was wherever the layout
+     happened to put a card, so the sky had no direction and the light had no
+     cause. The light around a panel now comes from the cloud behind it and
+     from the rim it catches — see --edge-rim below. These three steps are
+     shadow only, which is all a shadow ever was. */
   --elev-1: 0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5);
   --elev-2: 0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6);
   --elev-3: 0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7);
 
-  /* The inner highlight along a glass surface's top edge. Barely noticeable
-     unless you look for it, which is the brief's own standard for it. */
-  --edge-lit: inset 0 1px 0 rgb(255 255 255 / 0.09);
+  /* --- The lit rim -------------------------------------------------------
+     The designed answer to "there can be light around the card". Not a glow:
+     an edge catching light, which is what actually happens when a pane of
+     glass sits under a sky. It is directional, because the light has a
+     direction — the same upper-left the cloud gradient is lit from.
+
+     `--edge-rim` is painted as a masked 1px gradient ring on the tiers below:
+     near-white where the light strikes the top-left corner, gone by the middle
+     of the pane, and picking up a last faint catch at the far corner the way a
+     real edge bounces. A flat border cannot do this — it states the same
+     brightness on the lit edge and the shadowed one, which is exactly what
+     made the panels read as drawn rectangles.
+
+     Two companion tokens were measured OUT of the system rather than argued
+     out, and the numbers are worth keeping because both looked reasonable in
+     the stylesheet.
+
+     One was an inset glow just inside the top edge. It moved the first sixteen
+     pixels of a panel by 19 RGB units, so it was doing plenty — but the rim
+     above already draws that edge, from outside, with a direction. Two
+     mechanisms for one idea, and the one with less control over where the
+     light lands is the one that goes. The face wash stays because it does
+     something neither of them does: it gives the pane a body that is lighter
+     at the top than at the bottom.
+
+     The other was a dark line under the pane, for thickness. Measured, it
+     moved the bottom edge by 1 to 2 units — below the threshold of notice on
+     any display — while costing a shadow layer on every surface in the
+     product. It was paying rent on eight panels to say nothing. */
 
   /* The lit face of the glass. MUST be translucent: an opaque gradient here
      would paint over the backdrop-filter and the blur would do nothing. Was a
      12%-toward-white wash running 140px down the panel, which is a strong
      effect rather than the "subtle top-edge highlight" this material wants —
      it also brightened exactly the band where section headings and table
-     headers sit, which is where contrast is tightest. 5.5% over 88px. */
+     headers sit, which is where contrast is tightest. 7% over 96px, in the
+     same cold blue as the rim: this is the sky catching the top of the pane,
+     so it is the sky's colour and not a white one.
+
+     Its brightest band is folded into every contrast pair measured against a
+     panel — the worst case for text is the top 96px of a raised card, not its
+     body. */
   --surface-face: linear-gradient(
     180deg,
-    rgb(255 255 255 / 0.055) 0%,
-    rgb(255 255 255 / 0) 88px
+    rgb(150 190 255 / 0.07) 0%,
+    rgb(150 190 255 / 0) 96px
   );
 
-  /* --- Ambient blue ------------------------------------------------------
-     The atmosphere, not a token of state. Three overlapping radials at very
-     large radius, so the light has a direction and a falloff rather than
-     reading as one symmetrical spotlight. Derived from --color-primary via
-     color-mix so the accent stays single-sourced, but note the rule above:
-     this is light in the room, and it never touches an object.
+  /* --- Where the ambient blue lives now ----------------------------------
+     Not here. The three radial tokens this block used to hold (--sky-core,
+     --sky-halo, --sky-low) are deleted, along with the pool of blue light that
+     sat under every panel in --elev-*. Both were light with no source: one an
+     even wash across the viewport, the other a card lighting the room it is
+     lit by.
 
-     The peak of these three stacked is what the contrast harness models as
-     the bright end of the field. Raising any of them without re-running it
-     invalidates every measured pair in the product. */
-  --sky-core: color-mix(in srgb, var(--color-primary) 22%, transparent);
-  --sky-halo: color-mix(in srgb, var(--color-primary) 12%, transparent);
-  /* Was 6% and centred at 4% 82% — bottom-left, below the fold, so the
-     navigation rail sat in front of essentially unlit backdrop for its whole
-     height and had nothing to catch. Raised to 11% and lifted to 38% so the
-     light actually crosses the rail. Still well under --sky-core, so it does
-     not move the peak the contrast harness models. */
-  --sky-low: color-mix(in srgb, var(--color-primary) 11%, transparent);
+     The atmosphere is authored in `src/components/night-sky.tsx` instead, as
+     two banks of cloud over black. That is deliberately the ONE place it is
+     authored — a CSS token mirroring the cloud colour would be a second
+     source that drifts silently, since nothing in the stylesheet can check it
+     against what the SVG actually paints.
+
+     What this file still owns is the consequence: --color-canvas is the panel
+     composite over the brightest cloud pixel, and every contrast pair is
+     measured there. The numbers were taken off the rendered page rather than
+     modelled, because a fractal is not something to do arithmetic on. */
 }
 
 @theme inline {
@@ -236,6 +406,8 @@
   --color-muted: var(--color-muted);
   --color-hairline: var(--color-hairline);
   --color-glass-edge: var(--color-glass-edge);
+  --color-glass-lift: var(--color-glass-lift);
+  --color-weather: var(--color-weather);
   --color-primary: var(--color-primary);
   --color-primary-active: var(--color-primary-active);
   --color-primary-fill: var(--color-primary-fill);
@@ -280,9 +452,11 @@
   --text-figure: 1.875rem;
   --text-figure--line-height: 1.05;
   --text-figure--letter-spacing: -0.02em;
+  /* Consumed by the `page-title` utility, which sets its own leading and
+     tracking for the serif. The two companion values this step used to carry
+     went with the one element that applied `text-display` as a class — the
+     Today's Activity price — and would now style nothing. */
   --text-display: clamp(2.25rem, 4vw, 3.25rem);
-  --text-display--line-height: 1.02;
-  --text-display--letter-spacing: -0.03em;
 }
 
 /* --- The glass tiers -----------------------------------------------------
@@ -293,42 +467,73 @@
    system-wide. A component that inlines the recipe is drift even when the
    result looks identical.
 
-   `saturate` is small and deliberate: it keeps the ambient blue reading as
-   colour through the glass instead of going grey once blurred. */
+   `saturate` keeps the cloud reading as colour through the glass instead of
+   going grey once blurred. It was 1.15, which is inside the margin of error on
+   a field that had almost no chroma to preserve; at 1.35, against a sky that
+   now does, it is the difference between a blurred blue and a blurred grey. It
+   is applied to the backdrop, so it saturates the weather and the stars behind
+   the pane and nothing on top of it — no text, no logo, no figure is touched
+   by it.
+
+   --- The lit rim, mechanically ---------------------------------------------
+
+   Each tier below carries a ::before holding --edge-rim. The technique is a
+   1px gradient ring: the pseudo-element is inset -1px so it covers the
+   element's border box exactly, `padding: 1px` reserves the ring, and the two
+   masks — one clipped to the content box, one to the whole box, composited to
+   exclude — erase everything but that 1px band. A gradient can then run around
+   the edge, which no `border-color` is able to do.
+
+   Two details that will break it if changed carelessly. The pseudo-element's
+   radius is the tier's radius PLUS ONE, because it sits a pixel outside; using
+   `inherit` leaves a visible notch at each corner. And `panel-overlay` is
+   excluded on purpose — it is applied to elements that are themselves
+   `absolute`, and giving the utility `position: relative` would fight the
+   layout depending on which rule the cascade happened to order last. It is
+   nearly opaque anyway, so it wants a plain border rather than a lit edge. */
 
 @utility panel {
+  position: relative;
   background-color: var(--glass-panel);
   background-image: var(--surface-face);
-  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
-  backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
   border: 1px solid var(--color-glass-edge);
   border-radius: 24px;
-  box-shadow: var(--edge-lit), var(--elev-1);
+  box-shadow: var(--elev-1);
+
+  --rim-radius: calc(24px - 1px);
 }
 
 /* The one element per page that outranks its neighbours — in practice only the
    AI Daily Summary card. Lighter in tone than `panel` at the same alpha, so it
    climbs the ramp without letting more of the sky through. */
 @utility panel-raised {
+  position: relative;
   background-color: var(--glass-raised);
   background-image: var(--surface-face);
-  -webkit-backdrop-filter: blur(var(--blur-raised)) saturate(1.15);
-  backdrop-filter: blur(var(--blur-raised)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--blur-raised)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-raised)) saturate(1.35);
   border: 1px solid var(--color-glass-edge);
   border-radius: 24px;
-  box-shadow: var(--edge-lit), var(--elev-2);
+  box-shadow: var(--elev-2);
+
+  --rim-radius: calc(24px - 1px);
 }
 
 /* Floats over the page and must detach from it completely, so it is nearly
-   opaque (0.94) and takes the heaviest blur. A menu you can read the sky
-   through is a menu whose text is fighting the sky. */
+   opaque and takes the heaviest blur. It takes a plain border rather than the
+   lit rim — see the note above for why the pseudo-element cannot be used on a
+   tier that is positioned by its own consumers. */
 @utility panel-overlay {
+  transform-origin: var(--overlay-origin, top left);
+  animation: overlay-settle 220ms cubic-bezier(0.16, 1, 0.3, 1);
   background-color: var(--glass-overlay);
   background-image: var(--surface-face);
-  -webkit-backdrop-filter: blur(var(--blur-overlay)) saturate(1.15);
-  backdrop-filter: blur(var(--blur-overlay)) saturate(1.15);
-  border: 1px solid var(--color-glass-edge);
-  box-shadow: var(--edge-lit), var(--elev-3);
+  -webkit-backdrop-filter: blur(var(--blur-overlay)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-overlay)) saturate(1.35);
+  border: 1px solid rgb(150 190 255 / 0.16);
+  box-shadow: var(--elev-3);
 }
 
 /* A pill-shaped container of the same material — the News category track. It
@@ -337,13 +542,16 @@
    than by class order, which is a coin flip. The One Material Rule's own
    escape hatch: if it needs a variant, add one to the utility. */
 @utility panel-track {
+  position: relative;
   background-color: var(--glass-panel);
   background-image: var(--surface-face);
-  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
-  backdrop-filter: blur(var(--blur-panel)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
   border: 1px solid var(--color-glass-edge);
   border-radius: 9999px;
-  box-shadow: var(--edge-lit), var(--elev-1);
+  box-shadow: var(--elev-1);
+
+  --rim-radius: 9999px;
 }
 
 /* The navigation card. Darker than the content glass so it stays visually
@@ -357,13 +565,16 @@
    page rather than as part of it. It is a card now, so it takes the card's
    geometry and the face wash that comes with having a top edge to catch. */
 @utility panel-rail {
+  position: relative;
   background-color: var(--glass-rail);
   background-image: var(--surface-face);
-  -webkit-backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
-  backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
+  -webkit-backdrop-filter: blur(var(--blur-rail)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-rail)) saturate(1.35);
   border: 1px solid var(--color-glass-edge);
   border-radius: 24px;
-  box-shadow: var(--edge-lit), var(--elev-2);
+  box-shadow: var(--elev-2);
+
+  --rim-radius: calc(24px - 1px);
 }
 
 /* The active navigation item. Translucent rather than a baked plate — the one
@@ -380,31 +591,125 @@
 
    The ring and the glow are translucent for the same reason the rail's border
    is: an edge on glass catches light, it is not a drawn line. */
+/* --- The two tiers that are not containers -------------------------------
+   Everything above is a surface things sit IN. These two are things that sit
+   ON the sky themselves, and they existed as opaque `bg-surface-strong` plates
+   until now — which was a straightforward material error rather than a taste
+   one. `surface-strong` is baked over --color-canvas, so it is the colour a
+   chip should be INSIDE a panel; floating one on the field paints a small
+   rectangle of panel-coloured paint onto the sky, and the eye reads it as a
+   sticker rather than as part of the world.
+
+   The rule this settles, since it has now been got wrong three times in three
+   different components: **a plate's material is decided by what is behind it,
+   not by what it is.** On glass, use glass. Inside a panel, use the baked
+   token — `surface-strong` there is correct and must not be "upgraded", or the
+   One Translucent Layer Rule breaks and the Baked Tint Rule's contrast failure
+   comes back with a gradient behind it. */
+
+/* Buttons and disclosures that float on the field: the News date picker, the
+   watchlist trigger, the Add stock trigger. */
+@utility panel-control {
+  position: relative;
+  background-color: var(--glass-panel);
+  background-image: var(--surface-face);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  border: 1px solid var(--color-glass-edge);
+  border-radius: 9999px;
+  box-shadow: var(--elev-1);
+  transition: background-color 150ms;
+
+  --rim-radius: 9999px;
+
+  &:hover {
+    background-color: var(--glass-control-hover);
+  }
+}
+
+/* A token of state floating on the field — in practice the one Significant /
+   Normal badge in the Today's Activity header, which is the only badge in the
+   product not sitting inside a panel.
+
+   Deliberately NOT the full recipe. It takes no face gradient, because a wash
+   tuned to fade out over 96px applied to a 24px pill is not a highlight, it is
+   a flat lift; and no --edge-under, because a dark line under a chip this
+   small reads as a rendering artefact rather than as thickness. The lit rim is
+   dropped for the same reason: a gradient that fades across the diagonal has
+   no diagonal to fade across at this size. What is left — glass, blur, a
+   border and the inner top light — is the part of the material that survives
+   being small. */
+@utility panel-chip {
+  background-color: var(--glass-panel);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  border: 1px solid var(--color-glass-edge);
+  border-radius: 9999px;
+  box-shadow: var(--elev-1);
+}
+
+
+/* The lit rim itself, written once. It was inlined in all five glass tiers —
+   the same eighteen lines of mask plumbing, five times over, differing only in
+   a radius. That is precisely the state the panel material was in before it
+   became a utility, and it got there the same way: by adding one tier at a
+   time and copying the block each time. Each tier now declares --rim-radius
+   and this rule does the rest.
+
+   It sits outside @utility deliberately. Tailwind utilities cannot compose,
+   and a pseudo-element is not something a component ever applies by hand, so
+   there is nothing for a utility to give it. */
+.panel::before,
+.panel-raised::before,
+.panel-track::before,
+.panel-rail::before,
+.panel-control::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: var(--rim-radius);
+  padding: 1px;
+  background: var(--edge-rim);
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
 @utility nav-active {
-  background-color: color-mix(in srgb, var(--color-primary) 16%, transparent);
+  background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
   box-shadow:
-    inset 0 0 0 1px rgb(141 176 255 / 0.22),
-    0 2px 16px -6px rgb(102 149 255 / 0.45);
+    inset 0 0 0 1px rgb(141 176 255 / 0.26),
+    0 2px 16px -6px rgb(102 149 255 / 0.5);
 }
 
 /* --- The sky itself ------------------------------------------------------
-   One fixed layer behind everything, painting the ambient blue and holding the
-   starfield. Fixed rather than attached to <body> so scrolling does not drag
-   the light down the page — the sky sits beyond the window, it is not
-   wallpaper glued to the document.
+   One fixed layer behind everything, holding the clouds and the starfield.
+   Fixed rather than attached to <body> so scrolling does not drag the weather
+   down the page — the sky sits beyond the window, it is not wallpaper glued to
+   the document.
 
    z-index -1 keeps it under the content while still leaving it inside the root
-   stacking context, which is what lets every backdrop-filter above sample it. */
+   stacking context, which is what lets every backdrop-filter above sample it.
+
+   This utility is now nothing but the black of space. It used to carry three
+   radial-gradients of ambient blue, and they are gone rather than tuned: a
+   gradient with no source in it is a vignette, and however tight or saturated
+   it was set, it read as an even haze with no shape. Every trace of blue in
+   the product now comes from the two cloud banks in `night-sky.tsx`, which are
+   a thing in the sky rather than a wash over it. */
 @utility night-sky {
   position: fixed;
   inset: 0;
   z-index: -1;
   pointer-events: none;
   background-color: var(--color-backdrop);
-  background-image:
-    radial-gradient(1200px 720px at 50% -90px, var(--sky-core), transparent 68%),
-    radial-gradient(900px 900px at 88% 24%, var(--sky-halo), transparent 62%),
-    radial-gradient(1000px 900px at 2% 38%, var(--sky-low), transparent 62%);
 }
 
 /* --- The editorial voice -------------------------------------------------
@@ -421,6 +726,25 @@
    symbol. A ticker is an identifier the machine measured, not a phrase somebody
    wrote, so it stays in Inter. See The Written-And-Measured Rule. */
 @utility page-title {
+  -webkit-mask-image: linear-gradient(
+    95deg,
+    #000 0 45%,
+    rgb(0 0 0 / 0.25) 60%,
+    transparent 72%
+  );
+  mask-image: linear-gradient(
+    95deg,
+    #000 0 45%,
+    rgb(0 0 0 / 0.25) 60%,
+    transparent 72%
+  );
+  -webkit-mask-size: 280% 100%;
+  mask-size: 280% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: 0% 0;
+  mask-position: 0% 0;
+  animation: title-sweep 900ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
   font-family: var(--font-serif);
   font-size: var(--text-display);
   font-weight: 600;
@@ -439,6 +763,32 @@ body {
    The parts of the page nobody draws still ship with defaults that belong to no
    design system. Selection, the scrollbar and link underlines were all the
    user agent's, on a product otherwise controlled down to the hairline. */
+/* Controls that do not look clickable to the pointer.
+   
+   This started as a report about one disclosure and the sweep found it was
+   nearly everything: measured across the three routes, EVERY `<button>` in the
+   product computed `cursor: default`, and `<summary>` computed `auto`. Links
+   were fine, because a browser has always given an anchor a pointer.
+
+   Two separate causes with one symptom. `<summary>` has never been given a
+   control's cursor by any browser. Buttons lost theirs in Tailwind v4, whose
+   preflight dropped the `cursor: pointer` that v3 shipped — so upgrading put
+   the browser default back on every button in the codebase, silently, and
+   nothing failed.
+
+   These belong here rather than on a component for the same reason the
+   scrollbar and the selection colour do: the cursor is a browser surface
+   nobody drew. At the element, the next button or `<details>` anyone adds is
+   correct before they think about it.
+
+   `:disabled` is excluded, so the `disabled:cursor-not-allowed` already on the
+   watchlist controls still reads as refusal rather than invitation. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+summary {
+  cursor: pointer;
+}
+
 ::selection {
   background: color-mix(in srgb, var(--color-primary) 26%, transparent);
   color: var(--color-ink);
@@ -572,6 +922,17 @@ a {
     border-color: var(--edge-strong);
   }
 
+  /* The lit rim is a directional edge that fades to nothing on two sides,
+     which is the opposite of what someone asking for more contrast wants from
+     a boundary. It gives way to the uniform drawn line above. */
+  .panel::before,
+  .panel-track::before,
+  .panel-raised::before,
+  .panel-rail::before,
+  .panel-control::before {
+    display: none;
+  }
+
   .panel,
   .panel-track {
     background-color: var(--solid-panel);
@@ -605,6 +966,316 @@ a {
   }
 }
 
+/* --- The page arriving --------------------------------------------------
+   Retimed, and the number came from a budget rather than from taste.
+
+   The constraint that binds is not how a single element feels — it is how long
+   the LAST one takes to arrive. These keyframes fill `both`, so an element is
+   invisible for its delay; past about a second of that, a visitor stops reading
+   the page as arriving and starts reading it as slow to load. One second is the
+   ceiling, so with four children:
+
+       total = 3 x stagger + duration <= 1000ms
+
+   At a 100ms stagger that leaves 700ms for the duration, and 3(100) + 700 lands
+   the last section at exactly 1.00s. Sections went 420 -> 700ms and the stagger
+   70 -> 100ms: about a third of a second slower, which is what was asked for,
+   and the arithmetic says it is also the most that fits.
+
+   The first child no longer gets a blur of its own. It used to, and on Home
+   that meant the entire header — including the session digest, a full glass
+   panel — was rendered through a filter for six hundred milliseconds. The
+   authored focus now belongs to the type itself, one character at a time, and
+   the block it sits in simply arrives like every other. */
+@keyframes page-section-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@utility page-enter {
+  & > * {
+    animation: page-section-in 700ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+
+  & > *:nth-child(2) {
+    animation-delay: 100ms;
+  }
+
+  & > *:nth-child(3) {
+    animation-delay: 200ms;
+  }
+
+  & > *:nth-child(n + 4) {
+    animation-delay: 300ms;
+  }
+}
+
+/* --- The title resolving ------------------------------------------------
+   A scanline sweeps across the heading and leaves it in focus behind itself:
+   a soft mask edge travelling left to right while 6px of blur clears and the
+   phrase settles the last few pixels upward.
+
+   This replaces a per-character version, and the reason is measurable rather
+   than aesthetic. Splitting a heading into one `inline-block` per glyph makes
+   every letter its own box, and a browser cannot kern across boxes — measured
+   on the masthead, "US TechMarket" rendered 376.7px split against 368.3px
+   intact, so 8.4px of kerning had quietly been thrown away, about 0.7px on
+   every pair. On a 52px display serif with pairs like the "Te" in "Tech" that
+   is exactly the kind of loss a masthead cannot afford, and no amount of
+   animation is worth un-kerning the one piece of type the product sets large.
+
+   The sweep gets it all back. The heading stays a single intact text node, so
+   kerning, ligatures and text selection are untouched, and there is no
+   `aria-hidden` span scaffolding to maintain — which also removes the reason
+   the split needed to be a component at all.
+
+   The mask is 280% of the box and rests at position 0%, so the window sits
+   inside the gradient's solid first 45% and the resting state is completely
+   opaque. If the animation never runs, the heading is simply a heading. */
+@keyframes title-sweep {
+  from {
+    -webkit-mask-position: 100% 0;
+    mask-position: 100% 0;
+    filter: blur(6px);
+    transform: translateY(10px);
+  }
+}
+
+/* --- The instruments drawing --------------------------------------------
+   Every sparkline and the intraday price line draw themselves left to right,
+   in the direction of the session they plot, and the closing dot lands when the
+   line reaches it.
+
+   This is the one place the rule "nothing that carries information may move"
+   needed a third sharpening, so state it exactly: **arrival is allowed;
+   recurrence is not.** A line drawing itself once, as the page appears, is the
+   same event as the panel under it arriving — it says "here is the session".
+   The same line redrawing on a timer would say "the session is still running",
+   which is the lie the rule exists to prevent. Nothing here repeats.
+
+   `pathLength="1"` is what makes it work on any polyline without measuring one:
+   it normalises the geometry so a dasharray of 1 is exactly the whole path,
+   whatever its real length. Resting state is offset 0 — the full line — so a
+   stylesheet that never loads shows a chart, not a gap. */
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+
+@keyframes chart-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.chart-line {
+  stroke-dasharray: 1;
+  animation: chart-draw 1100ms cubic-bezier(0.33, 1, 0.4, 1) backwards;
+}
+
+/* The area under the line and the closing dot both wait for the line. */
+.chart-area {
+  animation: chart-fade 500ms ease-out 700ms backwards;
+}
+
+.chart-point {
+  animation: chart-fade 320ms ease-out 1000ms backwards;
+}
+
+/* --- Breadth ------------------------------------------------------------
+   The advancing and declining segments grow from the OUTSIDE toward the split
+   between them, which is the shape of what the bar means: two counts meeting
+   at a boundary, rather than one bar filling in one direction. */
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.bar-advancing,
+.bar-declining {
+  animation: bar-grow 850ms cubic-bezier(0.16, 1, 0.3, 1) 250ms backwards;
+}
+
+.bar-advancing {
+  transform-origin: left;
+}
+
+.bar-declining {
+  transform-origin: right;
+}
+
+/* --- The pane arriving --------------------------------------------------
+   The product's one authored moment, and it belongs to the material rather
+   than to any component: it lives on `panel-overlay`, so all four menus get it
+   from the same place the tint and the blur come from.
+
+   What animates is the glass FOCUSING. The pane enters slightly small, a little
+   high, and nearly clear — 2px of blur against its resting 16 — so for a fifth
+   of a second the sky behind it is almost sharp and then frosts over as the
+   surface settles. Blur is the one property in this system that literally means
+   "there is glass here", so it is the honest thing to animate when glass
+   appears. A fade-and-rise would say the same thing about any material.
+
+   `transform-origin` comes from --overlay-origin, set by whichever corner the
+   menu is anchored to, so it grows out of its own trigger instead of out of
+   nowhere. 220ms on a confident deceleration curve: inside the 150-300ms band
+   for a routine state change, and the pane is small, so further would read as
+   latency.
+
+   ON THE COST, because animating backdrop-filter is expensive and that is the
+   whole reason it is HERE and nowhere else. This is one small element, once,
+   on an explicit user action — a bounded burst a handful of times a session.
+   The tempting place to put motion in this world is the sky, drifting the
+   clouds behind everything; that was considered and rejected. Eight glass
+   surfaces sample that sky, so anything moving behind them invalidates every
+   backdrop-filter on the page on every frame, continuously, on a device class
+   (iPad) this build targets and cannot profile. The bright stars get away with
+   breathing for a reason that is already written down: `night-sky.tsx` keeps
+   them off the panel rectangles, so their invalidation never intersects a pane.
+   Motion in this product is affordable exactly where it is bounded. */
+@keyframes overlay-settle {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+    -webkit-backdrop-filter: blur(2px) saturate(1.35);
+    backdrop-filter: blur(2px) saturate(1.35);
+  }
+}
+
+/* --- Meteors ------------------------------------------------------------
+   Two, right to left, on a shallow descent. They mark the moment a new set of
+   data reaches the screen.
+
+   WHAT THEY ACTUALLY MARK, because the brief asked for "every API call" and
+   that event does not exist here. The visitor's browser never calls Finnhub,
+   Yahoo or Gemini — CLAUDE.md locks every upstream call to a scheduled server
+   job, and pages read cached rows only. What does happen in the browser is a
+   new render arriving: a first load, a route change, and the one genuine
+   client-to-server call in the product, the watchlist mutation. The meteors
+   fire on those, which is the same MEANING the brief asked for and the only
+   version of it that is true.
+
+   THE COMPOSITION, decided here rather than left to chance:
+
+   - Right to left, descending 13 degrees. The cloud system enters from the
+     right and the light comes from the upper left, so a meteor crossing right
+     to left travels with the weather and toward the light. Thirteen degrees is
+     shallow on purpose: steeper reads as a falling object, flat reads as a
+     satellite or a UI wipe.
+   - The angle is set in vw on BOTH axes (-130vw across, +30vw down), so
+     atan(30/130) holds at every viewport instead of drifting with aspect
+     ratio the way a vw/vh pair would.
+   - The two paths are PARALLEL, not converging. Meteors from one shower
+     radiate from a single point, so their paths never cross; two streaks
+     angled at each other would read as a graphic rather than as sky.
+   - The trail starts 14vw further right and 11vh lower than the lead, and 160ms
+     later. Closer than that and the pair reads as one thick streak; further and
+     they stop belonging to the same event. 160ms is about the shortest gap at
+     which the eye registers two arrivals rather than one.
+   - `linear`, because a meteor does not decelerate. An ease-out here would look
+     like braking. What fades is brightness, not speed: in by 12% of the
+     traverse, out by 88%, so neither end pops at the frame edge.
+
+   COST. These sit in the fixed sky layer, behind eight glass panes, so while
+   they cross they invalidate every backdrop-filter on the page — the exact
+   expense this file refuses to pay for a continuously drifting cloud. The
+   difference is the one already written into the panel comments: motion is
+   affordable where it is BOUNDED. This runs 1.15s, a handful of times in a
+   session, on an event the visitor caused. A drifting sky would run forever. */
+@keyframes meteor-fall {
+  from {
+    transform: translate3d(var(--meteor-x), 0, 0) rotate(-13deg);
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  88% {
+    opacity: 1;
+  }
+
+  to {
+    transform: translate3d(calc(var(--meteor-x) - 130vw), 30vw, 0) rotate(-13deg);
+    opacity: 0;
+  }
+}
+
+.meteor {
+  position: absolute;
+  top: var(--meteor-y);
+  left: 0;
+  width: 190px;
+  height: 2px;
+  /* `full`, not a 2px literal. On a 2px-tall element the browser clamps the
+     radius to half the height either way, so the pixels are identical — but
+     one of the two values is a token the design system documents. */
+  border-radius: 9999px;
+  /* Head at the leading (left) end, tail dissolving behind it. Silver, like
+     every other point of light in this sky — see The Colour Strategy. */
+  background: linear-gradient(
+    to left,
+    transparent,
+    rgb(221 227 236 / 0.5) 55%,
+    #f4f6fa
+  );
+  animation: meteor-fall 1150ms linear both;
+}
+
+.meteor-lead {
+  --meteor-x: 105vw;
+  --meteor-y: 8vh;
+}
+
+.meteor-trail {
+  --meteor-x: 119vw;
+  --meteor-y: 19vh;
+  animation-delay: 160ms;
+}
+
+/* --- The one thing that moves ------------------------------------------
+   Scintillation, on the eighteen bright stars only.
+
+   The rule this replaces said the stars must never twinkle, because "a
+   completed day that shimmers is lying with its motion design". What that rule
+   was actually protecting is worth keeping and worth stating more precisely
+   than it was: **nothing that carries information may move. The room may.**
+
+   A price, a change, a badge, a sparkline, a rank — those are the session, and
+   the session is over; animating any of them would claim something is still
+   happening. A star carries nothing. It is the room, and a room with no life in
+   it at all is not restraint, it is a photograph.
+
+   Two constraints keep this honest. It only ever DIMS: the cycle runs from the
+   star's own base opacity down and back, never above it, so the brightest pixel
+   the contrast harness measured is still the brightest pixel that exists. And
+   it is confined to the bright tier — 18 elements, not 313. Every star in the
+   sky flickering is a Christmas tree; a handful of the brightest ones breathing
+   at different rates is a sky.
+
+   Durations and phases are derived per star in `night-sky.tsx` so no two share
+   a cycle, and the delays are negative so nothing waits to start and nothing
+   starts in unison. Pure CSS on a server-rendered element — no client
+   component, which the product's own rule would not allow for this. */
+@keyframes star-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.42;
+  }
+}
+
+.star-breathe {
+  animation: star-breathe var(--star-dur) ease-in-out var(--star-delay) infinite;
+}
+
 /* The only motion in the product is transition-colors plus the switcher
    chevron's rotate. The stars do not twinkle and nothing else animates —
    a product reporting a completed session would be lying with its motion
@@ -616,5 +1287,55 @@ a {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* The blanket rule above is the right default for ambient motion — the stars
+     simply stop, at their own base opacity, which is what the contrast harness
+     already measured. It is the wrong answer for FEEDBACK. Reduced motion means
+     fewer and gentler animations, not an interface that stops confirming that
+     something happened: a menu that blinks into existence is harder to follow
+     than one that arrives, not easier.
+     
+     So the pane keeps an arrival and loses the movement. No travel, no scale,
+     no blur ramp — an opacity fade alone, slightly slower than the full
+     version because there is nothing else left to carry it. */
+  .panel-overlay {
+    animation: overlay-fade 160ms ease-out !important;
+  }
+
+  /* Ambient rather than feedback, so under reduced motion the meteors do not
+     play at all — there is nothing to communicate more gently. The blanket
+     rule above already stops them; this only makes sure they are not left
+     parked mid-flight by `both`. */
+  .meteor {
+    animation: none !important;
+    opacity: 0 !important;
+  }
+
+  /* Same principle one level up: the page still resolves, it just does not
+     move or defocus. The stagger goes too — a sequence is spatial information,
+     and with nothing travelling there is nothing for it to sequence. */
+  .page-enter > *,
+  .page-title,
+  .chart-area,
+  .chart-point,
+  .bar-advancing,
+  .bar-declining {
+    animation: overlay-fade 200ms ease-out !important;
+    animation-delay: 0ms !important;
+  }
+
+  /* The line keeps its own keyframe rather than being swapped for a fade,
+     because swapping it would leave `stroke-dasharray: 1` with an offset that
+     never animates to 0 — a chart drawn as a single dash and no line. */
+  .chart-line {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+  }
+}
+
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
   }
 }

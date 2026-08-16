@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="US TechMarket">
+  <!--
+    The tab icon is the product's SKY, not a logo.
+
+    That is a consequence of a decision made elsewhere rather than a shortage of
+    ideas: this interface is covered in other companies' marks, so the product
+    deliberately carries none of its own on screen. A mark invented purely for
+    the tab strip would put back exactly what was taken out, in the one place
+    nobody agreed to it. What is left to be recognisable by is the material —
+    a deep field with silver on it — and at 16px that is a navy square with a
+    point of light in it, which no other tab in a browser full of finance sites
+    looks like.
+
+    Sized for the small end first. The bright star is r3.1 of 32, so it survives
+    to about 1.5px at favicon scale; the three faint ones are texture at 32px
+    and gone at 16, which is the right way round. The halo is what keeps the
+    bright one from reading as a hard dot when it is the only thing left.
+  -->
+  <defs>
+    <linearGradient id="field" x1="0" y1="0" x2="0.55" y2="1">
+      <stop offset="0" stop-color="#15263f" />
+      <stop offset="1" stop-color="#01040c" />
+    </linearGradient>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#eef1f5" stop-opacity="0.5" />
+      <stop offset="1" stop-color="#eef1f5" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <rect width="32" height="32" rx="7" fill="url(#field)" />
+
+  <circle cx="19.5" cy="12" r="8.5" fill="url(#halo)" />
+  <circle cx="19.5" cy="12" r="3.1" fill="#f4f6fa" />
+
+  <circle cx="9" cy="21.5" r="1.5" fill="#dde3ec" opacity="0.8" />
+  <circle cx="24.5" cy="24" r="1.05" fill="#dde3ec" opacity="0.55" />
+  <circle cx="8" cy="8.5" r="0.9" fill="#dde3ec" opacity="0.4" />
+</svg>

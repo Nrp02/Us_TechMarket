@@ -33,7 +33,7 @@ export default async function Home() {
   const watched = watchlist.map((s) => bySymbol.get(s)).filter((t) => t != null);
 
   return (
-    <div className="flex flex-col gap-10 pb-10">
+    <div className="page-enter flex flex-col gap-10 pb-10">
       {/* The page's one display-scale element. It was 24px — barely 1.3x the
           section headings under it — so the page opened with nothing leading.
           The session date sits below the heading rather than above it: a date
@@ -60,10 +60,27 @@ export default async function Home() {
           visibly disagreed about where the top was. */}
       <header className="flex flex-col items-start justify-between gap-8 lg:flex-row">
         <div>
-          <h1 className="page-title w-fit text-ink">
-            <span className="block text-center">What happened</span>
-            <span className="block">to your stocks today</span>
-          </h1>
+          {/* The product's name, as a masthead.
+              
+              It was "What happened to your stocks today" — the product's core
+              question, and it was in the wrong place twice over. Home does not
+              answer it: this page shows index levels, a table of prices, the
+              five biggest moves and three headlines, which is where things
+              STAND, not what happened. The prose answer lives on Today's
+              Activity, and that is where the question is now the card heading.
+              And it said "your stocks" while Market Overview and Top Movers are
+              both computed across all twenty — it over-claimed personalisation
+              on a page that is mostly not personal.
+
+              The name earns the editorial serif rather than merely inheriting
+              it. DESIGN.md's north star for this world is a financial paper's
+              evening edition, and a paper opens with its masthead over a
+              strapline. That is exactly the shape of this block now: the title
+              names the publication, the line beneath it states what the
+              publication measures, and the session digest opposite carries the
+              date and the market's state — which is the top-right corner of a
+              front page. */}
+          <h1 className="page-title w-fit text-ink">US TechMarket</h1>
           <p className="mt-4 max-w-[52ch] text-sm text-body">
             Prices recorded every 15 minutes across 20 US technology stocks.
           </p>

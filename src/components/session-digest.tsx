@@ -76,11 +76,11 @@ export function SessionDigest({
             aria-label={`${advancing} of ${tickers.length} tracked stocks advanced, ${declining} declined`}
           >
             <span
-              className="rounded-full bg-semantic-up"
+              className="bar-advancing rounded-full bg-semantic-up"
               style={{ width: `${(advancing / moved) * 100}%` }}
             />
             <span
-              className="rounded-full bg-semantic-down"
+              className="bar-declining rounded-full bg-semantic-down"
               style={{ width: `${(declining / moved) * 100}%` }}
             />
           </div>

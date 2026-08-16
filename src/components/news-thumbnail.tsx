@@ -46,7 +46,12 @@ export function NewsThumbnail({ symbol }: { symbol: string | null }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- remote CDN mark; Brandfetch requires these URLs be hotlinked, so next/image optimization (which refetches server-side) is not an option */}
         <img
           src={src}
-          alt=""
+          // See company-logo.tsx: a non-empty alt is the CDN fallback, drawn by
+          // the browser when the mark fails and free the rest of the time. The
+          // plate is `aria-hidden`, so nothing here reaches a screen reader.
+          // Market news has no symbol, so it falls back to the provider's name
+          // rather than to a blank plate.
+          alt={symbol ?? "Finnhub"}
           // The News page renders up to 60 rows, so this one line was opening
           // 60 concurrent CDN connections on every visit, the great majority of
           // them below the fold, and drawing down the 500k/month Brandfetch
@@ -55,7 +60,7 @@ export function NewsThumbnail({ symbol }: { symbol: string | null }) {
           // box, so there was never CLS to trade against.
           loading="lazy"
           decoding="async"
-          className="h-5 max-w-full object-contain"
+          className="h-5 w-full object-contain text-micro font-semibold text-backdrop"
         />
       </span>
     );

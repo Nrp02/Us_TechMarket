@@ -13,9 +13,7 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
 
   return (
     <section>
-      <SectionHeading meta="Ranked across the Top 20">
-        Top Movers Today
-      </SectionHeading>
+      <SectionHeading>Top Movers Today</SectionHeading>
 
       <ol className="panel overflow-hidden">
         {movers.map((ticker, index) => (

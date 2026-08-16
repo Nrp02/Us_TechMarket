@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { ChartGradients } from "@/components/chart-gradients";
+import { Meteors } from "@/components/meteors";
 import { NightSky } from "@/components/night-sky";
 import { Sidebar } from "@/components/sidebar";
 import "./globals.css";
@@ -39,8 +40,37 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "US TechMarket",
+  // Without this the OG image resolves against http://localhost:3000, which the
+  // production build warns about and which would have shipped a link preview
+  // that works on nobody's machine but this one — on the single surface the
+  // card exists for. PRODUCT.md records the deployment; Vercel's own variable
+  // wins when it is present so a preview deployment previews itself.
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "https://ustechmarket.vercel.app",
+  ),
+  // A template, so every route that sets a title inherits the product name
+  // rather than repeating the string. `default` is what Home and any route
+  // without its own title falls back to.
+  title: {
+    default: "US TechMarket",
+    template: "%s · US TechMarket",
+  },
   description: "Daily AI intelligence for US Technology stocks.",
+};
+
+// The browser draws a strip of chrome above this page and it was arriving in
+// the user agent's own grey, on a product otherwise controlled down to the
+// hairline — the same class of oversight as an unthemed scrollbar, which this
+// codebase already fixed. --color-backdrop, so the sky simply continues past
+// the top of the document.
+//
+// The favicon it sits beside was Next's default logo until now: the product
+// was demoed live and shared as a link with somebody else's mark in the tab.
+// See `icon.svg` for why the replacement is the sky rather than a logo.
+export const viewport: Viewport = {
+  themeColor: "#01040c",
 };
 
 // There is one theme. The pre-paint script that used to sit here read a stored
@@ -58,6 +88,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             root stacking context so every backdrop-filter above it has
             something to sample. It is the first child so it paints first. */}
         <NightSky />
+        {/* Sits beside the sky rather than inside it: `NightSky` is a server
+            component and must stay one — 313 stars and two fractal filters have
+            no business shipping to the client — while the meteors need to know
+            when a navigation happened. Two layers, one world. */}
+        <Meteors />
         {/* The sidebar is only 3 items, so this costs little on most visits —
             but it was still missing, on a codebase that otherwise author its
             own a11y fixes rather than skip them. First focusable element in

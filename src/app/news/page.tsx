@@ -8,6 +8,11 @@ import { resolveNewsDate } from "@/lib/news-date";
 import { getNews, getNewsDates } from "@/lib/queries";
 import { readWatchlist } from "@/lib/watchlist";
 
+// The one route still inheriting the layout's bare product name, so a News tab
+// and a Home tab were the same string. The template in layout.tsx appends the
+// product name, so this is only the part that differs.
+export const metadata = { title: "News" };
+
 // Reads the cached news table only. Fetching and summarising happen in the
 // scheduled ingestion job, never on a page view.
 //
@@ -85,7 +90,7 @@ export default async function News({
       : `No articles from ${formatDay(resolved.date!)} in this category.`;
 
   return (
-    <div className="flex flex-col gap-6 pb-10">
+    <div className="page-enter flex flex-col gap-6 pb-10">
       {/* This page's h1 was 24px while Home's ran to 52px, so the two pages
           opened at completely different ranks. Both are the one display element
           on their surface and both take the display step. */}
@@ -127,10 +132,23 @@ export default async function News({
                 href={buildHref(t.key, dateParam)}
                 // The active tab was colour-only to a screen reader.
                 aria-current={isActive ? "page" : undefined}
+                // The active tab used to be a solid --color-primary-fill plate
+                // under white text. It was the only opaque, fully saturated
+                // object left in a world made of glass and weather, so it read
+                // as a control borrowed from a different product — and its
+                // royal blue sat a long way from the deep atmospheric blue
+                // everything else in the page is lit by.
+                //
+                // It is now the same `nav-active` recipe the sidebar's current
+                // item uses: a translucent accent plate, a lit ring, and
+                // --color-primary-active for the label. That is the point of
+                // the change rather than a side effect — "this one is current"
+                // is one idea, and it should not have two visual languages in
+                // one product depending on which nav it appears in.
                 className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                   isActive
-                    ? "bg-primary-fill text-white shadow-[var(--elev-1)]"
-                    : "text-body hover:bg-surface-soft hover:text-ink"
+                    ? "nav-active text-primary-active"
+                    : "text-body hover:bg-glass-lift hover:text-ink"
                 }`}
               >
                 {t.label}
@@ -144,7 +162,7 @@ export default async function News({
             naturally on navigation, the same reasoning that already keeps this
             page a server component. */}
         <details className="group relative shrink-0">
-          <summary className="flex w-fit list-none items-center gap-2 rounded-full bg-surface-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-hairline [&::-webkit-details-marker]:hidden">
+          <summary className="panel-control flex w-fit list-none items-center gap-2 px-4 py-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
             {dateLabel}
             <svg
               viewBox="0 0 20 20"
@@ -162,15 +180,23 @@ export default async function News({
             </svg>
           </summary>
 
-          <div className="panel-overlay absolute right-0 z-20 mt-2 w-56 rounded-2xl py-1">
+          {/* The selected row in this menu, and in the two below it, marks
+              itself with `text-primary-active` rather than `text-primary`.
+              Measured: primary (#6695ff) on surface-strong (#2b3f6c) is
+              3.60:1 at 14px — under the 4.5:1 AA floor, on the row whose whole
+              job is to say which filter is on. primary-active (#8db0ff) is
+              4.82:1 on the same plate. The category tabs above already went
+              through this and landed on primary-active; the date rows were the
+              last place in the product still using the failing pair. */}
+          <div className="panel-overlay absolute right-0 z-20 mt-2 w-56 rounded-2xl p-1 [--overlay-origin:top_right]">
             <ul>
               <li>
                 <Link
                   href={buildHref(active)}
                   aria-current={resolved.isToday ? "page" : undefined}
-                  className={`block px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                     resolved.isToday
-                      ? "bg-surface-strong text-primary"
+                      ? "bg-surface-strong text-primary-active"
                       : "text-body hover:bg-surface-soft hover:text-ink"
                   }`}
                 >
@@ -182,9 +208,9 @@ export default async function News({
                   <Link
                     href={buildHref(active, d)}
                     aria-current={resolved.date === d && !resolved.isToday ? "page" : undefined}
-                    className={`block px-4 py-2 text-sm font-medium transition-colors ${
+                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                       resolved.date === d && !resolved.isToday
-                        ? "bg-surface-strong text-primary"
+                        ? "bg-surface-strong text-primary-active"
                         : "text-body hover:bg-surface-soft hover:text-ink"
                     }`}
                   >
@@ -192,13 +218,16 @@ export default async function News({
                   </Link>
                 </li>
               ))}
-              <li className="mt-1 border-t border-hairline">
+              {/* The rule spans the menu, so it sits on the list rather than on
+                  the row — a border on the row would inset with the row's own
+                  radius and stop short of both edges. */}
+              <li className="mt-1 border-t border-hairline pt-1">
                 <Link
                   href={buildHref(active, "all")}
                   aria-current={resolved.isAll ? "page" : undefined}
-                  className={`block px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                     resolved.isAll
-                      ? "bg-surface-strong text-primary"
+                      ? "bg-surface-strong text-primary-active"
                       : "text-body hover:bg-surface-soft hover:text-ink"
                   }`}
                 >
