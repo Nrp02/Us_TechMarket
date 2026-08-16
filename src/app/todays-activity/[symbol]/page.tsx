@@ -57,7 +57,7 @@ export default async function TodaysActivityForSymbol({
   const up = ticker.changePercent >= 0;
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-8 lg:px-10">
+    <div className="flex flex-col gap-10 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
         <div className="flex items-center gap-4">
           <CompanyLogo symbol={ticker.symbol} name={ticker.name} />

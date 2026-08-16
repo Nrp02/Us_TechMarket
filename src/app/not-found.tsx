@@ -6,7 +6,7 @@ import Link from "next/link";
 // say what is still fine, and give a way back.
 export default function NotFound() {
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-4 px-6 py-8 lg:px-10">
+    <div className="flex flex-col gap-4 pb-10">
       {/* Display step, matching every other page's h1 — see error.tsx. */}
       <h1 className="page-title text-ink">
         That page isn&apos;t here

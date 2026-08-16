@@ -36,7 +36,7 @@ export default function Error({
   reset: () => void;
 }) {
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-8 lg:px-10">
+    <div className="flex flex-col gap-6 pb-10">
       <header>
         {/* text-display, like every other page's h1. At text-2xl this sat 4px
             above a section heading, so the one thing on the page read as a

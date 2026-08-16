@@ -70,12 +70,12 @@ export function Sidebar() {
     // py-8 matches the content column's own top padding, so the card's top
     // edge lines up with the page title beside it instead of floating at some
     // unrelated height.
-    <aside className="relative z-10 w-[272px] shrink-0 px-4 py-8">
+    <aside className="relative z-10 w-60 shrink-0">
       {/* Sticky, because a card is only as tall as its content and the page
           beside it is several thousand pixels long. The <aside> stretches to
           full height as a flex item, which is what gives this something to
           stick within. */}
-      <div className="panel-rail sticky top-8 flex flex-col px-4 py-6">
+      <div className="panel-rail sticky top-6 flex flex-col px-4 py-6">
         {/* No horizontal padding of its own — `nav` below has none either, and
             its Links stretch edge to edge across the rail's full 208px inner
             width (flex-col's default align-items: stretch). One rail, one pair

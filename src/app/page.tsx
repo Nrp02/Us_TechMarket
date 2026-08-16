@@ -33,7 +33,7 @@ export default async function Home() {
   const watched = watchlist.map((s) => bySymbol.get(s)).filter((t) => t != null);
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-10 px-6 py-8 lg:px-10">
+    <div className="flex flex-col gap-10 pb-10">
       {/* The page's one display-scale element. It was 24px — barely 1.3x the
           section headings under it — so the page opened with nothing leading.
           The session date sits below the heading rather than above it: a date
@@ -43,28 +43,26 @@ export default async function Home() {
           which is what leaves room for the digest beside it. Previously it ran
           the full width and the remaining ~800px of the header held nothing.
 
-          **Two lines, not four.** The cap was 13ch, chosen against Inter, and
-          it broke the 33-character headline at every word: "What / happened to
-          / your stocks / today". The serif is the wider face, so a measure that
-          gave three lines in Inter gave four here, and four lines of display
-          type is a wall rather than an opening. At 20ch it breaks once, near
-          the middle, and `text-balance` evens the two halves.
+          **The break is authored, not measured.** It used to be a 20ch cap
+          plus `text-balance`, which let the browser choose where to break and
+          how to weight the halves — the result moved with the viewport and
+          could not be centred on anything. The two lines are now separate
+          spans, so the break is fixed and the shorter line can be centred over
+          the longer one.
 
-          Below about 1200px the heading column shrinks against the digest,
-          which is `shrink-0`, so this returns to three lines rather than
-          overflowing. That is the intended degradation, not a regression.
+          `w-fit` is what makes that centring mean something: it shrinks the h1
+          to the width of its longest line, so `text-center` on line one centres
+          it over line two rather than over the whole header column.
 
-          The cap is on the h1 itself, not on the wrapper. `ch` resolves against
-          the element's own font size, so the same number on a 16px wrapper
-          means something completely different from what it means on a 52px
-          heading — at 16ch the wrapper measured 270px and broke the headline
-          into six one-word lines. Being in `ch` also makes the break points
-          scale-invariant: the clamp can move the size from 36px to 52px and the
-          line breaks stay where they are. */}
-      <header className="flex flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
+          items-start, not items-end. The header used to bottom-align the title
+          block against the session digest, which put the h1's top edge 45px
+          below the digest card's — the two things flanking the top of the page
+          visibly disagreed about where the top was. */}
+      <header className="flex flex-col items-start justify-between gap-8 lg:flex-row">
         <div>
-          <h1 className="page-title max-w-[20ch] text-balance text-ink">
-            What happened to your stocks today
+          <h1 className="page-title w-fit text-ink">
+            <span className="block text-center">What happened</span>
+            <span className="block">to your stocks today</span>
           </h1>
           <p className="mt-4 max-w-[52ch] text-sm text-body">
             Prices recorded every 15 minutes across 20 US technology stocks.

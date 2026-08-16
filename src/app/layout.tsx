@@ -53,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} ${sourceSerif.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full">
+      <body className="flex min-h-full justify-center">
         {/* The sky sits behind everything, fixed, at z-index -1 — inside the
             root stacking context so every backdrop-filter above it has
             something to sample. It is the first child so it paints first. */}
@@ -68,15 +68,33 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <Sidebar />
-        {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
-            min-width:auto, so without it <main> cannot shrink below its
-            content's min-content width — the 880px watchlist table and the
-            560px intraday chart pushed the whole page sideways instead of
-            scrolling inside their own overflow-x-auto wrappers. */}
-        <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
-          {children}
-        </main>
+        {/* One shell, one set of gutters. The page used to compose its margins
+            from three unrelated sources — the rail's own px-4, each page
+            container's px-6/lg:px-10, and an mx-auto centring a 1200px column
+            inside a <main> that the sidebar had already pushed off-centre. The
+            three never agreed: measured at 1470px the viewport-to-rail gap was
+            16px, rail-to-content 56px and content-to-viewport 40px, and at
+            1920px they diverged to 16 / 280 / 264.
+
+            Now the whole app is one centred group with uniform p-6, and the
+            gap between rail and content is the same 24px as the margin outside
+            them. Pages carry no horizontal padding of their own at all.
+
+            The cap moved from a 1200px content column to a 1680px group, which
+            is what actually widens the content: 1118px -> 1158px at 1470, and
+            1120px -> 1368px at 1920, where a quarter of the screen was being
+            spent on symmetrical emptiness. */}
+        <div className="flex w-full max-w-[1680px] gap-6 p-6">
+          <Sidebar />
+          {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
+              min-width:auto, so without it <main> cannot shrink below its
+              content's min-content width — the watchlist table and the 560px
+              intraday chart would push the whole page sideways instead of
+              scrolling inside their own overflow-x-auto wrappers. */}
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
+            {children}
+          </main>
+        </div>
         <ChartGradients />
       </body>
     </html>

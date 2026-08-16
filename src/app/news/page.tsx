@@ -85,7 +85,7 @@ export default async function News({
       : `No articles from ${formatDay(resolved.date!)} in this category.`;
 
   return (
-    <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-6 py-8 lg:px-10">
+    <div className="flex flex-col gap-6 pb-10">
       {/* This page's h1 was 24px while Home's ran to 52px, so the two pages
           opened at completely different ranks. Both are the one display element
           on their surface and both take the display step. */}
