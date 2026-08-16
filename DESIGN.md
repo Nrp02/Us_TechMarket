@@ -348,7 +348,7 @@ The rail is a card, not a slab: same 24px geometry and same material as every ot
 
 Items are 44px tall, `8px` radius, Body text with an 18px icon at 1.5 stroke. The active item is `nav-active` — a translucent 18% accent plate, a lit inset ring, a soft cast — with **Signal Blue Active** text and a 1.75 stroke on the icon. The icon carries no colour decision of its own; its stroke is `currentColor`, so it is exactly as blue as the label beside it. `aria-current="page"` is always set: the active state is a plate and a colour, and neither is reported by a screen reader.
 
-Each row prints its shortcut — `g h`, `g n`, `g a` — in muted mono at the trailing edge, and carries the same string in `aria-keyshortcuts`. Two channels for two visitors; a shortcut nobody is told about is not a feature.
+Each row carries its shortcut — `g h`, `g n`, `g a` — in `aria-keyshortcuts`, and draws nothing. The hint *was* printed at the trailing edge in muted mono and was removed on report: it read as characters somebody had forgotten to delete. See The Keycap-Or-Nothing Rule.
 
 `nav-active` is the one sanctioned exception to The Baked Tint Rule, and it earns it only by being measured at both ends of its range: `primary` fails every alpha (4.49:1 at its most generous), `primary-active` clears at 5.43:1 against the rail's bright end and 7.06:1 against its dim end.
 
@@ -361,6 +361,8 @@ The selected row takes `surface-strong` with **Signal Blue Active** text (4.82:1
 Those three declare `role="menu"` on the list (not on the panel — the panel also holds a group header and a `role="status"` line, neither of which is a menu item), and they keep the promise the role makes: focus enters on open, landing on the row marked current where there is one; Up/Down move between rows and Left/Right between the two controls on a row; Home/End jump the ends; a typed ticker jumps to it (`n`, `v` → NVDA, with a 700ms buffer); Escape closes and returns focus to the trigger; Tab returns focus to the trigger and then keeps going, because a menu does not trap. Nothing inside is in the tab order — focus is moved, not tabbed.
 
 ### Named Rules
+
+**The Keycap-Or-Nothing Rule.** A keyboard hint is drawn as a **key** — a plate with a border, inset like a keycap — or it is not drawn at all. Bare letters set quietly beside a label have no container, no affordance and nothing punctuating them as an input: the only thing separating them from the interface's own text is that they are fainter, and faint stray text reads as debris, not as an offer. Tested the hard way here — the first version was read as characters somebody had forgotten to delete. Loudness is not the missing ingredient; shape is.
 
 **The Kept-Promise Rule.** An ARIA role is a specification, not a label. `role="menu"` and `aria-haspopup="menu"` commit you to focus-on-open, arrow navigation, type-ahead and Tab-exits; ship the attribute without the behaviour and a screen-reader visitor is told to press keys that do nothing, which is worse than declaring a plain disclosure. Either build the pattern or use `aria-expanded` alone and mean it.
 
@@ -407,7 +409,7 @@ The phase split is the entire motion budget. Every one of these used to start at
 - **Do** derive breakpoints from the shell arithmetic, not from the nearest Tailwind step.
 - **Do** state a busy state in words. Dimming can only say "no", never "wait".
 - **Do** sequence a loud arrival into phases before shortening or deleting any of it.
-- **Do** print a keyboard shortcut where the thing it operates is, and declare it in `aria-keyshortcuts` as well.
+- **Do** declare a keyboard shortcut in `aria-keyshortcuts` on the control it operates, whether or not it is drawn.
 - **Do** theme the browser surfaces: selection, scrollbars, focus rings, underline offset, and the cursor on `<button>` and `<summary>` (Tailwind v4's preflight dropped `cursor: pointer`).
 
 ### Don't:
@@ -419,6 +421,7 @@ The phase split is the entire motion budget. Every one of these used to start at
 - **Don't** loop, tick, pulse, or auto-refresh anything. The session being described is over.
 - **Don't** start every animation at t=0. Structure arrives, then the instruments inside it.
 - **Don't** declare an ARIA role you have not implemented the keyboard model for.
+- **Don't** set a keyboard hint as bare quiet text next to a label. Draw it as a keycap or leave it out.
 - **Don't** let Signal Blue become decorative. Outside a token of state, a dot, tick or rule in the accent colour is a violation even when it looks good.
 - **Don't** split a heading into per-character boxes. The kerning does not survive it.
 - **Don't** author the weather anywhere but `night-sky.tsx`, or mirror its colours into a CSS token that nothing can check.

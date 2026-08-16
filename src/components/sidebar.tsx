@@ -105,10 +105,22 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 href={item.href}
-                // The shortcut, twice, for two different visitors: printed on
-                // the row for anyone who can see it, and declared here for a
-                // screen reader, which announces it with the link. A shortcut
-                // nobody is told about is not a feature.
+                // The shortcut is declared here and drawn nowhere. It WAS
+                // printed on the row as muted mono — `g h`, `g n`, `g a` — and
+                // that was removed on report: the owner read it as characters
+                // somebody had forgotten to delete. Which is a fair reading.
+                // Bare letters at the end of a nav row have no container, no
+                // affordance and no punctuation saying "this is a key"; the
+                // only thing marking them as different from the label is that
+                // they are quieter, and quiet stray text reads as debris rather
+                // than as an offer.
+                //
+                // The fix is not to shout. If it comes back it comes back as a
+                // KEY — a plate with a border, sized and inset like a keycap —
+                // because the shape is what carries the meaning, not the text.
+                // Until then this attribute is the whole affordance: screen
+                // readers announce it with the link, and the README documents
+                // it for everyone else.
                 aria-keyshortcuts={key ? `g ${key}` : undefined}
                 // Active state was a plate plus a colour, neither of which a
                 // screen reader reports.
@@ -151,19 +163,6 @@ export function Sidebar() {
               >
                 <Icon active={isActive} />
                 {item.label}
-                {/* aria-hidden because the same information reaches a screen
-                    reader through aria-keyshortcuts above; announcing "g h"
-                    twice per row would be noise. Mono, because these are keys
-                    on a keyboard — glyphs to be matched one for one, which is
-                    the same job the Mono Numerals Rule gives a figure. */}
-                {key && (
-                  <span
-                    aria-hidden
-                    className="ml-auto font-mono text-micro text-muted"
-                  >
-                    g {key}
-                  </span>
-                )}
               </Link>
             );
           })}

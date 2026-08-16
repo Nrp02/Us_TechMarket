@@ -62,7 +62,7 @@ Simulated by pointing the app at a dead Finnhub key so every request 401s. The r
 
 **Performance.** Server-side median page time is ~93ms, down from ~1,450ms. Almost none of that came from tuning queries: a query returning one row cost the same as one returning 840, because the price is per *request*. The two fixes were pinning the functions to the same region as the database (`iad1` 260ms → `sin1` 155ms per request) and caching the read helpers for 60 seconds, well inside the 15-minute ingestion cadence.
 
-**Keyboard.** `g h`, `g n` and `g a` jump between the three routes — the hint is printed on each rail item, so it is a visible feature rather than a secret. The watchlist menus are real ARIA menus: they take focus when they open, move on the arrow keys, and jump to a ticker as you type it (`n`, `v` → NVDA).
+**Keyboard.** `g h`, `g n` and `g a` jump between the three routes; each rail item declares its own shortcut in `aria-keyshortcuts`, so a screen reader announces it with the link. The watchlist menus are real ARIA menus: they take focus when they open, move on the arrow keys, and jump to a ticker as you type it (`n`, `v` → NVDA).
 
 **Accessibility.** WCAG 2.1 AA. Contrast is measured against the *worst-case composite* — the frosted panels are translucent, so each surface is a range rather than a value, and every text pair is checked at the brightest point that range reaches. `prefers-reduced-motion`, `prefers-reduced-transparency` and `prefers-contrast` each get a designed alternative rather than a blanket switch-off. Laptop and iPad are the supported widths; phone is a documented non-target.
 
