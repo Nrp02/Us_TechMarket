@@ -324,16 +324,23 @@
   box-shadow: var(--edge-lit), var(--elev-1);
 }
 
-/* The navigation rail. Darker and more opaque than the content glass so it
-   stays visually stable while the page behind it changes — it is the one
-   surface a visitor sees on every route. No radius: it is a full-height edge,
-   not a card, so it takes the lit rim on its right border rather than the
-   card face wash, which is tuned to fade out inside a card's first 88px. */
+/* The navigation card. Darker than the content glass so it stays visually
+   stable while the page behind it changes — it is the one surface a visitor
+   sees on every route — but otherwise the same object as every other panel.
+
+   It used to be a full-height slab flush to the viewport edge: no radius, one
+   border, no face wash. That made it the single container in the product not
+   obeying the form language its own design system states ("24px — every
+   container"), and it read as a different material bolted to the side of the
+   page rather than as part of it. It is a card now, so it takes the card's
+   geometry and the face wash that comes with having a top edge to catch. */
 @utility panel-rail {
   background-color: var(--glass-rail);
+  background-image: var(--surface-face);
   -webkit-backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
   backdrop-filter: blur(var(--blur-rail)) saturate(1.15);
-  border-right: 1px solid var(--color-glass-edge);
+  border: 1px solid var(--color-glass-edge);
+  border-radius: 24px;
   box-shadow: var(--edge-lit), var(--elev-2);
 }
 

@@ -67,7 +67,17 @@ export function DailySummaryCard({
               had. Beside it, the two halves fill the card and the bullets stop
               reading as an appendix to the paragraph.
 
-              Below lg they stack in source order and the divider flips from a
+              The split engages at xl, not lg, and that is a fix rather than a
+              preference. At the lg breakpoint the card has about 672px of
+              inner width; the narrative track alone asks for 58ch, which at
+              18px is roughly 580px, leaving under 100px for the bullets once
+              the 40px gap is taken. The column did not just look tight, it
+              collapsed — measured at 1024px the bullet list was 41px wide with
+              its list items at zero, and the text spilled out of the card and
+              pushed the page 9px wider than the viewport. At xl there is
+              ~928px, which the two tracks share comfortably.
+
+              Below xl they stack in source order and the divider flips from a
               left border to a top one.
 
               The size class on this grid container is load-bearing and is not
@@ -92,7 +102,7 @@ export function DailySummaryCard({
               cap belongs on the element whose font size it describes; where
               that element is a grid track rather than the text itself, the
               track has to be told what size it is measuring. */}
-          <div className="mt-5 grid gap-6 text-lg lg:grid-cols-[minmax(0,58ch)_minmax(0,1fr)] lg:gap-10">
+          <div className="mt-5 grid gap-6 text-lg xl:grid-cols-[minmax(0,58ch)_minmax(0,1fr)] xl:gap-10">
             {/* text-pretty, not text-balance: balance is capped at a handful of
                 lines by every engine that implements it and is meant for
                 headings. This is a passage — pretty only fixes the orphan on
@@ -108,8 +118,12 @@ export function DailySummaryCard({
               {summary.narrative}
             </p>
 
+            {/* These breakpoints must stay equal to the grid's above: the
+                border flips from top to left exactly when the list stops being
+                stacked underneath the narrative and moves beside it. Split them
+                and the list gets a left rule while still stacked. */}
             {summary.bullets.length > 0 && (
-              <ul className="flex flex-col gap-3 border-t border-hairline pt-5 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+              <ul className="flex flex-col gap-3 border-t border-hairline pt-5 xl:border-l xl:border-t-0 xl:pl-10 xl:pt-0">
                 {summary.bullets.map((bullet, i) => (
                   // Indexed because the model can return two identical bullets
                   // and this list is static — never reordered, never filtered.
