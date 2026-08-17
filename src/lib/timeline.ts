@@ -28,9 +28,6 @@ export type TimelineRow = {
 /** A 15-minute bar counts as heavy trading at this multiple of the day's median. */
 const HEAVY_VOLUME_MULTIPLE = 2;
 
-/** Timeline stays readable; the whole day's news would swamp the price entries. */
-const MAX_NEWS_ROWS = 3;
-
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -82,6 +79,11 @@ export function buildTimeline(
   // noise — but that silently dropped them from the quietest days, which is
   // exactly where a reader looks to the timeline to find out where the day
   // actually turned. The only day that gets no pair is one that never moved.
+  //
+  // Mid-session these are the extremes so far, not the day's final ones: this
+  // function is called every 15 minutes during the session and recomputes from
+  // scratch each time, so a new high simply supersedes the previous row on the
+  // next rebuild. That is correct-as-of-now, the same as the price beside it.
   const high = ordered.reduce((a, b) => (b.price > a.price ? b : a));
   const low = ordered.reduce((a, b) => (b.price < a.price ? b : a));
   if (high.price !== low.price) {
@@ -122,10 +124,13 @@ export function buildTimeline(
     }
   }
 
-  // Newest first so the most recent headlines survive the cap, then folded back
-  // into the single chronological ordering below.
-  const notable = [...news].sort((a, b) => +b.at - +a.at).slice(0, MAX_NEWS_ROWS);
-  for (const item of notable) {
+  // Every article of the day gets a row. This was capped at the 3 most recent,
+  // which made the timeline disagree with the News & Events stat card directly
+  // above it — the card counts the day's articles and has never been capped, so
+  // a stock with 7 articles showed "7" over a timeline listing 3. The News page
+  // lists a symbol's whole day too; the timeline was the only place trimming.
+  // No sort here: everything is folded into one chronological ordering below.
+  for (const item of news) {
     rows.push({
       eventAt: item.at,
       kind: "news",

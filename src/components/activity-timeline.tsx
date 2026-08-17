@@ -2,8 +2,9 @@ import { SectionHeading } from "@/components/section-heading";
 import { formatEtTime } from "@/lib/format";
 import type { TimelineEntry } from "@/lib/queries";
 
-// Reconstructed once by the end-of-day job from stored snapshots and news, then
-// read straight from the table here — no polling, no live listener.
+// Rebuilt from stored snapshots and news every 15 minutes during the session
+// (and once more by the end-of-day job), then read straight from the table
+// here — no polling and no live listener in the page itself.
 
 // `news` was bg-semantic-up — the gain colour — so on a stock that fell, every
 // headline carried a green dot asserting a direction the article may contradict.
@@ -64,8 +65,8 @@ export function ActivityTimeline({ entries }: { entries: TimelineEntry[] }) {
         </ol>
       ) : (
         <p className="panel px-5 py-10 text-sm text-muted">
-          The timeline is built after the close, from the session&apos;s stored
-          snapshots.
+          The timeline starts once this session&apos;s first snapshot is
+          recorded, and fills in as the day goes on.
         </p>
       )}
     </section>

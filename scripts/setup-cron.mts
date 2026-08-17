@@ -29,12 +29,24 @@ const JOBS = [
     schedule: "*/15 13-21 * * 1-5",
     path: "/api/refresh",
   },
-  // ~4x/day. Fixed UTC hours land within an hour of the 08:00 / 12:00 / 16:30 /
-  // 20:00 ET targets year-round; news ingestion has no market-hours gate, so a
-  // DST shift changes nothing that matters here.
+  // 6x/day. News ingestion has no market-hours gate, so a DST shift changes
+  // nothing that matters here.
+  //
+  // Five of the six land before the daily-summaries window below, which is the
+  // point: the end-of-day job can only summarise news that is already stored,
+  // and under the old 4x schedule only three cycles ran first — the fourth was
+  // at 01:00 UTC, after every summary tick. 21:00 UTC is the last one before
+  // the window and sits at or after the close in both regimes (17:00 ET under
+  // EDT, 16:00 ET under EST), so a stock's day is complete when it is written
+  // up.
+  //
+  // 02:00 UTC is deliberately after the summary window. It exists to keep the
+  // News page fresh through the Thai morning (09:00 ICT), which the old 01:00
+  // UTC cycle was doing; the articles it stores belong to an ET day already
+  // summarised, exactly as before.
   {
     name: "news-ingest",
-    schedule: "0 12,16,21,1 * * *",
+    schedule: "0 12,15,18,20,21,2 * * *",
     path: "/api/ingest-news",
   },
   // End-of-day Today's Activity summaries. Each run summarises the next couple
@@ -42,13 +54,19 @@ const JOBS = [
   // several runs rather than in a single call that would overrun the 60s
   // function limit; the spare runs also absorb the model's intermittent 503s.
   //
-  // 21:05 UTC is 16:05 ET under EST and 17:05 ET under EDT — after the close in
-  // both, which is what the handler's own America/New_York check enforces. The
-  // :05 offset keeps every run clear of the 21:00 news cycle, which has to land
-  // first so the day's articles are in the database before they are summarised.
+  // 22:05-23:55 UTC is 17:05-18:55 ET under EST and 18:05-19:55 ET under EDT —
+  // after the close in both, which is what the handler's own America/New_York
+  // check enforces, and still the same ET date, so the price_cache staleness
+  // gate also passes.
+  //
+  // It was 21:05, five minutes after the 21:00 news cycle it depends on. That
+  // was too tight to be a sequencing guarantee and, more to the point, three
+  // news cycles was never enough to have stored the day. Starting an hour after
+  // the last pre-summary cycle is the clearance the dependency actually needed.
+  // Still 12 ticks for 4 batches, so the retry headroom is unchanged.
   {
     name: "daily-summaries",
-    schedule: "5-55/10 21-22 * * 1-5",
+    schedule: "5-55/10 22-23 * * 1-5",
     path: "/api/daily-summary",
   },
 ];

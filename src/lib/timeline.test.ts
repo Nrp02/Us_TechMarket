@@ -3,10 +3,11 @@ import { test } from "node:test";
 
 import { buildTimeline, type Snapshot, type TimelineNews } from "./timeline.ts";
 
-// Today's Timeline is built once per day by the end-of-day job and then read
-// straight from the database, so a rule that quietly stops emitting a row is
-// invisible until someone opens the page and notices something missing — which
-// is exactly how the session high/low regression below was found.
+// Today's Timeline is written to the database by a job — every 15 minutes
+// during the session, and again by the end-of-day job — and then read straight
+// back, so a rule that quietly stops emitting a row is invisible until someone
+// opens the page and notices something missing, which is exactly how the session
+// high/low regression below was found.
 
 // 2026-08-13 is a Thursday in EDT, so UTC is ET+4: 13:00Z is 09:00 ET and
 // 20:00Z is 16:00 ET, the closing bell. Bars below therefore sit mid-session
@@ -126,7 +127,10 @@ test("the median ignores bars with no volume rather than counting them as zero",
   assert.equal(labels(rows).includes("Heavy trading"), false);
 });
 
-test("news is capped at three, keeping the most recent", () => {
+// This asserted the opposite until the cap was removed: news was trimmed to the
+// 3 most recent, so a stock with 7 articles had a timeline showing 3 under a
+// stat card counting 7. Nothing is dropped now.
+test("every article of the day gets a row, oldest included", () => {
   const news: TimelineNews[] = [
     { at: at("13:00"), headline: "oldest" },
     { at: at("14:00"), headline: "second" },
@@ -137,9 +141,8 @@ test("news is capped at three, keeping the most recent", () => {
     .filter((r) => r.kind === "news")
     .map((r) => r.detail);
 
-  assert.equal(details.length, 3);
-  assert.deepEqual(details, ["second", "third", "newest"]);
-  assert.equal(details.includes("oldest"), false);
+  assert.equal(details.length, 4);
+  assert.deepEqual(details, ["oldest", "second", "third", "newest"]);
 });
 
 test("every row comes back in chronological order", () => {

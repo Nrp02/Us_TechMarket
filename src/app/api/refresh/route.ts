@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { isClosingWindow, isMarketOpen } from "@/lib/market";
+import { isClosingWindow, isMarketOpen, tradingDay } from "@/lib/market";
 import { refreshMarketData } from "@/lib/refresh";
+import { TOP_20_SYMBOLS } from "@/lib/symbols";
+import { rebuildTimelines } from "@/lib/timeline-rebuild";
 
 // The single ingestion entry point. Every upstream API call in the app happens
 // behind this route, and this route is only ever driven by the Supabase Cron
@@ -36,7 +38,30 @@ export async function POST(request: Request) {
   }
 
   try {
-    return NextResponse.json(await refreshMarketData());
+    const result = await refreshMarketData();
+
+    // Today's Timeline is rebuilt here, on the snapshots this run just wrote,
+    // so the Today's Activity page is useful while the session is running
+    // instead of only after the end-of-day job. It used to be built once, at
+    // EOD, which left the page showing "the timeline is built after the close"
+    // for the whole trading day.
+    //
+    // This needs no schedule of its own — it rides the 15-minute cadence that
+    // already exists for the snapshots, inside the same market-hours gate above,
+    // and reads only tables. No upstream call and no AI call, so the cost is a
+    // batched read plus one delete/insert.
+    //
+    // TOP_20_SYMBOLS, not ALL_SYMBOLS: the index proxies have no per-stock page.
+    const { timelines, failed } = await rebuildTimelines(
+      TOP_20_SYMBOLS,
+      tradingDay(),
+    );
+
+    return NextResponse.json({
+      ...result,
+      timelines: timelines.length,
+      timelineFailed: failed,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "refresh failed";
     return NextResponse.json({ error: message }, { status: 502 });

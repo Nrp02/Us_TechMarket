@@ -32,7 +32,15 @@ type FinnhubArticle = {
 //
 // The per-symbol cap is set above the number actually kept because the
 // relevance filter below discards roughly half of what Finnhub returns.
-const PER_SYMBOL = 4;
+//
+// 8 rather than 4: at 4 a genuinely busy stock lost articles at the fetch step,
+// before storage ever saw them — NVDA had 12 in one ET day, which four per
+// cycle could not carry. Raising it costs no extra Finnhub calls (the cap is
+// applied to one response, not per request) and no extra Gemini calls, since
+// summarisation is capped separately in news-ingest.ts. It does mean the first
+// cycle after this change stores a large one-time backlog; blurbs backfill
+// newest-first over the following cycles.
+const PER_SYMBOL = 8;
 const PER_FEED = 15;
 
 async function get(path: string): Promise<FinnhubArticle[]> {

@@ -1,3 +1,4 @@
+import { loadDayDataBatch } from "@/lib/day-data";
 import { fetchEvents } from "@/lib/finnhub-events";
 import {
   formatChange,
@@ -13,6 +14,11 @@ import { isSignificant } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
 import { buildTimeline, type Snapshot } from "@/lib/timeline";
+import {
+  timelineRowsFor,
+  writeTimelines,
+  type TimelineRow,
+} from "@/lib/timeline-rebuild";
 
 // The end-of-day batch job behind Today's Activity. For each of the Top 20 it
 // refreshes the earnings calendar, rebuilds the day's timeline from stored
@@ -316,105 +322,6 @@ Stocks:
 ${JSON.stringify(inputs, null, 2)}`;
 }
 
-type DayNews = { headline: string; summary: string | null; publishedAt: string };
-
-type DayDataBatch = {
-  bySymbol: Map<string, { snapshots: Snapshot[]; news: DayNews[] }>;
-  /** Reads that came back short of their exact count — see the note below. */
-  truncated: string[];
-};
-
-/**
- * Snapshots and news are stored in UTC; a trading day is a New York date. New
- * York is UTC-4 or UTC-5, so one ET day always falls inside the UTC window from
- * its own midnight to noon the next day. The window narrows the query; the exact
- * boundary is settled by comparing trading days below.
- *
- * Batched across every symbol in `symbols` rather than queried one at a time:
- * the day window is already shared, so there is nothing symbol-specific about
- * the query shape. This is what keeps the preamble's Supabase cost fixed at two
- * round trips no matter how many stocks the run covers, instead of two per
- * symbol.
- */
-async function loadDayDataBatch(symbols: string[], day: string): Promise<DayDataBatch> {
-  const from = `${day}T00:00:00Z`;
-  const to = new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString();
-
-  const [snapshotResult, newsResult] = await Promise.all([
-    db
-      .from("intraday_snapshots")
-      .select("symbol, price, volume, snapshot_at", { count: "exact" })
-      .in("symbol", symbols)
-      .gte("snapshot_at", from)
-      .lt("snapshot_at", to)
-      .order("snapshot_at", { ascending: true }),
-    db
-      .from("news")
-      .select("related_symbols, headline, published_at, news_summaries(summary)", {
-        count: "exact",
-      })
-      .overlaps("related_symbols", symbols)
-      .gte("published_at", from)
-      .lt("published_at", to)
-      .order("published_at", { ascending: false }),
-  ]);
-
-  const { data: snapshotRows } = snapshotResult;
-  const { data: newsRows } = newsResult;
-
-  // PostgREST caps a response at its max-rows setting (1000 by default) and
-  // says nothing when it does — the reply is simply short. Batching made that
-  // reachable: one query now carries every symbol's rows where each used to
-  // carry one symbol's, and a silent truncation would drop whole stocks'
-  // snapshots and quietly rebuild their timelines from partial data. Comparing
-  // the returned rows against the exact count turns that into a reported
-  // failure. Measured at 671 rows for 20 symbols on a normal session, so this
-  // is headroom monitoring, not an expected path.
-  const truncated: string[] = [];
-  for (const [table, result] of [
-    ["intraday_snapshots", snapshotResult],
-    ["news", newsResult],
-  ] as const) {
-    const returned = result.data?.length ?? 0;
-    if (result.count != null && result.count > returned) {
-      truncated.push(
-        `${table}: row cap hit — ${returned} of ${result.count} rows returned, so timelines would be rebuilt from partial data`,
-      );
-    }
-  }
-
-  const bySymbol = new Map<string, { snapshots: Snapshot[]; news: DayNews[] }>(
-    symbols.map((symbol) => [symbol, { snapshots: [], news: [] }]),
-  );
-
-  for (const row of snapshotRows ?? []) {
-    const at = new Date(row.snapshot_at as string);
-    if (tradingDay(at) !== day) continue;
-    bySymbol.get(row.symbol as string)?.snapshots.push({
-      at,
-      price: Number(row.price),
-      volume: row.volume == null ? null : Number(row.volume),
-    });
-  }
-
-  for (const row of newsRows ?? []) {
-    if (tradingDay(new Date(row.published_at as string)) !== day) continue;
-    const item: DayNews = {
-      headline: row.headline as string,
-      // news_id is news_summaries' primary key, so PostgREST embeds a single
-      // object here even though the client's inferred type says array.
-      summary:
-        (row.news_summaries as unknown as { summary: string } | null)?.summary ?? null,
-      publishedAt: row.published_at as string,
-    };
-    for (const symbol of (row.related_symbols as string[] | null) ?? []) {
-      bySymbol.get(symbol)?.news.push(item);
-    }
-  }
-
-  return { bySymbol, truncated };
-}
-
 /** Refreshes the earnings calendar for one symbol and returns what is upcoming. */
 async function syncEvents(symbol: string) {
   const events = await fetchEvents(symbol);
@@ -438,50 +345,6 @@ async function syncEvents(symbol: string) {
     date: tradingDay(e.eventAt),
     note: e.note,
   }));
-}
-
-type TimelineRow = {
-  symbol: string;
-  trading_day: string;
-  event_at: string;
-  kind: string;
-  label: string;
-  detail: string | null;
-};
-
-function timelineRowsFor(symbol: string, day: string, rows: ReturnType<typeof buildTimeline>): TimelineRow[] {
-  return rows.map((r) => ({
-    symbol,
-    trading_day: day,
-    event_at: r.eventAt.toISOString(),
-    kind: r.kind,
-    label: r.label,
-    detail: r.detail,
-  }));
-}
-
-/**
- * Deletes and re-inserts every symbol's rows for `day` in one round trip each,
- * rather than one delete + one insert per symbol. Deleted and re-inserted
- * rather than upserted: a rebuild may drop a row (a flat day loses its
- * high/low pair), and an upsert alone would leave the stale one behind.
- */
-async function writeTimelines(symbols: string[], day: string, rows: TimelineRow[]) {
-  // Nothing to write means nothing to clear: wiping first and failing to insert
-  // would leave the page with no timeline where it previously had a good one.
-  if (!symbols.length) return;
-
-  const { error: deleteError } = await db
-    .from("timeline_events")
-    .delete()
-    .in("symbol", symbols)
-    .eq("trading_day", day);
-  if (deleteError) throw new Error(`timeline_events delete: ${deleteError.message}`);
-
-  if (rows.length) {
-    const { error } = await db.from("timeline_events").insert(rows);
-    if (error) throw new Error(`timeline_events insert: ${error.message}`);
-  }
 }
 
 /**
@@ -550,6 +413,13 @@ export async function generateDailySummaries(
   // free, and keeping it off the summary's critical path means a change to the
   // rules can be rolled out by re-running this job without spending any of the
   // day's Gemini quota re-writing narratives that were already correct.
+  //
+  // This is no longer the only place the timeline is built — the intraday
+  // refresh route rebuilds it every 15 minutes so the page is useful during the
+  // session (see lib/timeline-rebuild.ts). The rebuild here is kept anyway: this
+  // job already has to load the same day data for the prompt below, so it costs
+  // one extra pure loop, and it is the backstop for a day whose refresh ticks
+  // failed. Both paths write the same rows from the same rules.
   //
   // Free of quota, but not free of time. Every active stock's day data is read
   // in one batched pass, so the two reads below are the whole I/O cost of the
