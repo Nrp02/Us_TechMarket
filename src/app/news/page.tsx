@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NewsDatePicker, type DateOption } from "@/components/news-date-picker";
 import { NewsList } from "@/components/news-list";
 import { formatDay } from "@/lib/format";
 import { tradingDay } from "@/lib/market";
@@ -33,8 +34,14 @@ function isTab(value: string | undefined): value is TabKey {
   return TABS.some((t) => t.key === value);
 }
 
-/** How many past dates the picker offers beyond Today and All dates. */
-const RECENT_DATES_SHOWN = 9;
+/**
+ * How many past dates the picker offers beyond Today and All dates. 6, so
+ * Today + 6 = the same 7-day window news is physically retained for (see
+ * data-retention-cleanup in 0007_data_retention.sql) — once old rows are
+ * pruned this can never exceed 7 regardless of the constant, but the constant
+ * should say what it means rather than being incidentally true.
+ */
+const RECENT_DATES_SHOWN = 6;
 
 // A tab switch used to also silently reset the date filter, and a date switch
 // reset the tab, because each control only ever wrote its own query param.
@@ -82,6 +89,28 @@ export default async function News({
   const otherDates = availableDates
     .filter((d) => d !== today)
     .slice(0, RECENT_DATES_SHOWN);
+
+  const dateOptions: DateOption[] = [
+    {
+      key: "today",
+      label: "Today",
+      href: buildHref(active),
+      current: resolved.isToday,
+    },
+    ...otherDates.map((d) => ({
+      key: d,
+      label: formatDay(d),
+      href: buildHref(active, d),
+      current: resolved.date === d && !resolved.isToday,
+    })),
+    {
+      key: "all",
+      label: "All dates",
+      href: buildHref(active, "all"),
+      current: resolved.isAll,
+      separator: true,
+    },
+  ];
 
   const emptyMessage = resolved.isToday
     ? "No articles recorded yet today. News is fetched six times during the trading day — check back after the next cycle, or switch to All dates to see recent coverage."
@@ -157,86 +186,11 @@ export default async function News({
           })}
         </nav>
 
-        {/* Native disclosure rather than a client component — every option here
-            is a link, so opening it costs no JavaScript and closing it happens
-            naturally on navigation, the same reasoning that already keeps this
-            page a server component. */}
-        <details className="group relative shrink-0">
-          <summary className="panel-control flex w-fit list-none items-center gap-2 px-4 py-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
-            {dateLabel}
-            <svg
-              viewBox="0 0 20 20"
-              className="size-4 text-muted transition-transform group-open:rotate-180"
-              aria-hidden
-            >
-              <path
-                d="M5 8l5 5 5-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.75}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </summary>
-
-          {/* The selected row in this menu, and in the two below it, marks
-              itself with `text-primary-active` rather than `text-primary`.
-              Measured: primary (#6695ff) on surface-strong (#2b3f6c) is
-              3.60:1 at 14px — under the 4.5:1 AA floor, on the row whose whole
-              job is to say which filter is on. primary-active (#8db0ff) is
-              4.82:1 on the same plate. The category tabs above already went
-              through this and landed on primary-active; the date rows were the
-              last place in the product still using the failing pair. */}
-          <div className="panel-overlay absolute right-0 z-20 mt-2 w-56 rounded-2xl p-1 [--overlay-origin:top_right]">
-            <ul>
-              <li>
-                <Link
-                  href={buildHref(active)}
-                  aria-current={resolved.isToday ? "page" : undefined}
-                  className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                    resolved.isToday
-                      ? "bg-surface-strong text-primary-active"
-                      : "text-body hover:bg-surface-soft hover:text-ink"
-                  }`}
-                >
-                  Today
-                </Link>
-              </li>
-              {otherDates.map((d) => (
-                <li key={d}>
-                  <Link
-                    href={buildHref(active, d)}
-                    aria-current={resolved.date === d && !resolved.isToday ? "page" : undefined}
-                    className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                      resolved.date === d && !resolved.isToday
-                        ? "bg-surface-strong text-primary-active"
-                        : "text-body hover:bg-surface-soft hover:text-ink"
-                    }`}
-                  >
-                    {formatDay(d)}
-                  </Link>
-                </li>
-              ))}
-              {/* The rule spans the menu, so it sits on the list rather than on
-                  the row — a border on the row would inset with the row's own
-                  radius and stop short of both edges. */}
-              <li className="mt-1 border-t border-hairline pt-1">
-                <Link
-                  href={buildHref(active, "all")}
-                  aria-current={resolved.isAll ? "page" : undefined}
-                  className={`block rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
-                    resolved.isAll
-                      ? "bg-surface-strong text-primary-active"
-                      : "text-body hover:bg-surface-soft hover:text-ink"
-                  }`}
-                >
-                  All dates
-                </Link>
-              </li>
-            </ul>
-          </div>
-        </details>
+        {/* Client island — the rest of this page is a server component, but a
+            dropdown that closes on outside click needs a listener, which a
+            native <details> element (the previous approach here) can't
+            provide. See news-date-picker.tsx for why. */}
+        <NewsDatePicker dateLabel={dateLabel} options={dateOptions} />
       </div>
 
       <NewsList items={items} emptyMessage={emptyMessage} />

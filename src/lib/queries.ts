@@ -26,6 +26,28 @@ import { NAME_BY_SYMBOL } from "@/lib/symbols";
  */
 const CACHE_SECONDS = 60;
 
+/** How many ET trading days of news the product keeps, and will show. */
+const RETENTION_DAYS = 7;
+
+/**
+ * The oldest ET day the News page will show: today plus the six before it,
+ * matching the seven days `data-retention-cleanup` keeps in the database
+ * (0007_data_retention.sql, guarded in 0008_retention_keep_last.sql).
+ *
+ * An ET *day* rather than a rolling `now - 7d` instant. Every other date rule
+ * in this file works in whole trading days, and a sliding instant makes the
+ * oldest day a partial one whose article count shrinks on every reload — the
+ * picker would offer a date and then quietly show less of it each time. Whole
+ * days also make the picker's seven entries exactly the seven days retained.
+ *
+ * The floor is enforced here rather than inferred from what is still in the
+ * table: the cleanup job runs once a day, so between runs the table
+ * legitimately holds more than a week.
+ */
+function retentionCutoffDay(): string {
+  return tradingDay(new Date(Date.now() - (RETENTION_DAYS - 1) * 86_400_000));
+}
+
 export type Ticker = {
   symbol: string;
   name: string;
@@ -222,9 +244,16 @@ async function getNewsUncached(
   day?: string | null,
   limit = 60,
 ): Promise<NewsItem[]> {
+  // Coarse in SQL, exact in JS — the same two-step the `day` filter below
+  // already uses. dayWindow's lower bound is midnight UTC, a few hours ahead
+  // of the ET day actually starting, so the query can admit a sliver of the
+  // day before the cutoff; the filter after the await settles it.
+  const cutoff = retentionCutoffDay();
+
   let query = db
     .from("news")
     .select(NEWS_COLUMNS)
+    .gte("published_at", dayWindow(cutoff).from)
     .order("published_at", { ascending: false })
     .limit(limit);
 
@@ -244,7 +273,9 @@ async function getNewsUncached(
   }
 
   const { data } = await query;
-  const items = (data ?? []).map((row) => toNewsItem(row));
+  const items = (data ?? [])
+    .map((row) => toNewsItem(row))
+    .filter((item) => tradingDay(new Date(item.publishedAt)) >= cutoff);
   return day
     ? items.filter((item) => tradingDay(new Date(item.publishedAt)) === day)
     : items;
@@ -278,15 +309,21 @@ export async function getNewsTeaser(
  * avoids adding a Postgres function for one dropdown.
  */
 async function getNewsAvailableDatesUncached(): Promise<string[]> {
+  const cutoff = retentionCutoffDay();
   const { data } = await db
     .from("news")
     .select("published_at")
+    .gte("published_at", dayWindow(cutoff).from)
     .order("published_at", { ascending: false })
     .limit(1000);
 
   const days = new Set<string>();
   for (const row of data ?? []) {
-    days.add(tradingDay(new Date(row.published_at as string)));
+    // Coarse-then-exact again: the SQL bound can admit the tail of the day
+    // before the cutoff, and offering that date would put a knowingly partial
+    // day in the picker.
+    const day = tradingDay(new Date(row.published_at as string));
+    if (day >= cutoff) days.add(day);
   }
   return [...days].sort().reverse();
 }
