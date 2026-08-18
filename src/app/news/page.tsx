@@ -34,15 +34,6 @@ function isTab(value: string | undefined): value is TabKey {
   return TABS.some((t) => t.key === value);
 }
 
-/**
- * How many past dates the picker offers beyond Today and All dates. 6, so
- * Today + 6 = the same 7-day window news is physically retained for (see
- * data-retention-cleanup in 0007_data_retention.sql) — once old rows are
- * pruned this can never exceed 7 regardless of the constant, but the constant
- * should say what it means rather than being incidentally true.
- */
-const RECENT_DATES_SHOWN = 6;
-
 // A tab switch used to also silently reset the date filter, and a date switch
 // reset the tab, because each control only ever wrote its own query param.
 // Every link on this page is built through here so both survive together.
@@ -86,9 +77,12 @@ export default async function News({
       ? "Today"
       : formatDay(resolved.date!);
 
-  const otherDates = availableDates
-    .filter((d) => d !== today)
-    .slice(0, RECENT_DATES_SHOWN);
+  // Every date the floor admits is offered, with no second cap of its own.
+  // getNewsDates already returns at most the seven retained days (the floor in
+  // lib/news-retention.ts), and a count kept here as well could only disagree
+  // with it — a `slice(0, 6)` silently dropped the oldest day whenever today
+  // had no articles yet and all seven days were past ones.
+  const otherDates = availableDates.filter((d) => d !== today);
 
   const dateOptions: DateOption[] = [
     {
