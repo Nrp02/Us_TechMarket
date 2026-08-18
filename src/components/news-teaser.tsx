@@ -78,7 +78,7 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
             beside two that never existed. */}
         {!items.length && (
           <p className="panel px-5 py-8 text-sm text-muted md:col-span-3">
-            No articles for these stocks yet. News is collected four times a day
+            No articles for these stocks yet. News is collected six times a day
             and summarised on arrival.
           </p>
         )}

@@ -84,7 +84,7 @@ export default async function News({
     .slice(0, RECENT_DATES_SHOWN);
 
   const emptyMessage = resolved.isToday
-    ? "No articles recorded yet today. News is fetched four times during the trading day — check back after the next cycle, or switch to All dates to see recent coverage."
+    ? "No articles recorded yet today. News is fetched six times during the trading day — check back after the next cycle, or switch to All dates to see recent coverage."
     : resolved.isAll
       ? "No articles in this category yet."
       : `No articles from ${formatDay(resolved.date!)} in this category.`;
