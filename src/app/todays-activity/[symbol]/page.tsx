@@ -18,7 +18,7 @@ import {
   WATCHLIST_MIN,
 } from "@/lib/watchlist";
 
-// One page per stock, reached through the sidebar and the header switcher. There
+// One page per stock, reached through the nav card and the header switcher. There
 // is no secondary tab bar by design — the dense AI summary below replaces the
 // Overview/News/Events/Financials/Charts/Peers tabs the early mockups had.
 //

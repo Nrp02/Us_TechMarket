@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { readWatchlist } from "@/lib/watchlist";
 
-// Today's Activity is always a page about one stock. The sidebar link lands
+// Today's Activity is always a page about one stock. The nav card's link lands
 // here, so it forwards to the first watchlist stock rather than showing a
 // picker the header switcher already provides.
 //

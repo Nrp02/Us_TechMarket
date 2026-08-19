@@ -194,8 +194,10 @@
 
   /* --- The glass ---------------------------------------------------------
      Four tiers. Three are content (resting, raised, overlay); the rail is
-     shell, and is excepted the same way the sidebar has always been excepted
-     from the one-raised-element rule.
+     shell, and is excepted from the one-raised-element rule on that ground.
+     `panel-rail` keeps its name now that the navigation is a card across the
+     top rather than a column down the left — the tier was always defined by
+     the ROLE, not by the axis, and every measurement below still holds.
 
      Alpha and blur are the two dials, and they do different jobs. ALPHA sets
      how much of the field bleeds through, and therefore how far a text pair's

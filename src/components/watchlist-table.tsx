@@ -216,11 +216,19 @@ export function WatchlistTable({
 
           The breakpoint is arithmetic, not a guess, and it moves whenever the
           shell or the column set does. The table's panel needs 748px; the
-          content column is viewport − 48 shell padding − 240 rail − 24 gap, so
-          it clears at 1060px. Tailwind's nearest steps (1024, 1280) would both
-          show this line at widths where it is false. */}
+          content column is viewport − 48 shell padding, so it clears at
+          796px and the class rounds that up to a clean 800 — the line survives
+          four pixels longer than it strictly must, which is the same rounding
+          the Home grid below takes. Tailwind's nearest steps (768, 1024) would
+          both be wrong by an order more than that.
+
+          It was 1060 while navigation lived in a 240px left rail, whose width
+          plus its 24px gap came out of this same column. Moving the nav to a
+          card above the content returned all 264px, and the whole of that
+          shows up here: the hint now disappears at iPad portrait instead of
+          persisting to laptop widths. */}
       {tickers.length > 0 && (
-        <p className="mt-3 px-1 text-xs text-muted min-[1060px]:hidden">
+        <p className="mt-3 px-1 text-xs text-muted min-[800px]:hidden">
           Scroll the table sideways for volume, status and the day chart.
         </p>
       )}

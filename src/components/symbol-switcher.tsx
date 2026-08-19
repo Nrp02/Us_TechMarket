@@ -6,7 +6,7 @@ import { useWatchlistMenu } from "@/components/use-watchlist-menu";
 
 // The page header doubles as the navigation for this section: the ticker itself
 // is the button, and it opens the watchlist. There is deliberately no secondary
-// tab bar on Today's Activity — the sidebar plus this switcher is the whole of it.
+// tab bar on Today's Activity — the nav card plus this switcher is the whole of it.
 //
 // This popover now covers watching and removing only — selecting a row
 // navigates there, and every row can be dropped from the watchlist. Adding a
@@ -94,7 +94,7 @@ export function SymbolSwitcher({
           // 4.5:1 AA floor, on the one row in the menu that has to read as
           // current. primary-active (#8db0ff) measures 4.82:1 on the same
           // plate. The system had already made this exact call once —
-          // `nav-active text-primary-active` in the sidebar, with the note in
+          // `nav-active text-primary-active` in the nav card, with the note in
           // globals.css saying primary "fails at every alpha" — and the
           // dropdowns simply never followed. Same fix now applies to the three
           // date-filter rows in `app/news/page.tsx`.

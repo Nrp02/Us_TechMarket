@@ -230,14 +230,18 @@ export function IntradayChart({
 
       {/* Same undiscoverable-scroll problem as the watchlist table, same fix.
           This plot has a 560px minimum inside a panel with 40px of its own
-          padding, so it stops scrolling at 888px of viewport — a different
-          number from the table's, so it gets its own breakpoint rather than a
-          shared approximation.
+          padding, and the content column is viewport − 48 shell padding, so it
+          stops scrolling at 648px of viewport — a different number from the
+          table's, so it gets its own breakpoint rather than a shared
+          approximation.
+
+          It was 888 while the 240px left rail took its width out of the same
+          column; the nav card above the content does not.
 
           Outside the panel, not inside it: a block child of an overflow-x-auto
           container is laid out in the scrollable coordinate space, so this line
           would slide out of view exactly when it became relevant. */}
-      <p className="mt-3 text-xs text-muted min-[888px]:hidden">
+      <p className="mt-3 text-xs text-muted min-[650px]:hidden">
         Scroll sideways to see the whole session.
       </p>
     </>

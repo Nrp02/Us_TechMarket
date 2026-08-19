@@ -111,8 +111,8 @@ components:
     backgroundColor: "{colors.glass-rail}"
     textColor: "{colors.body}"
     rounded: "{rounded.container}"
-    padding: "16px"
-    width: "240px"
+    padding: "8px 16px"
+    height: "62px"
   panel-control:
     backgroundColor: "{colors.glass-panel}"
     textColor: "{colors.ink}"
@@ -224,7 +224,7 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 **The Baked Tint Rule.** A tinted plate is a flat token, never an alpha (`bg-primary/8`). An alpha composites against whatever happens to be behind it, so the Significant badge once measured 4.76:1 at rest and 4.49:1 on a hovered row — contrast that depended on where the pointer was. Under glass that failure is worse, not better: the thing behind is now a gradient. The three tints are pre-composited at **8%** over Canvas. The dose keeps falling for one reason: adding accent to a plate pulls the plate toward the text it has to contrast with. This pair is the binding constraint on every pass — re-run it **first** whenever the glass or the weather changes, because it fails before anything else does.
 
-**The Climbing Ramp Rule.** A surface that sits *on* another surface is the lighter of the two. If a new surface is darker than its field, the depth will not read no matter what shadow is applied. The rail is the single sanctioned exception: it resolves darker than `glass-panel` because it is shell, and shell should be recessive relative to content.
+**The Climbing Ramp Rule.** A surface that sits *on* another surface is the lighter of the two. If a new surface is darker than its field, the depth will not read no matter what shadow is applied. The `panel-rail` tier is the single sanctioned exception: it resolves darker than `glass-panel` because it is shell, and shell should be recessive relative to content. The tier keeps the name it was given as a left rail — it was always defined by the role, not by the axis, and every measurement taken against it survived the move to a top card unchanged.
 
 **The Always-Light Plate Rule.** `logo-plate` is the one token that stays light, and it is load-bearing rather than an oversight. Real marks sit on this plate; the lettermark fallback and category glyphs use `surface-strong` instead so their text stays legible against the glass. Alpha is safe here despite the Baked Tint Rule for two reasons: at 0.85 the surface underneath moves the result by about 3 RGB units, and a brand mark is exempt from 1.4.11 as a logotype anyway.
 
@@ -240,7 +240,9 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 ### Hierarchy
 
-- **Display** (Source Serif 4, 600, `clamp(2.25rem, 4vw, 3.25rem)`, 1.06): one per page, the page's own name. Set through the `page-title` utility, which also carries the mask sweep.
+- **Display** (Source Serif 4, 600, `clamp(2.25rem, 4vw, 3.25rem)`, 1.06): one per page, carrying what the page is *about* rather than always its name. News takes its name; **Home takes the session date** — spelled out, `Tuesday, August 18` — because the nav card holds the product's name on every route now, and at 52px a name the visitor already knows is the least useful element on a surface where they are finding something out. It also states the product's central caveat in the first thing the eye meets: a completed session, not a live tape. Today's Activity has no display element at all; its `<h1>` is a ticker and stays in Inter as a measured identifier. Set through the `page-title` utility, which also carries the mask sweep.
+
+  The date is set in the serif rather than in mono, and that is not an exception to The Mono Numerals Rule. That rule governs a number which is *data* — a value in a column, comparable down it. A page's title is written.
 - **Figure** (JetBrains Mono, 500, 1.875rem, 1.05, `tnum`): the one large tabular reading — Market Overview levels and the Today's Activity stat cells. Both surfaces import this step rather than spelling a size, because the same role rendered 38px on one page and 30px on another before it existed.
 - **Title** (Inter, 600, 1.25rem, 1.75rem): section headings. One step, always paired with the hairline rule running to the meta slot.
 - **Lede** (Source Serif 4, 400, 1.125rem, 1.59): the AI narrative — the one passage long enough for optical bleed to accumulate.
@@ -265,15 +267,19 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 ## Layout
 
-One centred group, `max-w-[1680px]`, with a uniform `24px` of padding and a `24px` gap between the rail and the content. Pages carry **no horizontal padding of their own** — the shell owns every gutter. This replaced three unrelated sources of margin that never agreed: measured at 1470px the viewport-to-rail gap was 16px, rail-to-content 56px and content-to-viewport 40px, diverging to 16 / 280 / 264 at 1920px.
+One centred group, `max-w-[1680px]`, stacked as a column with a uniform `24px` of padding and a `24px` gap between the nav card and the content below it. Pages carry **no horizontal padding of their own** — the shell owns every gutter. This replaced three unrelated sources of margin that never agreed: measured at 1470px the viewport-to-rail gap was 16px, rail-to-content 56px and content-to-viewport 40px, diverging to 16 / 280 / 264 at 1920px.
 
-The rail is a fixed `240px` card, sticky at the top of the content group. `<main>` is a flex item and carries `min-w-0` — load-bearing, not tidying: without it a flex item cannot shrink below its content's min-content width, and the two `overflow-x-auto` wrappers in the product become dead code that widens the page instead of scrolling inside itself.
+The navigation is a full-width `62px` card across the top, and it used to be a `240px` rail down the left. `<main>` is still a flex item and still carries `min-w-0` — load-bearing, not tidying: without it a flex item cannot shrink below its content's min-content width, and the two `overflow-x-auto` wrappers in the product become dead code that widens the page instead of scrolling inside itself. The axis changed; the default it guards against did not.
+
+**The content column is `viewport − 48` on every route, and that is the whole consequence.** It was `viewport − 48 − 240 rail − 24 gap`, so content gained exactly 264px: `main` measures 1422px at a 1470px viewport where it measured 1158px. Every breakpoint derived from the shell arithmetic moved with it, and one of them changes what a laptop sees — Home's two-column split now engages at 1130px instead of 1390px, so a 1280px screen gets the composition the page was drawn for instead of a stacked column. The cost runs the other way: `84px` of permanent vertical chrome (62 card + 24 gap, from a viewport top of 24) that a rail did not charge, on the axis that is scarcer on a laptop.
 
 Sections stack at a `24px` rhythm. Every section opens with a `SectionHeading`: a title, a hairline running from it to the right edge, and an optional meta slot. The row carries a `38px` minimum height — the height of a `panel-control` pill — because two side-by-side sections with different metas otherwise started 10px apart.
 
-Breakpoints are chosen arithmetically rather than from a stock scale, and they move whenever the shell or the column set does. The watchlist's sideways-scroll hint appears below `1060px` because the table's panel needs 748px and the content column is `viewport − 48 shell − 240 rail − 24 gap`. Tailwind's nearest steps (1024, 1280) would both show that line at widths where it is false.
+Breakpoints are chosen arithmetically rather than from a stock scale, and they move whenever the shell or the column set does. The watchlist's sideways-scroll hint appears below `800px` because the table's panel needs 748px and the content column is `viewport − 48 shell` — an exact crossing of 796, rounded up to a clean ten. It read `1060px` while the rail took 264px out of that same column. Tailwind's nearest steps (768, 1024) would both show the line at widths where it is false.
 
-**Target viewports are laptop and iPad.** All three routes fit exactly at 768, 834, 1024 and 1280. At 390px they do not, and this is a known, accepted limit rather than a bug: the rail never yields its 240px, leaving `main` 78px against min-content widths of 117–224px. Fixing it means giving the rail a collapse behaviour, which is a composition decision nobody has taken.
+**Target viewports are laptop and iPad, and phone now fits as well.** Measured on all three routes at 390 / 430 / 600 / 768 / 834 / 1024 / 1130 / 1280 / 1470 / 1920: `documentElement.scrollWidth` equals the viewport at every one of them, so nothing overflows anywhere.
+
+390px used to overflow, and the diagnosis recorded here was right — the rail never yielded its 240px, leaving `main` 78px against min-content widths of 117–224px. Moving navigation to the top is the collapse behaviour that was missing: `main` gets 342px at 390, which clears the widest of those minimums. Phone is still not a *designed* target — nothing below 600px has been composed for, and the nav card wraps to two rows of items there (`110px` instead of `62px`) — but it is no longer broken, and the fix was a side effect rather than work.
 
 ### Named Rules
 
@@ -292,7 +298,7 @@ There is **no coloured glow around any panel**. A blue pool under each step was 
 ### Shadow Vocabulary
 
 - **elev-1** (`0 1px 2px rgb(0 0 0 / 0.45), 0 4px 14px -3px rgb(0 0 0 / 0.5)`): the resting panel, the track, and any control floating on the field.
-- **elev-2** (`0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6)`): the rail, and the one raised element per page.
+- **elev-2** (`0 2px 6px rgb(0 0 0 / 0.5), 0 16px 34px -10px rgb(0 0 0 / 0.6)`): the nav card, and the one raised element per page.
 - **elev-3** (`0 6px 12px rgb(0 0 0 / 0.55), 0 30px 60px -14px rgb(0 0 0 / 0.7)`): overlays only. It has to detach the pane from the page completely.
 
 **The lit rim** (`--edge-rim`) is a masked 1px gradient ring, not a border: near-white where the light strikes the top-left corner, gone by the middle of the pane, picking up a last faint catch at the far corner the way a real edge bounces. A flat border states the same brightness on the lit edge and the shadowed one, which is exactly what made the earlier panels read as drawn rectangles. The pseudo-element's radius is the tier's radius **plus one**, because it sits a pixel outside; `inherit` leaves a visible notch at every corner.
@@ -303,13 +309,13 @@ There is **no coloured glow around any panel**. A blue pool under each step was 
 
 **The One Material Rule.** Panels are built by applying one of the seven material utilities — `panel`, `panel-raised`, `panel-overlay`, `panel-track`, `panel-rail`, `panel-control`, `panel-chip` — never by hand-assembling `bg-canvas border border-hairline rounded-3xl shadow-…`. The material was previously reassembled in sixteen components, which is why nothing about it could be changed system-wide. **A component that inlines the recipe is drift even when the result looks identical.** If it needs a variant, add one to the utility.
 
-**The One Raised Element Rule.** At most one thing per page sits at `elev-2` (the rail excepted, since it is shell rather than content). The scale exists to say *this outranks its neighbours*; two raised elements on one page say nothing.
+**The One Raised Element Rule.** At most one thing per page sits at `elev-2` (the nav card excepted, since it is shell rather than content). The scale exists to say *this outranks its neighbours*; two raised elements on one page say nothing.
 
 **The Two-Channel Depth Rule.** Never add a cast shadow without checking the tonal relationship underneath it. If the surface is not lighter than its field, the shadow is decoration and the depth will not read.
 
 ## Shapes
 
-Two radii and almost nothing between them. **Containers are 24px** — every panel, the rail, the raised card. **Tokens are full pills** — badges, chips, change values, the controls that float on the field, the news category track. Inside an overlay the scale steps down concentrically: a `16px` pane holding `12px` rows on `4px` of padding, so the rows sit inside the corner rather than cutting across it. Navigation rows take `8px`.
+Two radii and almost nothing between them. **Containers are 24px** — every panel, the nav card, the raised card. **Tokens are full pills** — badges, chips, change values, the controls that float on the field, the news category track. Inside an overlay the scale steps down concentrically: a `16px` pane holding `12px` rows on `4px` of padding, so the rows sit inside the corner rather than cutting across it. Navigation rows take `8px`.
 
 Borders are 1px and always translucent where they meet the sky, solid only where they land on a known panel face. Nothing in the system uses a hard offset shadow, a coloured left border, or a clip-path silhouette.
 
@@ -344,13 +350,19 @@ Borders are 1px and always translucent where they meet the sky, solid only where
 
 ### Navigation
 
-The rail is a card, not a slab: same 24px geometry and same material as every other panel, only darker and more blurred, because it is the one surface a visitor sees on every route and it should stay quiet while the page behind it changes.
+Navigation is a card across the top, not a slab and not a rail: same 24px geometry and same material as every other panel, only darker and more blurred, because it is the one surface a visitor sees on every route and it should stay quiet while the page behind it changes. It is split to its two edges — the product's name at the left, the three items at the right — which is the masthead arrangement: the publication's name at one end, its sections at the other. The name is set in the display serif so the nameplate speaks in the brand voice while the items opposite speak in the interface voice, and it is text rather than a link, since a second control pointing at Home would compete with the item already carrying `aria-current`. Below 600px the name is dropped and the nav keeps the row, falling back to the left edge — measured, the two together need 533px against a content column of `viewport − 48`.
+
+Nothing was invented to fill the middle, and nothing needs to be. The Filled Right Rule warns that emptiness inside a full-width container reads as unfinished — but that is about a panel of content whose measure cap strands a column. Splitting two real objects to the two edges is what a masthead does, and the gap between them is the arrangement rather than a hole in it.
+
+**It is deliberately not sticky, and that reverses the rail's own behaviour.** A rail can be sticky for free: content scrolls past its side, so its backdrop holds nothing but the fixed sky and the blur is never recomputed. A pinned top card has content passing *underneath* it, which re-composites a 10px `backdrop-filter` on every scroll frame — the case The Bounded Motion Rule exists to forbid. The card scrolls away with the page instead, and `g h` / `g n` / `g a` cover switching from any scroll position. It carries no entrance animation either: it is the frame, present from the first paint like the sky, which also holds peak animation concurrency at three.
 
 Items are 44px tall, `8px` radius, Body text with an 18px icon at 1.5 stroke. The active item is `nav-active` — a translucent 18% accent plate, a lit inset ring, a soft cast — with **Signal Blue Active** text and a 1.75 stroke on the icon. The icon carries no colour decision of its own; its stroke is `currentColor`, so it is exactly as blue as the label beside it. `aria-current="page"` is always set: the active state is a plate and a colour, and neither is reported by a screen reader.
 
 Each row carries its shortcut — `g h`, `g n`, `g a` — in `aria-keyshortcuts`, and draws nothing. The hint *was* printed at the trailing edge in muted mono and was removed on report: it read as characters somebody had forgotten to delete. See The Keycap-Or-Nothing Rule.
 
-`nav-active` is the one sanctioned exception to The Baked Tint Rule, and it earns it only by being measured at both ends of its range: `primary` fails every alpha (4.49:1 at its most generous), `primary-active` clears at 5.43:1 against the rail's bright end and 7.06:1 against its dim end.
+`nav-active` is the one sanctioned exception to The Baked Tint Rule, and it earns it only by being measured at both ends of its range: `primary` fails every alpha (4.49:1 at its most generous), `primary-active` clears at 5.43:1 against the card's bright end and 7.06:1 against its dim end.
+
+A nav label carries `whitespace-nowrap` for the reason the watchlist's column headers do: a label naming a destination is an identity, and the one thing in a row that must never reflow. Without it, "Today's Activity" broke across two lines inside its own item at 390px and took the card from 62px to 82px doing it.
 
 ### Menus and Disclosures
 

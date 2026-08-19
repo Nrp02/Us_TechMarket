@@ -52,7 +52,28 @@ export function formatEtDate(iso: string): string {
   return etDateFormat.format(new Date(iso));
 }
 
+const etDateLongFormat = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+});
+
 /** A YYYY-MM-DD trading day, which carries no time to be shifted by a zone. */
 export function formatDay(day: string): string {
   return etDateFormat.format(new Date(`${day}T12:00:00Z`));
+}
+
+/**
+ * The same trading day, spelled out — for Home's masthead, where the date is
+ * the page's headline rather than a value in a corner.
+ *
+ * The T12:00:00Z is load-bearing and is the reason this shares `formatDay`'s
+ * parse rather than taking a shortcut. A bare `new Date("2026-08-18")` parses
+ * as UTC midnight, which is 8pm on the 17th in New York, so the formatter
+ * would name the wrong weekday for every date in the product. Noon is far
+ * enough from both edges that no offset, DST included, can push it across.
+ */
+export function formatDayLong(day: string): string {
+  return etDateLongFormat.format(new Date(`${day}T12:00:00Z`));
 }

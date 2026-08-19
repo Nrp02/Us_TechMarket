@@ -2,11 +2,11 @@
 
 // The fallback for a render that threw. Without this file Next serves its own
 // bare "Application error: a server-side exception has occurred" page, which
-// drops the sidebar and leaves a visitor with no way back.
+// drops the navigation and leaves a visitor with no way back.
 //
 // Sitting at the app root means it covers all three routes — an error bubbles to
 // the nearest boundary above it, and there is no closer one. It renders inside
-// the root layout, so the sidebar stays and navigation still works.
+// the root layout, so the nav card stays and navigation still works.
 //
 // What actually reaches here is narrower than it looks, and both halves were
 // measured rather than assumed:
@@ -47,7 +47,7 @@ export default function Error({
           This page could not be loaded
         </h1>
         <p className="mt-1 text-sm text-body">
-          The rest of the app still works — the sidebar links are unaffected.
+          The rest of the app still works — the navigation above is unaffected.
         </p>
       </header>
 

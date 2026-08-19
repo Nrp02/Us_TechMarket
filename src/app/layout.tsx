@@ -4,7 +4,7 @@ import { ChartGradients } from "@/components/chart-gradients";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { Meteors } from "@/components/meteors";
 import { NightSky } from "@/components/night-sky";
-import { Sidebar } from "@/components/sidebar";
+import { TopBar } from "@/components/top-bar";
 import "./globals.css";
 
 const inter = Inter({
@@ -94,10 +94,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             no business shipping to the client — while the meteors need to know
             when a navigation happened. Two layers, one world. */}
         <Meteors />
-        {/* The sidebar is only 3 items, so this costs little on most visits —
+        {/* The nav is only 3 items, so this costs little on most visits —
             but it was still missing, on a codebase that otherwise author its
             own a11y fixes rather than skip them. First focusable element in
-            the document, invisible until it receives focus. */}
+            the document, invisible until it receives focus. It matters more
+            now than it did: the nav card sits above <main> in reading order
+            rather than beside it. */}
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary-fill focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
@@ -113,27 +115,38 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             1920px they diverged to 16 / 280 / 264.
 
             Now the whole app is one centred group with uniform p-6, and the
-            gap between rail and content is the same 24px as the margin outside
-            them. Pages carry no horizontal padding of their own at all.
+            gap between the nav card and the content below it is the same 24px
+            as the margin outside them. Pages carry no horizontal padding of
+            their own at all.
 
             The cap moved from a 1200px content column to a 1680px group, which
             is what actually widens the content: 1118px -> 1158px at 1470, and
             1120px -> 1368px at 1920, where a quarter of the screen was being
-            spent on symmetrical emptiness. */}
-        <div className="flex w-full max-w-[1680px] gap-6 p-6">
-          <Sidebar />
+            spent on symmetrical emptiness.
+
+            The group stacks rather than sitting side by side, because the
+            navigation moved out of a 240px left rail and into a card across
+            the top. Content is 264px wider on every route as a direct result
+            — 240 of rail plus the 24 gap it needed — and every breakpoint in
+            the product that was derived from the shell arithmetic moved with
+            it. The cost is the other way round: ~84px of vertical chrome that
+            did not exist before, on a laptop where vertical space is the
+            scarcer of the two. */}
+        <div className="flex w-full max-w-[1680px] flex-col gap-6 p-6">
+          <TopBar />
           {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
               min-width:auto, so without it <main> cannot shrink below its
               content's min-content width — the watchlist table and the 560px
               intraday chart would push the whole page sideways instead of
-              scrolling inside their own overflow-x-auto wrappers. */}
-          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
+              scrolling inside their own overflow-x-auto wrappers. It survives
+              the switch to a column: the axis changed, the default did not. */}
+          <main id="main-content" tabIndex={-1} className="min-w-0">
             {children}
           </main>
         </div>
         <ChartGradients />
-        {/* Renders nothing. It is here rather than in the sidebar because the
-            shortcuts are a property of the document, and the rail is a
+        {/* Renders nothing. It is here rather than in the nav card because
+            the shortcuts are a property of the document, and the card is a
             component that could stop existing at a narrower width. */}
         <KeyboardShortcuts />
       </body>

@@ -17,7 +17,7 @@ export default function Loading() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 min-[1390px]:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid grid-cols-1 gap-6 min-[1130px]:grid-cols-[minmax(0,1fr)_360px]">
         <SkeletonPanel className="h-[424px]" lines={5} />
         <SkeletonPanel className="h-[424px]" lines={5} />
       </div>

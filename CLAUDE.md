@@ -313,9 +313,34 @@ The end-of-day summary schedule was provisioned in Phase 4, not here: `daily-sum
 
    The 768/834 figure is 1189 rather than 1221 because the `lg:` breakpoint at 1024px has not engaged, so the Top Movers / News teaser grid is still one column. All three pages are clean at every width above.
 
-   Two things ruled out by measurement, so don't re-investigate them: **the viewport meta tag is present and correct** (`width=device-width, initial-scale=1`, injected by Next) — it was the obvious suspect and it was innocent; and **the sidebar needs no breakpoint for iPad** — `w-60 shrink-0` costs 240 of 768, which is tight but not the cause of anything.
+   Two things ruled out by measurement, so don't re-investigate them: **the viewport meta tag is present and correct** (`width=device-width, initial-scale=1`, injected by Next) — it was the obvious suspect and it was innocent; and **the sidebar needed no breakpoint for iPad** — `w-60 shrink-0` cost 240 of 768, which was tight but not the cause of anything.
 
-   **At 390px (phone) all three pages still overflow**, because content inside `main` has its own minimums below which nothing can shrink. Left unfixed on purpose: the owner demos on a laptop and wants iPad to work, and fixing phone means giving the sidebar a collapse behaviour, which is a visual-design decision rather than a bug fix. Note this contradicts the "opens the live URL on a phone" wording in **Done when** below — the owner narrowed that target.
+   **At 390px (phone) all three pages overflowed**, because content inside `main` had its own minimums below which nothing could shrink. It was left unfixed on purpose — the owner demos on a laptop and wants iPad to work, and fixing phone meant giving the sidebar a collapse behaviour, which is a visual-design decision rather than a bug fix.
+
+   **That is now fixed, as a side effect of moving navigation out of the rail.** See the entry below.
+
+### The sidebar became a card across the top
+
+   **`src/components/sidebar.tsx` is gone; `src/components/top-bar.tsx` replaces it**, and `src/app/layout.tsx` stacks the shell group as a column instead of a row. The card holds the product name at the left, then the same three nav items — same authored glyphs, same `nav-active` recipe, same `aria-current`, same `aria-keyshortcuts`, same 44px touch height. It uses the **same `panel-rail` material**, which keeps its name: that tier was always defined by the role (shell, recessive relative to content, the sanctioned exception to the Climbing Ramp Rule) rather than by the axis, so every contrast figure measured against it still holds.
+
+   **It is deliberately not sticky**, which reverses the rail's behaviour rather than forgetting it. A rail can be sticky for free because content scrolls past its *side*, so its backdrop holds nothing but the fixed sky and the 10px blur is never recomputed. A pinned top card has content passing *underneath*, which re-composites that blur on every scroll frame — the case DESIGN.md's Bounded Motion Rule exists to forbid. `g h` / `g n` / `g a` cover switching from any scroll position.
+
+   **The content column went from `viewport − 48 − 240 rail − 24 gap` to `viewport − 48`, so every shell-derived breakpoint moved.** All four were recomputed and each carries its new arithmetic in a comment at the call site:
+
+   | Where | was | now | arithmetic |
+   |---|---|---|---|
+   | `watchlist-table.tsx` scroll hint | `min-[1060px]` | `min-[800px]` | 748 table + 48 shell = 796, rounded up |
+   | `intraday-chart.tsx` scroll hint | `min-[888px]` | `min-[650px]` | 560 plot + 40 panel + 48 shell = 648 |
+   | `page.tsx` Home grid | `min-[1390px]` | `min-[1130px]` | 748 + 24 gap + 300 + 48 shell = 1120, rounded up |
+   | `loading.tsx` skeleton grid | `min-[1390px]` | `min-[1130px]` | mirrors the above |
+
+   Two consequences worth knowing. **Home is two-column at 1280 now** — it was stacked there, because 1390 was above a common laptop width — so the owner's own screen gets the composition the page was drawn for. And **`main` measures 1422px at a 1470px viewport where it measured 1158px**: content gained exactly the 264px the rail was spending.
+
+   **All three routes now fit at every width measured — 390 / 430 / 600 / 768 / 834 / 1024 / 1130 / 1280 / 1470 / 1920** — with `documentElement.scrollWidth` equal to the viewport at each. Measured with the iframe method below, not eyeballed. Phone is still not a *designed* target (nothing under 600px has been composed for, and the nav card wraps to two rows of items there, 110px instead of 62px), but it no longer overflows.
+
+   **The cost, stated plainly:** 84px of permanent vertical chrome on every route (62px card + 24px gap, below a 24px viewport margin) where a left rail charged none. Vertical space is the scarcer axis on a laptop; this was accepted, not overlooked.
+
+   **One measurement trap, hit twice.** Inside a freshly created iframe, React streams the page into a **classless `display:none` div that is the first child of `<body>`**, then moves it. Query too early and `querySelector('table')` returns the staged copy, whose every `getBoundingClientRect()` is 0 — which reads exactly like a layout collapse. Poll until the element has non-zero width before believing any number from it. Note this contradicts the "opens the live URL on a phone" wording in **Done when** below — the owner narrowed that target, and the narrowing is no longer load-bearing.
 
    **Testing note: `resize_window` does not work in this environment** — it reports success while `innerWidth` stays put and `outerWidth` reads 0. Every width above was measured by injecting a same-origin `<iframe>` of the target size into a page already on `localhost:3000` and reading `contentDocument.documentElement.scrollWidth` — media queries evaluate against the iframe's own viewport, so this is a real responsive test rather than a simulated one.
 4. End-to-end test: simulate a Finnhub outage/rate-limit and confirm the app shows a fallback/error state instead of crashing. **Done** — run against a local production build, results below.

@@ -61,38 +61,85 @@ const NAV_ITEMS = [
 // single-source reasoning the significance rule already gets.
 const KEY_BY_HREF = new Map(SHORTCUTS.map((s) => [s.href, s.key]));
 
-export function Sidebar() {
+export function TopBar() {
   const pathname = usePathname();
 
   return (
-    // The <aside> is the gutter; the name and the nav card are the two objects
-    // in it. The card no longer has to fit the wordmark, which is what let its
-    // vertical padding come down from py-6 to py-4 — it holds three rows now
-    // and nothing else, so the old headroom was measuring a thing that had
-    // moved out.
-    <aside className="relative z-10 w-60 shrink-0">
-      {/* No wordmark and no mark of our own in here. The name is the page's
-          masthead now (see `app/page.tsx`), and the glyph that used to sit
-          beside it is gone entirely.
+    // A <header> that is a direct child of <body> is the `banner` landmark.
+    // The three per-page <header>s all live inside <main>, so they are not,
+    // and there is no landmark collision to resolve.
+    <header className="relative z-10">
+      {/* The same card as the rail it replaces — `panel-rail`, not `panel`.
+          That is not nostalgia: DESIGN.md sanctions exactly one surface
+          resolving darker than `glass-panel`, and it is shell, on the grounds
+          that shell should stay recessive while the page behind it changes.
+          Turning the rail on its side does not change what it is, so the
+          material, the blur and the elevation step all carry over untouched.
 
-          Dropping the glyph follows from what this interface is full of: a logo
-          plate on every watchlist row, every Top Movers rank and every news
-          thumbnail. A small blue mark of our own was competing inside that
-          crowd rather than standing apart from it, and a product whose screen
-          is covered in other companies' logos differentiates by not adding one
-          more in the same place.
+          Deliberately NOT sticky, which is a reversal of the rail's own
+          behaviour rather than an omission. The rail could be sticky because
+          content scrolled past its *side*: its backdrop held nothing but the
+          fixed sky, so the blur never had to be recomputed. A pinned top card
+          has content passing *underneath* it, which re-composites a 10px
+          backdrop-filter on every scroll frame — the exact case The Bounded
+          Motion Rule exists to forbid. `g h` / `g n` / `g a` already switch
+          routes from any scroll position, which is what makes the loss
+          affordable.
 
-          The consequence worth knowing: the product's name now appears on Home
-          only. News opens with "News" and Today's Activity with a ticker, so a
-          visitor landing on either has the rail's three items for orientation
-          and nothing that says what this is. That is a deliberate trade, not an
-          oversight. */}
-      {/* Sticky, because a card is only as tall as its content and the page
-          beside it is several thousand pixels long. The <aside> stretches to
-          full height as a flex item, which is what gives this something to
-          stick within. */}
-      <div className="panel-rail sticky top-6 flex flex-col px-4 py-4">
-        <nav aria-label="Main" className="flex flex-col gap-1">
+          No entrance animation either. This card is the frame, present from
+          the first paint like the sky is; it sits outside `page-enter` exactly
+          as the rail does today, which also keeps peak animation concurrency
+          at three.
+
+          flex-wrap is the guarantee that this card can never widen the page.
+          Below the width where three labelled items fit on one line the nav
+          wraps to a second row instead of overflowing — the same reflow the
+          Today's Activity header already uses.
+
+          justify-between pushes the nav to the far end, which is the classic
+          masthead split: the publication's name at one edge, the sections at
+          the other. It is `justify-between` rather than `ml-auto` on the nav
+          deliberately — below 600px the name is hidden, and a lone `ml-auto`
+          child would still be shoved to the right edge with nothing opposite
+          it, while `justify-between` with a single child simply left-aligns.
+          The narrow case gets the right answer for free. */}
+      <div className="panel-rail flex flex-wrap items-center justify-between gap-x-8 gap-y-2 px-4 py-2">
+        {/* The product's name, on every route, for the first time, and the
+            reason the card is not simply a strip of links. The rail
+            gave it up when the wordmark moved to Home's masthead and recorded
+            the consequence as a deliberate trade: News opens with "News" and
+            Today's Activity with a ticker, so a visitor landing on either had
+            three nav items for orientation and nothing saying what this is.
+            A card that is on screen everywhere makes the trade unnecessary.
+
+            Source Serif 4 — the face Home's own masthead uses — so the
+            nameplate speaks in the brand voice while the nav beside it speaks
+            in the interface voice. That is the Written-And-Measured split
+            applied to the two things sharing this row; set in Inter at the
+            same weight it would read as a fourth nav item pushed slightly
+            apart from the other three.
+
+            Not a link. It would be a second control pointing at Home,
+            competing with the nav item that already carries aria-current, and
+            a nameplate is not a control.
+
+            Hidden below 600px, which is where the row stops fitting on one
+            line. Measured rather than estimated: 120px of wordmark + 32px gap
+            + 349px of nav + 32px of card padding is 533px, against a content
+            column of viewport − 48, so 600 clears it with 19px to spare and
+            560 would not. The name is the half that can go, because the nav
+            cannot. */}
+        <span className="hidden shrink-0 px-2 font-serif text-[0.9375rem] font-semibold tracking-tight text-ink min-[600px]:block">
+          US TechMarket
+        </span>
+
+        {/* flex-wrap here as well as on the card, and it is not redundant:
+            the nav is a single flex item of the card, so without it the three
+            links have to fit one line whatever the card does. Below ~430px
+            they wrap to a second row of items instead — which is only reachable
+            at phone widths, a documented non-target, but it is the difference
+            between degrading and looking broken. */}
+        <nav aria-label="Main" className="flex flex-wrap items-center gap-1">
           {NAV_ITEMS.map((item) => {
             const isActive =
               item.href === "/"
@@ -126,8 +173,8 @@ export function Sidebar() {
                 // screen reader reports.
                 aria-current={isActive ? "page" : undefined}
                 // The active plate was surface-strong — grey — so the accent was
-                // carried by 14px of text alone and the sidebar held no colour at
-                // any time. A translucent plate, a lit ring and a soft glow make
+                // carried by 14px of text alone and the navigation held no colour
+                // at any time. A translucent plate, a lit ring and a soft glow make
                 // the state a shape as well as a colour — see `nav-active` in
                 // globals.css for why the label is primary-active rather than
                 // primary, which fails at every alpha.
@@ -139,7 +186,7 @@ export function Sidebar() {
                 //
                 // Hover is a translucent lift rather than the opaque
                 // surface-soft plate: that token is baked over the panel canvas,
-                // and a panel-coloured chip on the rail read as a patch of the
+                // and a panel-coloured chip on this card read as a patch of the
                 // wrong material sitting on the glass. It is the same blue-white
                 // the glass rim is made of (--color-glass-lift), not plain
                 // white — on a field this saturated, neutral white light reads
@@ -149,13 +196,19 @@ export function Sidebar() {
                 // and they measured 206x36 — legal under WCAG 2.2 AA, which
                 // asks 24x24, but six pixels under the 44 a finger is drawn
                 // against on a touch screen, on the one control a visitor has
-                // to hit before they can do anything else. The rail has the
-                // room: it holds three items and nothing else, so the height
+                // to hit before they can do anything else. The card has the
+                // room: it holds three items and a nameplate, so the height
                 // comes out of slack rather than out of density. The dense
                 // controls — table rows, dropdown rows, the picker pill — keep
                 // their size; this is a navigation fix, not a blanket inflation
                 // of a product that is meant to be read close.
-                className={`flex items-center gap-2.5 rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
+                // whitespace-nowrap for the same reason the watchlist's
+                // column headers carry it: a label naming a destination is an
+                // identity, and the one thing in a row that should never
+                // reflow. Measured at 390px without it, "Today's Activity"
+                // broke across two lines inside its own item and took the
+                // whole card from 62px to 82px to do it.
+                className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-3 text-sm font-medium transition-colors ${
                   isActive
                     ? "nav-active text-primary-active"
                     : "text-body hover:bg-glass-lift hover:text-ink"
@@ -168,6 +221,6 @@ export function Sidebar() {
           })}
         </nav>
       </div>
-    </aside>
+    </header>
   );
 }

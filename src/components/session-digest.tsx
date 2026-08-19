@@ -1,4 +1,4 @@
-import { formatDay, formatPercent } from "@/lib/format";
+import { formatPercent } from "@/lib/format";
 import { isMarketOpen } from "@/lib/market";
 import type { Ticker } from "@/lib/queries";
 
@@ -14,13 +14,7 @@ import type { Ticker } from "@/lib/queries";
 // values. Direction is stated in words as well as colour, per the Signed Value
 // Rule, so the bar is not the only channel.
 
-export function SessionDigest({
-  tickers,
-  sessionDay,
-}: {
-  tickers: Ticker[];
-  sessionDay: string | null;
-}) {
+export function SessionDigest({ tickers }: { tickers: Ticker[] }) {
   const open = isMarketOpen();
   const advancing = tickers.filter((t) => t.changePercent > 0).length;
   const declining = tickers.filter((t) => t.changePercent < 0).length;
@@ -40,7 +34,11 @@ export function SessionDigest({
     // two columns. Pinned at sm it stayed 352px while stacked under the
     // heading, leaving an iPad with a short panel and a gap beside it.
     <aside className="panel w-full shrink-0 p-5 lg:w-[22rem]">
-      <div className="flex items-center justify-between gap-3">
+      {/* The session date used to sit opposite this line. It is the page's
+          <h1> now — stating it twice in one viewport is the same defect as the
+          product's name appearing twice, which is what moved it. What is left
+          is one statement, so the row no longer has two ends to balance. */}
+      <div className="flex items-center gap-3">
         <span className="flex items-center gap-2 text-xs font-semibold text-ink">
           <span className="relative flex size-2">
             {/* The dot is the market-state indicator the Market Overview
@@ -59,9 +57,6 @@ export function SessionDigest({
             />
           </span>
           {open ? "Market open" : "Market closed"}
-        </span>
-        <span className="font-mono text-micro tabular-nums text-muted">
-          {sessionDay ? formatDay(sessionDay) : "No session yet"}
         </span>
       </div>
 

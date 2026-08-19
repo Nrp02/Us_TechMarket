@@ -162,7 +162,7 @@ export default async function News({
                 // royal blue sat a long way from the deep atmospheric blue
                 // everything else in the page is lit by.
                 //
-                // It is now the same `nav-active` recipe the sidebar's current
+                // It is now the same `nav-active` recipe the nav card's current
                 // item uses: a translucent accent plate, a lit ring, and
                 // --color-primary-active for the label. That is the point of
                 // the change rather than a side effect — "this one is current"
