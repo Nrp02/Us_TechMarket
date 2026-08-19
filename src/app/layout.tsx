@@ -132,7 +132,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             it. The cost is the other way round: ~84px of vertical chrome that
             did not exist before, on a laptop where vertical space is the
             scarcer of the two. */}
-        <div className="flex w-full max-w-[1680px] flex-col gap-6 p-6">
+        {/* The phone tier: 16px of gutter and gap below 600px, 24px above it.
+            The shell still owns every gutter — this is one more value in the
+            one place that sets them, not a page reclaiming its own margins.
+
+            24px of padding is 12.3% of a 390px screen spent on emptiness, on
+            the axis a phone has least of. Dropping to 16 returns 16px to the
+            content column (342 -> 358), which is what lets the nav card hold
+            its three items on one row and the watchlist rows carry a badge and
+            a sparkline on the same line. 600px is the product's phone line
+            already — it is where the nameplate hides — so this pass adds a
+            tier at a breakpoint that exists rather than a fourth number. */}
+        <div className="flex w-full max-w-[1680px] flex-col gap-4 p-4 min-[600px]:gap-6 min-[600px]:p-6">
           <TopBar />
           {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
               min-width:auto, so without it <main> cannot shrink below its

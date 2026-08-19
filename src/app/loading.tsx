@@ -11,7 +11,7 @@ export default function Loading() {
         <SkeletonPanel className="h-[212px] w-full lg:w-[370px]" lines={4} />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
           <SkeletonPanel key={i} className="h-[180px]" lines={3} />
         ))}

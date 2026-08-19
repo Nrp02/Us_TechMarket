@@ -50,10 +50,26 @@ function ActivityIcon({ active }: IconProps) {
   );
 }
 
+// `phonePrefix` is the half of a label that is dropped below 600px. Only one
+// item has one, and it is the reason the card wraps to two rows on a phone:
+// "Today's Activity" is 152px of the ~330px the three labelled items need,
+// against a 342px content column. Shortened to "Activity" the row comes out at
+// ~292px inside a 32px-padded card and fits on one line at 390px.
+//
+// Split as a prefix rather than as a second `shortLabel` string so the two
+// spellings cannot drift: there is one label, and a phone shows the tail of it.
+// "Activity" is also what the route is called everywhere else a visitor meets
+// it — /todays-activity, and the nav glyph is the sparkline shape — so the
+// short form names the destination rather than abbreviating a title.
 const NAV_ITEMS = [
   { href: "/", label: "Home", icon: HomeIcon },
   { href: "/news", label: "News", icon: NewsIcon },
-  { href: "/todays-activity", label: "Today's Activity", icon: ActivityIcon },
+  {
+    href: "/todays-activity",
+    phonePrefix: "Today's ",
+    label: "Activity",
+    icon: ActivityIcon,
+  },
 ] as const;
 
 // The shortcut list is imported rather than restated so the hint printed on a
@@ -135,10 +151,14 @@ export function TopBar() {
 
         {/* flex-wrap here as well as on the card, and it is not redundant:
             the nav is a single flex item of the card, so without it the three
-            links have to fit one line whatever the card does. Below ~430px
-            they wrap to a second row of items instead — which is only reachable
-            at phone widths, a documented non-target, but it is the difference
-            between degrading and looking broken. */}
+            links have to fit one line whatever the card does.
+
+            It is now the safety net rather than the phone behaviour. Dropping
+            "Today's " below 600px is what keeps the card at one row and 62px
+            down to 390px, where it used to wrap to two rows and 110px — 48px
+            of permanent chrome returned on every route, on the axis a phone
+            has least of. Below ~330px the items would wrap again, and should:
+            degrading beats overflowing. */}
         <nav aria-label="Main" className="flex flex-wrap items-center gap-1">
           {NAV_ITEMS.map((item) => {
             const isActive =
@@ -215,6 +235,14 @@ export function TopBar() {
                 }`}
               >
                 <Icon active={isActive} />
+                {/* Hidden rather than removed, so the accessible name on a
+                    laptop is still the full "Today's Activity" that the nav
+                    has always announced. */}
+                {"phonePrefix" in item && (
+                  <span className="hidden min-[600px]:inline">
+                    {item.phonePrefix}
+                  </span>
+                )}
                 {item.label}
               </Link>
             );

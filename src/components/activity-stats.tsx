@@ -34,7 +34,7 @@ function Cell({
         : "text-ink";
 
   return (
-    <article className="panel px-5 py-5">
+    <article className="panel px-4 py-4 min-[600px]:px-5 min-[600px]:py-5">
       <h3 className="text-micro font-semibold text-muted">{label}</h3>
       {/* text-figure, not text-3xl. Both resolved to a large mono reading in a
           stat card, but Market Overview's ran at a clamp topping out at 38px
@@ -67,7 +67,20 @@ export function ActivityStats({ activity }: { activity: Activity }) {
           earlier merge was reversed. These two rows are the same object on two
           pages and must stay identical; changing one alone is the drift the
           shared step above was introduced to stop. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      {/* Two up on a phone rather than one, which is the difference between
+          this section being a glance and being two full screens of scrolling
+          before the visitor reaches their own stocks. Five stacked cards ran
+          ~810px at 390; paired they run ~420.
+
+          It fits by measurement, not by hope: at 390 the content column is
+          358px, so a card is (358 - 12 gap) / 2 = 173px wide and 141px inside
+          its 16px padding. The largest reading here is six mono characters at
+          the shared `text-figure` step, which is ~108px. The padding steps down
+          with the shell's own phone tier to buy those pixels — the figure step
+          itself does not change, because it is one shared step across this
+          section and Today's Activity and forking it by width is how the same
+          role ended up at two sizes before it existed. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5">
         <Cell
           label="Price Movement"
           value={formatPercent(ticker.changePercent)}
