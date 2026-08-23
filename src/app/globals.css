@@ -583,6 +583,32 @@
   --rim-radius: 9999px;
 }
 
+/* The same track once its contents WRAP, which is a different object wearing
+   the same name. A stadium's corner radius is half its height, so a track that
+   grows to two rows of 44px pills has a 51px corner arc — and the pills inside
+   it are only inset by the 4px of `p-1`. Measured at 390: the first pill's
+   rounded left edge sits up to 7.6px OUTSIDE the track's boundary between y=5
+   and y=28, which draws as the active pill poking out of the card.
+   
+   The pill form is honest for a single row, where it reads as one segmented
+   control; two stacked rows are a block, and a block takes the container
+   radius every other container in the product takes. Both radii move together
+   — the lit rim at the shared ::before rule below draws from --rim-radius, so
+   changing only border-radius leaves the rim tracing a stadium the surface no
+   longer has. */
+@utility panel-track-block {
+  position: relative;
+  background-color: var(--glass-panel);
+  background-image: var(--surface-face);
+  -webkit-backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  backdrop-filter: blur(var(--blur-panel)) saturate(1.35);
+  border: 1px solid var(--color-glass-edge);
+  border-radius: 24px;
+  box-shadow: var(--elev-1);
+
+  --rim-radius: calc(24px - 1px);
+}
+
 /* The navigation card. Darker than the content glass so it stays visually
    stable while the page behind it changes — it is the one surface a visitor
    sees on every route — but otherwise the same object as every other panel.
@@ -691,6 +717,7 @@
 .panel::before,
 .panel-raised::before,
 .panel-track::before,
+.panel-track-block::before,
 .panel-rail::before,
 .panel-control::before {
   content: "";
@@ -898,6 +925,7 @@ a {
 @media (prefers-reduced-transparency: reduce) {
   .panel,
   .panel-track,
+  .panel-track-block,
   .panel-raised,
   .panel-overlay,
   .panel-rail {
@@ -906,7 +934,8 @@ a {
   }
 
   .panel,
-  .panel-track {
+  .panel-track,
+  .panel-track-block {
     background-color: var(--solid-panel);
   }
 
@@ -943,6 +972,7 @@ a {
 @media (prefers-contrast: more) {
   .panel,
   .panel-track,
+  .panel-track-block,
   .panel-raised,
   .panel-overlay,
   .panel-rail {
@@ -956,6 +986,7 @@ a {
      a boundary. It gives way to the uniform drawn line above. */
   .panel::before,
   .panel-track::before,
+  .panel-track-block::before,
   .panel-raised::before,
   .panel-rail::before,
   .panel-control::before {
@@ -963,7 +994,8 @@ a {
   }
 
   .panel,
-  .panel-track {
+  .panel-track,
+  .panel-track-block {
     background-color: var(--solid-panel);
   }
 

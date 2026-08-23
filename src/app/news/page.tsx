@@ -148,7 +148,15 @@ export default async function News({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <nav
           aria-label="News categories"
-          className="panel-track inline-flex w-fit max-w-full flex-wrap gap-1 p-1"
+          // The stadium is the single-row form. Below 600 the four tabs do not
+          // fit one line (91 + 138 + 130 + 121 + gaps is about 492 against ~350
+          // of content column), so the track wraps to two rows, its corner arc
+          // becomes half of 102px, and the active pill's own rounded corner
+          // ends up as much as 7.6px outside it — the pill visibly poking out
+          // of the card. Two stacked rows are a block, not a segmented
+          // control, so they take the container radius. 600 is where the four
+          // fit one line again: ~500px of track plus the 48px shell.
+          className="panel-track-block min-[600px]:panel-track inline-flex w-fit max-w-full flex-wrap gap-1 p-1"
         >
           {TABS.map((t) => {
             const isActive = t.key === active;

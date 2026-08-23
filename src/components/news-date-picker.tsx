@@ -64,7 +64,14 @@ export function NewsDatePicker({
   }, [open]);
 
   return (
-    <div ref={container} className="relative shrink-0">
+    // ml-auto, not just the row's justify-between. Below ~700 the tab track
+    // takes the whole line and this wraps to one of its own, where
+    // justify-between has a single item to place and puts it at flex-start —
+    // so the picker sat hard LEFT at 390, 430 and 600, against the comment on
+    // the row in news/page.tsx that says it is right-aligned. An auto margin
+    // wins over justify-content on its own line, and changes nothing on the
+    // wide layout where the two already sit at opposite ends.
+    <div ref={container} className="relative ml-auto shrink-0">
       <button
         ref={trigger}
         type="button"

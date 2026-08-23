@@ -105,18 +105,24 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           as a variable so the span rule and the size rule stay one decision,
           and it resets at xl where the row is exactly full and nothing spans.
 
-          It is raised BELOW lg only, and that boundary is the whole point.
-          Under lg the spanned card is alone on its last row, so a taller trace
-          costs its own card and nothing else — 358x193 against a sibling's
-          173x147 at 390, which reads as the wide card doing more rather than
-          as a broken row. From lg to xl the grid is three columns and five
-          cards, so the span shares row two with Technology: a 300px trace drew
-          90px tall, took the card to 225 against the siblings' 165, dragged
-          its row-mate up with it and became the largest object on the page —
-          a supporting mark outshouting every figure in the section. Measured
-          at 1024 and reverted. The void this leaves at lg is the one the span
-          was already accepted for; it is not what the audit found. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] lg:[&>*:last-child]:[--spark-cap:100px] xl:[&>*:last-child]:col-span-1">
+          It is raised BELOW 600 only — on a phone, which is the only width the
+          void was ever measured at. The boundary moved twice, and both moves
+          were the same mistake caught at a different size: a cap chosen for a
+          173px-wide card does not belong on a card that is already wide.
+
+          At 1024-1279 the grid is three columns and five cards, so the span
+          shares row two with Technology: a 300px trace drew 90px tall, took
+          the card to 225 against the siblings' 165, dragged its row-mate up
+          with it and became the largest object on the page. At 600-1023 — every
+          iPad width — the card is alone on its row so nothing else stretched,
+          but 720x201 against siblings of 165 still read as a card that had
+          grown for no reason, which is what the owner reported from an iPad.
+
+          So: 390 keeps 220x66, where a 358px card next to 173px siblings has
+          width to spend. Everything from 600 up returns to 100x30 and a 165px
+          card. The void that leaves above 600 is the one the span was already
+          accepted for; it is not what the audit found. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] min-[600px]:[&>*:last-child]:[--spark-cap:100px] xl:[&>*:last-child]:col-span-1">
         {INDEX_CARDS.map((card) => {
           const ticker = bySymbol.get(card.symbol);
 
