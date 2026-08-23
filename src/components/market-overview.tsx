@@ -88,13 +88,23 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           itself does not change, because it is one shared step across this
           section and Today's Activity and forking it by width is how the same
           role ended up at two sizes before it existed. */}
-      {/* Five is prime, so every column count that is not five orphans the
-          last card: 2+2+1 below lg, and 3+2 between lg and xl, which measured
-          a 373x165 hole at 1024-1279 — iPad landscape and most laptop
-          windows. The last child spans the remainder instead, and the span is
-          reset at xl where the row is exactly full. It falls on the odd one
-          out of each set anyway: Volatility is the only non-index card here,
-          and News & Events the only non-price card on Today's Activity. */}
+      {/* Five is prime, so every column count that is not five orphans the last
+          card. This used to be solved by spanning the last child across the
+          remainder, on the reasoning that a 373x165 hole at 1024-1279 read
+          badly. The owner has now seen both on the device that case was named
+          for, and prefers the hole: at 1180 — iPad landscape, an iPad 10th gen
+          — the spanned card measured 748px beside siblings of 366, and a card
+          twice its neighbours' width reads as a different KIND of object,
+          while an empty grid cell reads as an empty grid cell. Portrait at 820
+          was the same, 772 against 378; it simply had not been looked at.
+
+          So the span survives only below 600, where the card is alone on its
+          row AND narrow enough that filling it does not make it an outlier —
+          358px at 390, with the wider trace --spark-cap gives it there.
+
+          Three columns from 600 rather than from lg is the other half: it puts
+          the orphan gap at one cell instead of half a row, and 173px cards at
+          600 are exactly the width the phone already renders correctly. */}
       {/* Spanning the last card closes the hole, but it does not spend the
           width it wins — measured at 390 the Volatility card is 358px against
           the others' 173px and lays its contents out identically, so 185px of
@@ -122,7 +132,7 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           width to spend. Everything from 600 up returns to 100x30 and a 165px
           card. The void that leaves above 600 is the one the span was already
           accepted for; it is not what the audit found. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] min-[600px]:[&>*:last-child]:[--spark-cap:100px] xl:[&>*:last-child]:col-span-1">
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] min-[600px]:[&>*:last-child]:col-span-1 min-[600px]:[&>*:last-child]:[--spark-cap:100px]">
         {INDEX_CARDS.map((card) => {
           const ticker = bySymbol.get(card.symbol);
 
