@@ -928,15 +928,29 @@ a {
   .panel-track-block,
   .panel-raised,
   .panel-overlay,
-  .panel-rail {
+  .panel-rail,
+  .panel-control,
+  .panel-chip {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 
+  /* The controls and the chip were missing from this list, so "reduce
+     transparency" left two translucent surfaces behind on every route —
+     measured with the setting on: 13 of 14 panes went solid and the picker
+     button stayed glass. They take the same solid face as the panel they are
+     cut from; the control's hover keeps its own step so the state is still
+     legible without the blur to carry it. */
   .panel,
   .panel-track,
-  .panel-track-block {
+  .panel-track-block,
+  .panel-control,
+  .panel-chip {
     background-color: var(--solid-panel);
+  }
+
+  .panel-control:hover {
+    background-color: var(--solid-raised);
   }
 
   .panel-raised {
@@ -975,7 +989,9 @@ a {
   .panel-track-block,
   .panel-raised,
   .panel-overlay,
-  .panel-rail {
+  .panel-rail,
+  .panel-control,
+  .panel-chip {
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     border-color: var(--edge-strong);
@@ -995,7 +1011,9 @@ a {
 
   .panel,
   .panel-track,
-  .panel-track-block {
+  .panel-track-block,
+  .panel-control,
+  .panel-chip {
     background-color: var(--solid-panel);
   }
 
