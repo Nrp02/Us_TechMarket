@@ -26,8 +26,23 @@ export function isMarketOpen(at: Date = new Date()): boolean {
   return minutes != null && minutes >= OPEN_MINUTES && minutes < CLOSE_MINUTES;
 }
 
-/** How long after 16:00 ET the closing price is still worth collecting. */
-const CLOSING_WINDOW_MINUTES = 30;
+/**
+ * How long after 16:00 ET the closing price is still worth collecting.
+ *
+ * Was 30, which put the last qualifying tick at 16:15 and was too early: the
+ * closing print does not reach the upstream chart at the same moment for every
+ * symbol, and on ET day 2026-08-21 four of the twenty-five — ORCL, CRM, NOW and
+ * VIXY — had no 16:00 bar stored at all. Their timelines therefore showed no
+ * "Market close" row, since the rule quite rightly refuses to call an earlier
+ * bar the close. An hour reaches the 16:30 and 16:45 ticks, which is inside the
+ * cron's own 13-21 UTC window under both EST and EDT.
+ *
+ * Widening this alone would have made the stored price *worse*, since a later
+ * tick reads a Finnhub quote that has drifted further into after-hours. It is
+ * only safe together with reconcileClose in lib/closing-price.ts, which stores
+ * the closing print instead of the quote. Do not raise one without the other.
+ */
+const CLOSING_WINDOW_MINUTES = 60;
 
 /**
  * True in the minutes just after the bell.

@@ -1,3 +1,4 @@
+import { reconcileClose } from "@/lib/closing-price";
 import { fetchAvgVolume, fetchQuote } from "@/lib/finnhub";
 import { db } from "@/lib/supabase";
 import { ALL_SYMBOLS, TOP_20_SYMBOLS } from "@/lib/symbols";
@@ -97,11 +98,17 @@ export async function refreshMarketData(): Promise<RefreshResult> {
         avgVolume = await fetchAvgVolume(symbol);
       }
 
+      // Once the session has printed a close, that print is what gets stored
+      // rather than the live quote — Finnhub's has already moved on the liquid
+      // names by the time the closing-window tick runs. Mid-session this is the
+      // quote untouched. See lib/closing-price.ts for the measurement.
+      const settled = reconcileClose(quote, day.bars);
+
       priceRows.push({
         symbol,
-        price: quote.price,
-        change: quote.change,
-        change_percent: quote.changePercent,
+        price: settled.price,
+        change: settled.change,
+        change_percent: settled.changePercent,
         volume: day.volume,
         avg_volume: avgVolume,
         updated_at: new Date().toISOString(),
