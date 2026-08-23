@@ -77,15 +77,7 @@ export async function rebuildTimelines(
   symbols: string[],
   day: string,
 ): Promise<{ timelines: string[]; failed: string[] }> {
-  const [{ bySymbol, truncated }, { data: priceRows }] = await Promise.all([
-    loadDayDataBatch(symbols, day),
-    db.from("price_cache").select("symbol, price").in("symbol", symbols),
-  ]);
-  // The canonical price the header and AI summary already read, so the
-  // "Market close" row agrees with them instead of the Yahoo snapshot's price.
-  const closePrices = new Map(
-    (priceRows ?? []).map((r) => [r.symbol as string, Number(r.price)]),
-  );
+  const { bySymbol, truncated } = await loadDayDataBatch(symbols, day);
 
   const timelines: string[] = [];
   const failed: string[] = [...truncated];
@@ -103,7 +95,6 @@ export async function rebuildTimelines(
       const built = buildTimeline(
         data.snapshots,
         data.news.map((n) => ({ at: new Date(n.publishedAt), headline: n.headline })),
-        closePrices.get(symbol) ?? null,
       );
       if (!built.length) continue;
 
