@@ -73,28 +73,53 @@ export default async function TodaysActivityForSymbol({
 
   return (
     <div className="page-enter flex flex-col gap-10 pb-10">
-      <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
-        <div className="flex items-center gap-4">
-          <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
-          <div>
-            {/* Ticker only — the header is the switcher, not a company title.
-                Wrapped in an h1 because the page had no heading at all: the
-                ticker was a bare <button>, so a screen reader's heading list
-                gave this page no identity. The button keeps its own type
-                styling; the h1 is purely structural.
+      {/* A two-column grid on a phone, a single flex row from 600 up.
+          
+          It was one flex row at every width, and on a phone that produced a
+          header with four left edges and two right ones: logo 16, ticker 112,
+          company name 112, change pill 119, price 156, badge flush at 374. The
+          pill missing the ticker's axis by 7px is the tell — close enough to
+          read as a mistake rather than as an offset, which is exactly how it
+          was reported. `ml-auto` had given the price GROUP a right edge, but
+          the group ends where the badge begins, so the numbers ended up
+          floating in the middle of the line with nothing to align to.
+          
+          As a grid the logo hangs in column one and everything else — ticker,
+          company, price, change, badge — runs down column two off a single
+          axis. The axis comes from the logo's own width rather than a hardcoded
+          indent, so it cannot drift if that badge is ever resized.
+          
+          From 680 it becomes three columns — logo, text, price — which is the
+          same two-end reading the desktop header always had, and it stays a
+          GRID rather than reverting to flex on purpose. As flex the row wrapped
+          whenever its content did not fit, and the wrapped price group floated
+          exactly as it did on the phone: measured at 600 and 640 the group
+          landed on its own line with the numbers ending at 480 against a 576
+          margin. A width breakpoint cannot fix that reliably either, because
+          the pressure comes from the company name and those vary — NVIDIA is
+          six characters where AMD's is twenty-two. Three grid columns cannot
+          wrap at all; the 1fr text column absorbs the pressure and the name
+          takes a second line instead. 680 is where the row first fits. */}
+      <header className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-5 min-[680px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[680px]:gap-x-6 min-[680px]:gap-y-0">
+        <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
+        <div className="min-w-0">
+          {/* Ticker only — the header is the switcher, not a company title.
+              Wrapped in an h1 because the page had no heading at all: the
+              ticker was a bare <button>, so a screen reader's heading list
+              gave this page no identity. The button keeps its own type
+              styling; the h1 is purely structural.
 
-                Adding a stock is a separate control from the switcher now —
-                see add-stock-menu.tsx for why the two were split. */}
-            <div className="flex flex-wrap items-center gap-2">
-              <h1>
-                <SymbolSwitcher symbol={ticker.symbol} symbols={watchlist} min={WATCHLIST_MIN} />
-              </h1>
-              <AddStockMenu symbols={watchlist} max={WATCHLIST_MAX} />
-            </div>
-            <p className="px-2 text-sm text-body">
-              {ticker.name} · session of {formatDay(activity.sessionDay)}
-            </p>
+              Adding a stock is a separate control from the switcher now —
+              see add-stock-menu.tsx for why the two were split. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <h1>
+              <SymbolSwitcher symbol={ticker.symbol} symbols={watchlist} min={WATCHLIST_MIN} />
+            </h1>
+            <AddStockMenu symbols={watchlist} max={WATCHLIST_MAX} />
           </div>
+        <p className="px-2 text-sm text-body">
+          {ticker.name} · session of {formatDay(activity.sessionDay)}
+        </p>
         </div>
 
         {/* The number the visitor came for, and it now sits at `text-figure`
@@ -128,8 +153,11 @@ export default async function TodaysActivityForSymbol({
             so left-aligning this would break the shape that row was built to
             match. Same trap as the news date picker — justify-between does
             nothing for a lone item on a wrapped line. */}
-        <div className="ml-auto flex items-center gap-5">
-          <div className="flex flex-col items-end">
+        <div className="col-start-2 flex flex-wrap items-center gap-x-2 gap-y-2 px-2 min-[680px]:col-start-3 min-[680px]:gap-x-5 min-[680px]:row-start-1 min-[680px]:px-0">
+          {/* items-start on a phone: the price and the change sit on the
+              column's axis like every other line in the header. items-end from
+              600 up, where the group hangs off the right margin instead. */}
+          <div className="flex flex-col items-start min-[680px]:items-end">
             <p className="font-mono text-figure font-medium tabular-nums text-ink">
               {formatPrice(ticker.price)}
             </p>
