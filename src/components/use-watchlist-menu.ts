@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 import { DATA_ARRIVED } from "@/components/meteors";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 // Aliased because the Escape listener below is on `document` and takes the DOM
 // KeyboardEvent, while the menu handler is a React synthetic one. Two different
 // types, one name — importing it unaliased silently breaks the other.
@@ -69,6 +69,12 @@ export function useWatchlistMenu() {
   // outside it, where they were already announced.
   const menu = useRef<HTMLUListElement>(null);
   const typeahead = useRef({ buffer: "", at: 0 });
+  // The popover is rendered only while open, so `aria-controls` on the trigger
+  // has nothing to point at when it is closed — which is why each consumer
+  // passes `open ? menuId : undefined` rather than the id unconditionally. A
+  // reference to a missing element is worse than no reference: it tells a
+  // screen reader there is a thing to go to and then does not have one.
+  const menuId = useId();
 
   // A 409 from a previous opening is stale the moment the popover closes, so
   // closing clears it. Doing this in an effect on `open` would be a cascading
@@ -267,8 +273,11 @@ export function useWatchlistMenu() {
     container,
     trigger,
     mutate,
+    /** Put on the trigger as `aria-controls={open ? menuId : undefined}`. */
+    menuId,
     /** Spread onto the <ul> holding the rows. Carries the role and key model. */
     menuProps: {
+      id: menuId,
       ref: menu,
       role: "menu" as const,
       onKeyDown: onMenuKeyDown,

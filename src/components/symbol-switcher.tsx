@@ -50,6 +50,7 @@ export function SymbolSwitcher({
     container,
     trigger,
     mutate,
+    menuId,
     menuProps,
   } = useWatchlistMenu();
 
@@ -144,12 +145,13 @@ export function SymbolSwitcher({
         // attribute is only honest alongside the behaviour.
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-controls={open ? menuId : undefined}
         // text-figure, not text-3xl. They are the same 1.875rem, but one is a
         // step the ramp owns and the other is a literal that drifts the moment
         // the ramp moves — the collision activity-stats.tsx:39 already carries
         // a comment about. The face stays Inter: this is a ticker, a measured
         // identifier, not a figure in a column.
-        className="flex items-center gap-2 rounded-xl px-2 py-1 text-figure font-semibold tracking-tight text-ink transition-colors hover:bg-surface-strong"
+        className="flex items-center gap-2 rounded-xl px-2 py-1 text-figure font-semibold tracking-tight text-ink transition-colors hover:bg-surface-strong pointer-coarse:min-h-11"
       >
         {symbol}
         <svg

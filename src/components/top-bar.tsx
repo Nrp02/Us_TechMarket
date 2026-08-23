@@ -265,15 +265,25 @@ export function TopBar({ marker }: { marker?: ReactNode }) {
                 }`}
               >
                 <Icon active={isActive} />
-                {/* Hidden rather than removed, so the accessible name on a
-                    laptop is still the full "Today's Activity" that the nav
-                    has always announced. */}
-                {"phonePrefix" in item && (
-                  <span className="hidden min-[600px]:inline">
-                    {item.phonePrefix}
-                  </span>
-                )}
-                {item.label}
+                {/* One span, not two flex items. The prefix and the label were
+                    siblings of the row's `gap-2.5`, so an anonymous flex item
+                    formed around the bare "Activity" text node and the gap
+                    landed INSIDE the label: "Today's" and "Activity" sat 10px
+                    plus a word space apart, which read as a typesetting fault
+                    on the widest item in the card. Wrapped, the gap separates
+                    icon from label — its one job — and the space between the
+                    two words is the trailing space in phonePrefix. */}
+                <span>
+                  {/* Hidden rather than removed, so the accessible name on a
+                      laptop is still the full "Today's Activity" that the nav
+                      has always announced. */}
+                  {"phonePrefix" in item && (
+                    <span className="hidden min-[600px]:inline">
+                      {item.phonePrefix}
+                    </span>
+                  )}
+                  {item.label}
+                </span>
               </Link>
             );
           })}

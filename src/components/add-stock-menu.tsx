@@ -28,6 +28,7 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
     container,
     trigger,
     mutate,
+    menuId,
     menuProps,
   } = useWatchlistMenu();
 
@@ -43,7 +44,13 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
         onClick={toggleOpen}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="panel-control inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-body hover:text-ink"
+        aria-controls={open ? menuId : undefined}
+        // 44px on a touch pointer, unchanged on a mouse. The audit measured this
+        // control at 30px on a phone — legal under WCAG 2.2 AA, which asks 24,
+        // but under the 44 the nav card already spends on itself. `pointer-coarse`
+        // rather than a width, because the thing being sized against is a finger,
+        // and an iPad with a keyboard is still touched.
+        className="panel-control inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-body hover:text-ink pointer-coarse:min-h-11 pointer-coarse:px-4"
       >
         <span className="font-mono" aria-hidden>
           +

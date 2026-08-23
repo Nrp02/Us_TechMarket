@@ -95,7 +95,16 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           reset at xl where the row is exactly full. It falls on the odd one
           out of each set anyway: Volatility is the only non-index card here,
           and News & Events the only non-price card on Today's Activity. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1">
+      {/* Spanning the last card closes the hole, but it does not spend the
+          width it wins — measured at 390 the Volatility card is 358px against
+          the others' 173px and lays its contents out identically, so 185px of
+          it is void and the plate reads as half-empty. The session trace is
+          the one mark here that grows honestly: it carries a viewBox, so a
+          wider box REDRAWS the session rather than stretching it — the same
+          treatment the watchlist's chart column already takes. The cap travels
+          as a variable so the span rule and the size rule stay one decision,
+          and it resets at xl where the row is exactly full and nothing spans. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] lg:[&>*:last-child]:[--spark-cap:300px] xl:[&>*:last-child]:col-span-1 xl:[&>*:last-child]:[--spark-cap:100px]">
         {INDEX_CARDS.map((card) => {
           const ticker = bySymbol.get(card.symbol);
 
@@ -158,7 +167,7 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                         a viewBox, so a narrower box redraws the whole session
                         instead of cropping the end off it. `ml-auto` keeps it
                         on the right edge once it stops filling the space. */}
-                    <span className="ml-auto flex min-w-0 max-w-[100px] flex-1 justify-end [&>svg]:h-auto [&>svg]:w-full">
+                    <span className="ml-auto flex min-w-0 max-w-[var(--spark-cap,100px)] flex-1 justify-end [&>svg]:h-auto [&>svg]:w-full">
                       <Sparkline
                         values={ticker.spark}
                         up={ticker.changePercent >= 0}

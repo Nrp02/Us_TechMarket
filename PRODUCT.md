@@ -37,9 +37,11 @@ Second, supporting claim: **the visitor's traffic never reaches a metered upstre
 - **The natural visit is after the close**, when the day is complete and the summary exists. A visit during market hours shows an unfinished session.
 - **Three surfaces:** Home (market overview, watchlist, top movers, news teaser), News (all / company / industry / market), and Today's Activity (one page per stock — stats, AI daily summary, intraday chart, timeline, upcoming events).
 - **Viewed on laptop, iPad and phone.** Phone was a documented non-target and the owner has
-  reversed that: it is now a designed width alongside the other two. Today the three routes
-  merely *fit* at 390px — nothing below 600px has been composed for — so this is a standing
-  obligation on future work, not a description of the current state.
+  reversed that: it is now a designed width alongside the other two, and the composition has
+  since been done rather than merely owed: at 390px the watchlist table becomes cards, Market
+  Overview runs two-up with the fifth card spanning, and the nav card collapses to one row.
+  Measured clean — `scrollWidth === innerWidth` on all three routes at 390 / 430 / 600 / 768 /
+  834 / 1024 / 1130 / 1280 / 1470 / 1920.
 - **The app is presented live**, walked through in front of an audience, as well as opened from a link.
 - **The school framing is not permanent.** The owner intends to keep the app live as a portfolio piece and possibly extend it, so decisions should hold up past the submission deadline rather than assuming a single graded demo.
 

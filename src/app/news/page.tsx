@@ -180,7 +180,11 @@ export default async function News({
                 // the change rather than a side effect — "this one is current"
                 // is one idea, and it should not have two visual languages in
                 // one product depending on which nav it appears in.
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                // 44px on a touch pointer only. These four are the page's
+                // whole filter and they measured 36px — the same gap the nav
+                // card closed for itself, on the control a phone visitor
+                // reaches for first.
+                className={`inline-flex items-center rounded-full px-4 py-2 text-sm font-semibold transition-colors pointer-coarse:min-h-11 ${
                   isActive
                     ? "nav-active text-primary-active"
                     : "text-body hover:bg-glass-lift hover:text-ink"

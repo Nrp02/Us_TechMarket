@@ -21,7 +21,13 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
             // which is what keeps the Watchlist and Top Movers panels starting
             // on the same line. 44 here would push every section heading in the
             // product down 6px to fix one link.
-            className="-mx-2 inline-flex min-h-9 items-center rounded-lg px-2 font-semibold text-primary hover:underline"
+            //
+            // The 36px box stays; the TARGET does not. An ::after overlay
+            // takes the link to 44px on a touch pointer without adding a
+            // pixel to the heading row, which is what the note above says
+            // must not move. Nothing else in the row is interactive, so the
+            // overlay cannot swallow another control.
+            className="relative -mx-2 inline-flex min-h-9 items-center rounded-lg px-2 font-semibold text-primary hover:underline pointer-coarse:after:absolute pointer-coarse:after:-inset-y-1 pointer-coarse:after:inset-x-0 pointer-coarse:after:content-['']"
           >
             View all
           </Link>
@@ -59,7 +65,13 @@ export function NewsTeaser({ items }: { items: NewsItem[] }) {
                 // text-base, matching the News page: a headline is one role, and
                 // it should not change size and face between two surfaces
                 // showing the same three articles.
-                className="font-serif text-base font-semibold leading-snug text-ink hover:text-primary"
+                // py-1 on an inline element paints and receives pointer
+                // events without entering the line box, so the target grows
+                // from 22px to 30px and nothing on the row moves. A
+                // single-line headline was the failing case: WCAG 2.2 SC
+                // 2.5.8 asks 24, and the inline-link exception is arguable
+                // for a headline that is the row's only reason to exist.
+                className="py-1 font-serif text-base font-semibold leading-snug text-ink hover:text-primary"
               >
                 {item.headline}
                 <span className="sr-only"> (opens in a new tab)</span>

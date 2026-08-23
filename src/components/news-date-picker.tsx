@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 // Was a native <details>/<summary> disclosure — the only one in the codebase.
 // That kept the News page a server component with zero client JS, but native
@@ -36,6 +36,9 @@ export function NewsDatePicker({
   const [open, setOpen] = useState(false);
   const container = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  // Only referenced while the list is rendered — see the note on menuId in
+  // use-watchlist-menu.ts for why it is not set unconditionally.
+  const listId = useId();
 
   const close = (restoreFocus = false) => {
     setOpen(false);
@@ -67,7 +70,10 @@ export function NewsDatePicker({
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="panel-control flex w-fit items-center gap-2 px-4 py-2 text-sm font-semibold text-ink"
+        aria-controls={open ? listId : undefined}
+        // 44px on a touch pointer, unchanged on a mouse — the same floor the
+        // three watchlist menus take. See the note in use-watchlist-menu.ts.
+        className="panel-control flex w-fit items-center gap-2 px-4 py-2 text-sm font-semibold text-ink pointer-coarse:min-h-11"
       >
         {dateLabel}
         <svg
@@ -88,7 +94,7 @@ export function NewsDatePicker({
 
       {open && (
         <div className="panel-overlay absolute right-0 z-20 mt-2 w-56 rounded-2xl p-1 [--overlay-origin:top_right]">
-          <ul>
+          <ul id={listId}>
             {options.map((option) => (
               <li
                 key={option.key}

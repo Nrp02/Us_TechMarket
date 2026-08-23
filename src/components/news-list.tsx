@@ -83,7 +83,13 @@ export function NewsList({
                   href={item.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-serif text-base font-semibold leading-snug text-ink transition-colors hover:text-primary"
+                  // py-1 on an inline element paints and receives pointer
+                  // events without entering the line box, so the target grows
+                  // from 22px to 30px and nothing on the row moves. A
+                  // single-line headline was the failing case: WCAG 2.2 SC
+                  // 2.5.8 asks 24, and the inline-link exception is arguable
+                  // for a headline that is the row's only reason to exist.
+                  className="py-1 font-serif text-base font-semibold leading-snug text-ink transition-colors hover:text-primary"
                 >
                   {item.headline}
                   {/* Every headline leaves the app for the publisher, and

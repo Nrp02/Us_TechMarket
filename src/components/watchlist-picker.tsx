@@ -30,6 +30,7 @@ export function WatchlistPicker({
     container,
     trigger,
     mutate,
+    menuId,
     menuProps,
   } = useWatchlistMenu();
 
@@ -50,16 +51,32 @@ export function WatchlistPicker({
         // Tab handing focus back out. See use-watchlist-menu.ts.
         aria-haspopup="menu"
         aria-expanded={open}
-        className="panel-control px-4 py-2 text-sm font-semibold text-ink"
+        aria-controls={open ? menuId : undefined}
+        // 44px on a touch pointer, unchanged on a mouse. The audit measured this
+        // control at 38px on a phone — legal under WCAG 2.2 AA, which asks 24,
+        // but under the 44 the nav card already spends on itself. `pointer-coarse`
+        // rather than a width, because the thing being sized against is a finger,
+        // and an iPad with a keyboard is still touched.
+        className="panel-control inline-flex items-center px-4 py-2 text-sm font-semibold text-ink pointer-coarse:min-h-11"
       >
         {/* The count is a figure checked against a cap, not a number inside a
             sentence, so it takes mono and tabular per the Mono Numerals Rule —
             it also stops the button resizing as the count crosses from 9 to 10.
             The prose in the popover keeps its numerals in Inter; see the rule
             in DESIGN.md for where that line falls. */}
-        Edit watchlist{" "}
-        <span className="font-mono tabular-nums">
-          ({selected.length}/{cap})
+        {/* One span, so the label is one flex item. A whitespace-only text
+            node is not rendered as a flex item, so making this button
+            inline-flex deleted the space between the words outright — both
+            visually and from the accessible name, which read "Edit
+            watchlist(7/10)". A flex `gap` would have restored the pixels and
+            not the name. Same trap as the nav label in top-bar.tsx, from the
+            other direction: there a gap landed inside a label that should
+            have been one item. */}
+        <span>
+          Edit watchlist{" "}
+          <span className="font-mono tabular-nums">
+            ({selected.length}/{cap})
+          </span>
         </span>
       </button>
 
