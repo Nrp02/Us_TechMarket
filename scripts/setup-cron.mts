@@ -29,7 +29,7 @@ const JOBS = [
     schedule: "*/15 13-21 * * 1-5",
     path: "/api/refresh",
   },
-  // 6x/day. News ingestion has no market-hours gate, so a DST shift changes
+  // 8x/day. News ingestion has no market-hours gate, so a DST shift changes
   // nothing that matters here.
   //
   // Five of the six land before the daily-summaries window below, which is the
@@ -44,9 +44,32 @@ const JOBS = [
   // News page fresh through the Thai morning (09:00 ICT), which the old 01:00
   // UTC cycle was doing; the articles it stores belong to an ET day already
   // summarised, exactly as before.
+  //
+  // 07:00 and 10:00 UTC (14:00 and 17:00 ICT) close the gap that one left.
+  // Between 02:00 and 12:00 UTC there was no cycle at all — ten hours, and they
+  // are 09:00-19:00 ICT, the whole of the owner's own working day.
+  //
+  // The stronger reason is where the articles actually are, which was measured
+  // rather than assumed and came out the opposite way round to the guess. That
+  // window is US pre-market, not a quiet overnight: counting the publication
+  // hour of all 664 stored articles, **47% of a day is published inside it**,
+  // peaking at 11:00 UTC (52) and 08:00 UTC (48). Nothing was lost — the noon
+  // cycle eventually swept them up — but half the day's news was invisible on
+  // the site for up to ten hours.
+  //
+  // The slots are picked by which one shrinks the largest waiting bucket, not
+  // by spacing. Articles published in an hour are stored by the first cycle
+  // after it, so each cycle owns a bucket; the largest was 312 articles before
+  // 07:00 was added, 206 after, and 133 once 10:00 joined it.
+  //
+  // Cycle count is also the ceiling on summarisation, which is the second
+  // constraint and the one that was actually being hit: MAX_PER_CYCLE is 25, so
+  // seven cycles could summarise at most 175 articles a day against real days
+  // of 166 — and coverage had already slipped to 87-89% on 2026-08-16 and
+  // 2026-08-19. Eight cycles lift the ceiling to 200.
   {
     name: "news-ingest",
-    schedule: "0 12,15,18,20,21,2 * * *",
+    schedule: "0 7,10,12,15,18,20,21,2 * * *",
     path: "/api/ingest-news",
   },
   // End-of-day Today's Activity summaries. Each run summarises the next couple

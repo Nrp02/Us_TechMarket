@@ -228,7 +228,13 @@ function toNewsItem(row: Record<string, unknown>): NewsItem {
  * The category filter is applied against the visitor's watchlist rather than a
  * stored column, so the tabs re-split the same stored articles per visitor. The
  * filter runs in Postgres so that `limit` still counts articles the tab will
- * actually show.
+ * actually show — and the date filter has to obey the same rule, which is what
+ * the `if (!day)` below exists for.
+ *
+ * The invariant this protects: on any given day, All News is exactly the union
+ * of Company, Industry and Market, and its count is the whole day. Three tabs
+ * that add up to more than the tab containing them is the tell that a limit is
+ * being applied against a set that is not the one being displayed.
  *
  * `day` scopes to one ET trading day, using the same dayWindow-plus-JS-filter
  * pattern as getSymbolNews and getIntraday below — the UTC window narrows the
@@ -285,8 +291,29 @@ async function getNewsUncached(
   let query = db
     .from("news")
     .select(NEWS_COLUMNS)
-    .order("published_at", { ascending: false })
-    .limit(limit);
+    .order("published_at", { ascending: false });
+
+  // `limit` is applied in Postgres only when there is no day filter, and that
+  // placement is the whole point rather than an optimisation.
+  //
+  // dayWindow is 36 hours wide because it has to *contain* an ET day (see
+  // below); the exact day is settled afterwards in JS. Applying the limit in
+  // Postgres therefore truncated the wrong set — it took the newest `limit`
+  // rows of the 36-hour window, which are dominated by the *next* ET day, and
+  // the JS filter then threw most of them away. Measured on ET 2026-08-20: the
+  // window held 183 rows, the day itself held 122, and the page rendered 5.
+  //
+  // It was worse than a simple undercount, because the category predicates run
+  // in Postgres too. Each tab drew its 60 from a smaller pool, so more of its
+  // rows survived the day filter than All News's did — 34 / 38 / 27 against 5,
+  // three tabs each larger than the tab that is supposed to contain them.
+  //
+  // So a day view is uncapped: the window bounds it to a few hundred rows, and
+  // a query returning 200 rows costs what one returning 1 costs here (the cost
+  // is per request — see CACHE_SECONDS). PostgREST's own 1000-row ceiling is
+  // the backstop. The `limit` argument is ignored on this path, which no caller
+  // exercises: only the Home teaser passes one, and it passes no day.
+  if (!day) query = query.limit(limit);
 
   // An empty tag list is what identifies the general feed; everything else is a
   // company article, sorted by whether the visitor watches any of its tickers.
@@ -307,7 +334,9 @@ async function getNewsUncached(
   // depends on the newest stored day and so is not known while the query is
   // being built. Nothing is lost: the rows are already ordered newest first, so
   // the limit still takes the newest `limit` articles and the floor only ever
-  // trims a tail that failed it.
+  // trims a tail that failed it. That reasoning only holds because the limit
+  // and the floor agree on an ordering; it is exactly the reasoning the day
+  // filter broke, since a day is not a suffix of a newest-first list.
   const [{ data }, newestDay] = await Promise.all([query, getNewestNewsDay()]);
   const cutoff = newsRetentionCutoff(newestDay);
 

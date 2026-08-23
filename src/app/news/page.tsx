@@ -86,9 +86,14 @@ export default async function News({
 
   const dateOptions: DateOption[] = [
     {
+      // Explicitly `today` rather than a bare /news, which no longer means the
+      // same thing: with no date param the page now lands on the newest day
+      // that has articles. Choosing Today has to stay a request the resolver
+      // can tell apart from not choosing at all, or the picker could not offer
+      // today's empty state.
       key: "today",
       label: "Today",
-      href: buildHref(active),
+      href: buildHref(active, today),
       current: resolved.isToday,
     },
     ...otherDates.map((d) => ({
@@ -107,7 +112,7 @@ export default async function News({
   ];
 
   const emptyMessage = resolved.isToday
-    ? "No articles recorded yet today. News is fetched six times during the trading day — check back after the next cycle, or switch to All dates to see recent coverage."
+    ? "No articles recorded yet today. News is fetched eight times a day — check back after the next cycle, or switch to All dates to see recent coverage."
     : resolved.isAll
       ? "No articles in this category yet."
       : `No articles from ${formatDay(resolved.date!)} in this category.`;
@@ -147,11 +152,15 @@ export default async function News({
         >
           {TABS.map((t) => {
             const isActive = t.key === active;
+            // `resolved.date` is already the concrete day in every case that
+            // is not "all", today included, so the tab links carry it as-is.
+            // Dropping it for today was safe only while a bare /news meant
+            // today; now it would hand the resolver an empty request from a
+            // page that had made a choice, and switching tabs could silently
+            // move the visitor to a different day.
             const dateParam = resolved.isAll
               ? "all"
-              : resolved.isToday
-                ? undefined
-                : (resolved.date ?? undefined);
+              : (resolved.date ?? undefined);
             return (
               <Link
                 key={t.key}

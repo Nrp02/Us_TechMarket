@@ -53,3 +53,47 @@ test("a malformed date falls back to today", () => {
     isAll: false,
   });
 });
+
+// The ten-hour window every day between the 02:00 and 12:00 UTC news cycles,
+// and every weekend, where today is real but has nothing stored yet.
+const QUIET = ["2026-08-13", "2026-08-12"]; // today absent
+
+test("with nothing stored for today, the default lands on the newest stored day", () => {
+  assert.deepEqual(resolveNewsDate(undefined, TODAY, QUIET), {
+    date: "2026-08-13",
+    isToday: false,
+    isAll: false,
+  });
+});
+
+test("choosing Today explicitly still reaches today's own empty state", () => {
+  assert.deepEqual(resolveNewsDate(TODAY, TODAY, QUIET), {
+    date: TODAY,
+    isToday: true,
+    isAll: false,
+  });
+});
+
+test("a stale date falls back to the newest stored day, not to an empty today", () => {
+  assert.deepEqual(resolveNewsDate("2026-01-01", TODAY, QUIET), {
+    date: "2026-08-13",
+    isToday: false,
+    isAll: false,
+  });
+});
+
+test("an empty table still resolves to today rather than crashing", () => {
+  assert.deepEqual(resolveNewsDate(undefined, TODAY, []), {
+    date: TODAY,
+    isToday: true,
+    isAll: false,
+  });
+});
+
+test("'all' still wins over the fallback", () => {
+  assert.deepEqual(resolveNewsDate("all", TODAY, QUIET), {
+    date: null,
+    isToday: false,
+    isAll: true,
+  });
+});
