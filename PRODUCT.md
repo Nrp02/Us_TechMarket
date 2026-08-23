@@ -33,7 +33,7 @@ Second, supporting claim: **the visitor's traffic never reaches a metered upstre
 ## Operating Context
 
 - **The day boundary is the US market session (`America/New_York`), not the visitor's local day.** The owner is in Thailand/ICT; schedules and market-open logic are all evaluated in New York time so they survive EST/EDT.
-- **Nothing on screen is live-ticking.** Intraday snapshots land every 15 minutes, news six times a day, summaries after the close; reads are cached up to 60 seconds. The visitor is looking at a recent state of the world, not a real-time one — the product should never imply otherwise.
+- **Nothing on screen is live-ticking.** Intraday snapshots land every 15 minutes, news eight times a day, summaries after the close; reads are cached up to 60 seconds. The visitor is looking at a recent state of the world, not a real-time one — the product should never imply otherwise.
 - **The natural visit is after the close**, when the day is complete and the summary exists. A visit during market hours shows an unfinished session.
 - **Three surfaces:** Home (market overview, watchlist, top movers, news teaser), News (all / company / industry / market), and Today's Activity (one page per stock — stats, AI daily summary, intraday chart, timeline, upcoming events).
 - **Viewed on laptop, iPad and phone.** Phone was a documented non-target and the owner has

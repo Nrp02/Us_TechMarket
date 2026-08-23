@@ -97,3 +97,31 @@ test("'all' still wins over the fallback", () => {
     isAll: true,
   });
 });
+
+test("a future-dated article does not become the fallback day", () => {
+  // One upstream row stamped next month sorts ahead of every real day. Unasked
+  // visitors must still land on 2026-08-13, not on the junk date.
+  const withFuture = ["2026-09-20", "2026-08-13", "2026-08-12"];
+  assert.deepEqual(resolveNewsDate(undefined, TODAY, withFuture), {
+    date: "2026-08-13",
+    isToday: false,
+    isAll: false,
+  });
+});
+
+test("a future date can still be reached when it is asked for explicitly", () => {
+  const withFuture = ["2026-09-20", "2026-08-13"];
+  assert.deepEqual(resolveNewsDate("2026-09-20", TODAY, withFuture), {
+    date: "2026-09-20",
+    isToday: false,
+    isAll: false,
+  });
+});
+
+test("only future days stored still resolves to today", () => {
+  assert.deepEqual(resolveNewsDate(undefined, TODAY, ["2026-09-20"]), {
+    date: TODAY,
+    isToday: true,
+    isAll: false,
+  });
+});

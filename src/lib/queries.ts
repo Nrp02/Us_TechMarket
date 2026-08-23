@@ -310,9 +310,17 @@ async function getNewsUncached(
   //
   // So a day view is uncapped: the window bounds it to a few hundred rows, and
   // a query returning 200 rows costs what one returning 1 costs here (the cost
-  // is per request — see CACHE_SECONDS). PostgREST's own 1000-row ceiling is
-  // the backstop. The `limit` argument is ignored on this path, which no caller
-  // exercises: only the Home teaser passes one, and it passes no day.
+  // is per request — see CACHE_SECONDS). The `limit` argument is ignored on
+  // this path, which no caller exercises: only the Home teaser passes one, and
+  // it passes no day.
+  //
+  // PostgREST's own 1000-row ceiling is *not* a graceful backstop here, which
+  // is worth stating because it reads like one. It keeps the newest 1000 rows
+  // and drops the rest, and the newest rows of a 36-hour window are the next ET
+  // day — so a window that ever exceeded 1000 would lose the requested day from
+  // its oldest end and reproduce exactly the bug above, tabs outgrowing All News
+  // and all. Headroom is real (183 rows in the widest window measured); if it
+  // ever narrows, tighten the window rather than trusting the ceiling.
   if (!day) query = query.limit(limit);
 
   // An empty tag list is what identifies the general feed; everything else is a

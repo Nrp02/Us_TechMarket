@@ -32,7 +32,7 @@ const JOBS = [
   // 8x/day. News ingestion has no market-hours gate, so a DST shift changes
   // nothing that matters here.
   //
-  // Five of the six land before the daily-summaries window below, which is the
+  // Seven of the eight land before the daily-summaries window below, which is the
   // point: the end-of-day job can only summarise news that is already stored,
   // and under the old 4x schedule only three cycles ran first — the fourth was
   // at 01:00 UTC, after every summary tick. 21:00 UTC is the last one before

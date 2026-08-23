@@ -4,8 +4,9 @@
 // A hand-edited or stale URL must not be able to break the page — the same
 // reasoning that makes a bad watchlist cookie normalise instead of breaking a
 // render (see normaliseWatchlist in watchlist.ts). An unknown or malformed
-// date here falls back to today rather than showing an empty page with no
-// explanation.
+// date here falls back to the day the page would have opened on anyway —
+// today when today has articles, otherwise the newest day that does — rather
+// than showing an empty page with no explanation.
 
 export type ResolvedNewsDate = {
   /** The ET trading day to filter to, or null when nothing should be filtered. */
@@ -48,8 +49,15 @@ export function resolveNewsDate(
   // The `requested === today` branch above is untouched, so choosing Today from
   // the picker still reaches today's own empty state. Falling back is for
   // visitors who did not ask; it must not override one who did.
-  if (availableDates.length > 0 && !availableDates.includes(today)) {
-    return { date: availableDates[0], isToday: false, isAll: false };
+  // Clamped against today rather than taken as availableDates[0]. The list is
+  // newest-first, but an upstream `published_at` stamped in the future sorts
+  // ahead of every real day — the same possibility newsRetentionCutoff already
+  // guards, except that clamp only protects the floor. Unclamped, one junk row
+  // would land every unasked visitor on a future date holding that row alone,
+  // with the real news hidden behind the picker.
+  const newestPastDay = availableDates.find((d) => d <= today);
+  if (newestPastDay && newestPastDay !== today) {
+    return { date: newestPastDay, isToday: false, isAll: false };
   }
 
   return { date: today, isToday: true, isAll: false };

@@ -29,8 +29,11 @@ import { TOP_20_SYMBOLS } from "@/lib/symbols";
  * longer depends on this cap, that failure is now recoverable: the affected
  * articles stay stored with no blurb and `selectForSummary` picks them up on
  * the next cycle. At 25 a cycle lands comfortably inside the 55s budget, and
- * six cycles a day (150 slots) comfortably clears the ~90 articles/day the
- * feeds produce, so the queue is not expected to survive a cycle in practice.
+ * eight cycles a day give 200 slots against the ~166 articles a busy day
+ * actually produces — about 20% headroom, not the comfortable margin the
+ * earlier ~90/day figure suggested. Coverage had already slipped to 87-89% at
+ * seven cycles (175 slots), so the queue does survive a cycle in practice and
+ * `selectForSummary` carrying a backlog forward is load-bearing, not a spare.
  */
 const MAX_PER_CYCLE = 25;
 
@@ -175,7 +178,7 @@ export async function ingestNews(): Promise<IngestResult> {
   // Exactly one Gemini call per cycle, covering the whole selection together.
   //
   // No in-call retries. Each retry is a real request against the free tier's
-  // 20/day, which six cycles could exhaust on their own, and retrying is now
+  // 20/day, which eight cycles could exhaust on their own, and retrying is now
   // redundant: a failed call leaves these articles stored and un-blurbed, so
   // the next cycle's selection picks them up unchanged. Same reasoning as the
   // call site in daily-summary.ts.
