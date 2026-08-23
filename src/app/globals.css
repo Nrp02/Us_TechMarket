@@ -766,6 +766,29 @@
   z-index: -1;
   pointer-events: none;
   background-color: var(--color-backdrop);
+
+  /* Promoted to its own compositor layer, and this is a scroll fix rather than
+     a motion one. The layer is fixed and the panes above it are not, so every
+     backdrop-filter's sampled region moves across it on every scrolled frame —
+     the same invalidation the Bounded Motion Rule forbids animating into,
+     arriving by a route that rule never considered. Unpromoted, WebKit
+     re-rasterises this SVG (two feTurbulence filters at numOctaves 4, over a
+     Retina viewport) rather than reusing a cached texture, which is why an A14
+     iPad stutters on scroll while sitting perfectly still when idle.
+
+     translateZ(0) rather than `will-change: transform`: the hint is permanent
+     here, not tied to a known animation, and will-change left on at rest is
+     exactly the overuse the audit checks for. Nothing about this layer ever
+     animates — it is promoted to be CACHED, not to be moved.
+
+     The risk this had to clear: a transform creates a stacking context, and the
+     note above says the sky must sit inside the root stacking context so every
+     backdrop-filter above can sample it. It still can — z-index -1 keeps it
+     behind the content while remaining a descendant of the same root, and the
+     panes sample it exactly as before. Verified by pixel-diffing Home at 1440
+     and 390 against the unpromoted build, not by counting panes: a pane count
+     cannot tell a sampled backdrop from a dead one. */
+  transform: translateZ(0);
 }
 
 /* --- The editorial voice -------------------------------------------------
