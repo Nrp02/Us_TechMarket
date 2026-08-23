@@ -184,7 +184,17 @@ function buildInput(args: {
       ? Number(price.volume) / Number(price.avg_volume)
       : null;
 
-  const prices = snapshots.map((s) => s.price);
+  // The closing price is price_cache's (Finnhub), while the bars are Yahoo's,
+  // so the close can sit outside the range the bars describe. Folding it in
+  // keeps the model from being handed "closing price $214.75" beside "session
+  // high $214.74" and faithfully copying both, which rule 1 of the prompt
+  // requires it to do. Appended, so "session open" still reads the first bar;
+  // withheld entirely when there are no bars, so an empty session leaves all
+  // three null rather than promoting the close to its own "session open".
+  const closePrice = Number(price.price);
+  const prices = snapshots.length
+    ? [...snapshots.map((s) => s.price), closePrice]
+    : [];
   const extreme = (pick: (values: number[]) => number) =>
     prices.length ? formatPrice(pick(prices)) : null;
 
@@ -206,7 +216,7 @@ function buildInput(args: {
       // label verbatim despite being told not to, so these are worded to read
       // acceptably when it does ("a change of +3.01" rather than "a change in
       // dollars of +3.01").
-      "closing price": formatPrice(Number(price.price)),
+      "closing price": formatPrice(closePrice),
       "change": formatChange(Number(price.change)),
       "percent change": formatPercent(changePercent),
       "direction": changePercent >= 0 ? "up" : "down",
@@ -449,9 +459,11 @@ export async function generateDailySummaries(
       // rather than deleting a good timeline and writing an empty one.
       if (!data || !data.snapshots.length) continue;
 
+      const price = prices.get(symbol);
       const rows = buildTimeline(
         data.snapshots,
         data.news.map((n) => ({ at: new Date(n.publishedAt), headline: n.headline })),
+        price ? Number(price.price) : null,
       );
       if (!rows.length) continue;
 

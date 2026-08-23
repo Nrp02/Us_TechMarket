@@ -39,6 +39,7 @@ function median(values: number[]): number {
 export function buildTimeline(
   snapshots: Snapshot[],
   news: TimelineNews[],
+  officialClosePrice?: number | null,
 ): TimelineRow[] {
   if (!snapshots.length) return [];
 
@@ -65,12 +66,24 @@ export function buildTimeline(
   // It also covers the quieter case: if the snapshots stop before 16:00 because
   // a tick was missed near the bell, the day genuinely has no recorded close,
   // and saying so beats naming whatever time the data happened to stop at.
-  if (isAtOrAfterClose(last.at)) {
+  //
+  // Priced from price_cache (Finnhub's live quote) when available, not the
+  // snapshot itself. The header stat and the AI summary both read
+  // price_cache.price; the snapshot is a Yahoo 15-minute bar close, a different
+  // upstream provider sampled at a slightly different instant, so using it here
+  // made this row disagree with the other two by a few cents — measured at 4 of
+  // 20 stocks on 2026-08-21 (NVDA +$0.03, NOW -$0.04, ORCL -$0.02, CRM +$0.01).
+  // Falls back to the snapshot price when no canonical price was supplied.
+  const closePrice = isAtOrAfterClose(last.at)
+    ? officialClosePrice ?? last.price
+    : null;
+
+  if (closePrice != null) {
     rows.push({
       eventAt: last.at,
       kind: "market_close",
       label: "Market close",
-      detail: formatPrice(last.price),
+      detail: formatPrice(closePrice),
     });
   }
 
@@ -84,8 +97,22 @@ export function buildTimeline(
   // function is called every 15 minutes during the session and recomputes from
   // scratch each time, so a new high simply supersedes the previous row on the
   // next rebuild. That is correct-as-of-now, the same as the price beside it.
-  const high = ordered.reduce((a, b) => (b.price > a.price ? b : a));
-  const low = ordered.reduce((a, b) => (b.price < a.price ? b : a));
+  //
+  // The close counts as a candidate extreme in its own right, because it no
+  // longer comes from the same feed as the bars. Without this a close a cent
+  // above the day's highest bar prints "Session high" *below* the "Market
+  // close" sitting directly under it — the same contradiction the shared close
+  // price was introduced to remove, moved one row down. Not hypothetical: AMD
+  // closed exactly *at* its highest bar on 2026-08-21, so a one-cent divergence
+  // on such a day is all it takes. Ties keep the earlier bar, so the row still
+  // points at where the extreme was first reached.
+  const extremes: Snapshot[] =
+    closePrice == null
+      ? ordered
+      : [...ordered, { at: last.at, price: closePrice, volume: null }];
+
+  const high = extremes.reduce((a, b) => (b.price > a.price ? b : a));
+  const low = extremes.reduce((a, b) => (b.price < a.price ? b : a));
   if (high.price !== low.price) {
     rows.push(
       {

@@ -81,6 +81,68 @@ test("a bar exactly on the bell counts as the close", () => {
   assert.equal(close?.eventAt.toISOString(), "2026-08-13T20:00:00.000Z");
 });
 
+// Regression: the header stat and the AI summary both read price_cache's
+// Finnhub quote, but this row used to be priced from the last Yahoo snapshot
+// instead — a different upstream provider, sampled at a slightly different
+// instant, so the three disagreed by a few cents on a live page.
+test("the close price prefers price_cache's canonical price over the snapshot", () => {
+  const rows = buildTimeline(barsThroughClose([100, 101]), [], 101.42);
+  const close = rows.find((r) => r.kind === "market_close");
+
+  assert.equal(close?.detail, "$101.42");
+  // The event still lands at the snapshot's own timestamp — only the priced
+  // value changes.
+  assert.equal(close?.eventAt.toISOString(), "2026-08-13T20:00:00.000Z");
+});
+
+// The close comes from a different feed than the bars, so it can land outside
+// the range they describe. AMD closed exactly at its highest bar on 2026-08-21,
+// which is one cent of divergence away from printing "Session high" below the
+// "Market close" directly beneath it.
+test("a canonical close beyond every bar becomes the session extreme itself", () => {
+  const high = buildTimeline(barsThroughClose([100, 101]), [], 101.01)
+    .find((r) => r.label === "Session high");
+  assert.equal(high?.detail, "$101.01");
+
+  const low = buildTimeline(barsThroughClose([100, 101]), [], 99.99)
+    .find((r) => r.label === "Session low");
+  assert.equal(low?.detail, "$99.99");
+});
+
+test("a canonical close inside the range leaves the extremes on their own bars", () => {
+  const rows = buildTimeline(barsThroughClose([100, 105, 102]), [], 102.5);
+
+  assert.equal(rows.find((r) => r.label === "Session high")?.detail, "$105.00");
+  assert.equal(rows.find((r) => r.label === "Session low")?.detail, "$100.00");
+  // The extreme keeps the timestamp of the bar that set it, not the close's.
+  assert.equal(
+    rows.find((r) => r.label === "Session high")?.eventAt.toISOString(),
+    "2026-08-13T19:45:00.000Z",
+  );
+});
+
+// The synthetic close point carries no volume, so it must not reach the median
+// that decides what counts as heavy trading.
+test("the canonical close does not disturb the heavy-trading threshold", () => {
+  const withClose = buildTimeline(
+    barsThroughClose([100, 101, 102, 103]).map((b, i) => ({
+      ...b,
+      volume: [100, 100, 100, 150][i],
+    })),
+    [],
+    103.5,
+  );
+  assert.equal(labels(withClose).includes("Heavy trading"), false);
+});
+
+test("the close price falls back to the snapshot when no canonical price is given", () => {
+  const withUndefined = buildTimeline(barsThroughClose([100, 101]), []);
+  const withNull = buildTimeline(barsThroughClose([100, 101]), [], null);
+
+  assert.equal(withUndefined.find((r) => r.kind === "market_close")?.detail, "$101.00");
+  assert.equal(withNull.find((r) => r.kind === "market_close")?.detail, "$101.00");
+});
+
 test("session high and low appear even when the day barely moved", () => {
   // The regression this pins: an earlier version only emitted the pair once the
   // day's range cleared 1%, which silently dropped them from the quietest
