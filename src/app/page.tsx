@@ -4,7 +4,7 @@ import { SessionDigest } from "@/components/session-digest";
 import { TopMovers } from "@/components/top-movers";
 import { WatchlistTable } from "@/components/watchlist-table";
 import { formatDayLong } from "@/lib/format";
-import { getNewsTeaser, getSessionDay, getTickers } from "@/lib/queries";
+import { getNewsTeaser, getSessionStamp, getTickers } from "@/lib/queries";
 import { INDEX_SYMBOLS, TOP_20_SYMBOLS } from "@/lib/symbols";
 import { readWatchlist } from "@/lib/watchlist";
 
@@ -23,10 +23,12 @@ export default async function Home() {
   // Top 20), sliced into the three views below — INDEX_SYMBOLS and
   // TOP_20_SYMBOLS each independently trigger a full-session sparkline scan, so
   // three separate calls would run that scan three times for the same day.
-  const [all, news, sessionDay] = await Promise.all([
+  const [all, news, session] = await Promise.all([
     getTickers([...INDEX_SYMBOLS, ...TOP_20_SYMBOLS]),
     getNewsTeaser(watchlist, 3),
-    getSessionDay(),
+    // The same cached read the shell's session marker makes, so naming the day
+    // for a screen reader here costs no extra query.
+    getSessionStamp(),
   ]);
   const bySymbol = new Map(all.map((t) => [t.symbol, t]));
   const indices = INDEX_SYMBOLS.map((s) => bySymbol.get(s)).filter((t) => t != null);
@@ -35,88 +37,34 @@ export default async function Home() {
 
   return (
     <div className="page-enter flex flex-col gap-10 pb-10">
-      {/* The page's one display-scale element. It was 24px — barely 1.3x the
-          section headings under it — so the page opened with nothing leading.
-          The session date IS the heading now — see the block below for why it
-          took the slot from the product's name. What has not changed is that
-          nothing is set above it: a date, or anything else, placed over a title
-          is a kicker, and the heading carries its own weight.
+      {/* Home has no display element, and that is the change rather than an
+          omission. The 52px heading was the session date, which is now stated
+          in the shell on every route — the product runs on New York time and
+          is read from Bangkok, so the day belongs where it is true everywhere
+          rather than on the one page that happened to have room for it.
 
-          The heading is capped so it reads as a block rather than a ribbon,
-          which is what leaves room for the digest beside it. Previously it ran
-          the full width and the remaining ~800px of the header held nothing.
+          What is left is the answer instead of the label. The page opens on
+          the digest of the session, then market, then the visitor's own
+          stocks, then news: a reading order that starts wide and narrows,
+          where before it started with the page's own name for itself.
 
-          The heading is one line and is meant to stay one. The longest date
-          this can render is "Wednesday, September 30" at 23 characters, which
-          clears the left column at every target width — `text-display` clamps
-          to 52px only where there is room for it.
+          It also closes the header's hole. The old band was 1152x191 with the
+          heading occupying 442x87 of it and the digest 352x191 opposite —
+          roughly 114,000px2, 52% of the band, empty in an L, growing to 838px
+          of gap at 1920. The band is gone, so the hole cannot be composed
+          around; it simply is not there.
 
-          `w-fit` shrinks the h1 to its own text rather than to the header
-          column, which is what keeps the strapline's 52ch measure reading
-          against the heading instead of against the page.
+          The h1 survives as sr-only. A page needs a heading, the vocabulary
+          already existed on this element, and the accessible name should say
+          which session is being reported rather than leave the document
+          nameless. */}
+      <h1 className="sr-only">
+        {session
+          ? `Market session of ${formatDayLong(session.day)}`
+          : "US TechMarket — no session recorded yet"}
+      </h1>
 
-          items-start, not items-end. The header used to bottom-align the title
-          block against the session digest, which put the h1's top edge 45px
-          below the digest card's — the two things flanking the top of the page
-          visibly disagreed about where the top was. */}
-      <header className="flex flex-col items-start justify-between gap-8 lg:flex-row">
-        <div>
-          {/* The session being reported, as the headline.
-
-              This slot held the product's name, under a newspaper reading that
-              was correct at the time: masthead over strapline, with the digest
-              opposite carrying the date and the market's state — the top-right
-              corner of a front page. That reading depended on the nameplate
-              being the largest thing here. Navigation moved into a card across
-              the top and took the nameplate with it, so the front page needed a
-              new headline, and it is the same structure one level down: the
-              paper's name in the running head, the dated slug on page one.
-              (Before either, it was "What happened to your stocks today" — the
-              product's core question, which Home does not answer. This page
-              shows where things STAND; the prose answer lives on Today's
-              Activity, and the question is that card's heading now.)
-
-              The date earns the slot on two grounds beyond removing a
-              duplicate. Home is a surface where somebody is finding something
-              out, and at 52px the product's own name is the least useful
-              element on it — you know which app you opened. And it states the
-              product's central caveat in the first thing the eye lands on:
-              nothing here ticks, and a visitor is looking at a completed
-              session rather than a live tape. On a Monday this reads "Friday,
-              August 15" beside "Market closed", which is exactly true and
-              exactly what a live-tape dashboard would obscure.
-
-              Serif, like every other page-title, and not mono. The Mono
-              Numerals Rule governs a number that is DATA — a value in a column,
-              comparable down it. This is the page's title, which is written.
-
-              Falling back to the product's name when there is no session at
-              all: "No session yet" is a bleak thing to set at 52px, and the
-              name is never wrong. The duplicate reappears only in that state,
-              which is degenerate.
-
-              The sr-only prefix is there because a page's accessible name
-              should not be a bare date. The vocabulary already exists on
-              Today's Activity ("session of Tue, Aug 18"). It is inside the
-              conditional so the fallback does not announce itself as "Market
-              session of US TechMarket". */}
-          <h1 className="page-title w-fit text-ink">
-            {sessionDay ? (
-              <>
-                <span className="sr-only">Market session of </span>
-                {formatDayLong(sessionDay)}
-              </>
-            ) : (
-              "US TechMarket"
-            )}
-          </h1>
-          <p className="mt-4 max-w-[52ch] text-sm text-body">
-            Prices recorded every 15 minutes across 20 US technology stocks.
-          </p>
-        </div>
-
-        <SessionDigest tickers={top20} />
-      </header>
+      <SessionDigest tickers={top20} />
 
       <MarketOverview tickers={indices} />
 

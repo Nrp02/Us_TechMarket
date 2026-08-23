@@ -12,7 +12,7 @@ export default function NotFound() {
         That page isn&apos;t here
       </h1>
 
-      <p className="max-w-[68ch] text-sm leading-relaxed text-body">
+      <p className="max-w-[49ch] text-sm leading-relaxed text-body">
         This app tracks a fixed list of 20 US technology stocks, so a ticker
         outside that list has no page. Nothing is broken — the stored prices,
         news and summaries are all still there.

@@ -87,7 +87,7 @@ rounded:
   pill: "9999px"
 spacing:
   shell: "24px"
-  section: "24px"
+  section: "40px"
   panel-x: "20px"
   panel-y: "16px"
   cell: "12px"
@@ -169,7 +169,7 @@ components:
 
 The market has closed. The numbers have stopped moving, the day is complete, and what is left is a desk under a window at night — panes of frosted glass laid over a sky that has weather in it. That room explains every decision below: there is **one theme** and it is a night, the surfaces are **translucent rather than painted**, and almost nothing moves. A product whose entire premise is "here is what happened today" would be lying with its motion design if it behaved like a live tape.
 
-The atmosphere is authored in exactly one place — two banks of fractal cloud over near-black, in `night-sky.tsx` — and everything else in the product is a pane in front of it. That is the whole material idea, and it is what replaced an earlier system of flat tonal rectangles: a panel now sits at 4.5× the luminance of unlit sky and 15.3× that of a lit cloud, and it is the *range*, not any single value, that makes the material read as glass. The consequence is a discipline: a pane's face is a range, so every colour pair in the product is measured at the brightest end of it.
+The atmosphere is authored in exactly one place — five masses of fractal cloud over near-black, in `night-sky.tsx` — and everything else in the product is a pane in front of it. That is the whole material idea, and it is what replaced an earlier system of flat tonal rectangles: a panel now sits at 4.5× the luminance of unlit sky and 15.3× that of a lit cloud, and it is the *range*, not any single value, that makes the material read as glass. The consequence is a discipline: a pane's face is a range, so every colour pair in the product is measured at the brightest end of it.
 
 Nothing here is decorated. The light does legibility work — it is what separates a pane from the field behind it — and it has a direction, the same upper-left the clouds are lit from. Colour is rationed hard: blue is either *state* (on a surface) or *weather* (behind glass), and the two are kept in different files so they cannot blur together.
 
@@ -218,6 +218,8 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 **The Worst-Case Composite Rule.** Glass is alpha over a field that varies, so a pane's face is a **range**, not a value. Every contrast pair in the product is measured at the bright end of that range; if it passes there, every pixel elsewhere passes. `canvas` *is* that bright end, and the peak behind it is **measured off the rendered page**, not modelled — a stack of radial gradients can be composited on paper, a seeded fractal cannot. Re-take it after any change to the weather. It has caught a real regression once: spreading the cloud masses to the frame edges raised the peak past its own model and five pairs failed the moment the true number was fed back in.
 
+**As of the five-mass sky, `canvas` is conservative and is deliberately left where it is.** Re-taken at 1470×1000 with panels and stars hidden, the brightest 16px block behind any pane measures **L 0.00670 on Home** (rgb 6/19/42, at 1264,304) and **0.00620 on News** — against the 0.01663 / 0.01951 the three-mass sky produced, a fall of about 60%. Back-solved, `#16243f` models a field of roughly rgb 26/39/65 where the page now renders 6/19/42; re-deriving it would give about `#091730`. Every pair in the product therefore still passes, with more margin than it was measured for — the error is in the safe direction, which is the whole point of measuring the bright end. The token is not chased downward, because it is also what the reduced-transparency fallback paints and what the tints are baked over, and moving it means re-running all three tints first. **A conservative canvas costs nothing; an optimistic one fails silently.**
+
 **The Two Blues Rule.** Blue does two jobs and they must not blur together, or the Significant badge stops meaning anything. **Signal Blue** is light and saturated, always sits *on* a surface, and means only "active" or "significant". **Weather Blue** is deep, lives in the cloud gradient in `night-sky.tsx`, is always *behind* glass, and never lands on an object. The test: a blue inside a panel's content is a state; a blue behind glass is light. The two are separated by living in different files, which is a stronger guarantee than a rule anyone has to remember.
 
 **The One Translucent Layer Rule.** Exactly one layer in any stack is translucent: the pane's own face. Nothing nested inside it is. The corollary settles a mistake made three times in three components: **a plate's material is decided by what is behind it, not by what it is.** On glass, use glass (`panel-control`, `panel-chip`). Inside a panel, use the baked token — `surface-strong` there is correct and must not be "upgraded".
@@ -227,6 +229,13 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 **The Climbing Ramp Rule.** A surface that sits *on* another surface is the lighter of the two. If a new surface is darker than its field, the depth will not read no matter what shadow is applied. The `panel-rail` tier is the single sanctioned exception: it resolves darker than `glass-panel` because it is shell, and shell should be recessive relative to content. The tier keeps the name it was given as a left rail — it was always defined by the role, not by the axis, and every measurement taken against it survived the move to a top card unchanged.
 
 **The Always-Light Plate Rule.** `logo-plate` is the one token that stays light, and it is load-bearing rather than an oversight. Real marks sit on this plate; the lettermark fallback and category glyphs use `surface-strong` instead so their text stays legible against the glass. Alpha is safe here despite the Baked Tint Rule for two reasons: at 0.85 the surface underneath moves the result by about 3 RGB units, and a brand mark is exempt from 1.4.11 as a logotype anyway.
+
+**The One Meaning Per Hue Rule.** A colour already carries a meaning in this product, so an *action* may not borrow it. The watchlist picker drew "Remove" in the loss red and "Add" in Signal Blue, which put red meaning "a price fell" beside red meaning "this button destroys something", and blue meaning "crossed the significance rule" beside blue meaning "you may click this" — in the same viewport, at the same moment. Both verbs are now Body ink and the distinction is carried by the `−` and `+` glyphs the symbol switcher already uses for the same two actions, so it survives for a reader who cannot separate the two hues at all. **Before colouring anything, ask what that hue already says on this screen.**
+
+**The Reverted-On-Sight Rule.** Two changes this system has now made twice and undone twice, both from an argument that was correct in the abstract and wrong on the page. Do not re-propose either without new evidence.
+
+- **The Volatility card in neutral ink.** The argument: a falling volatility future is a calmer market, so red would be the product judging the news. The page's answer: VIXY is an ETF with a price, the price did fall, and red reports the same fact here as on the other four cards. The "bad news" reading is the viewer's inference, not the card's claim — and one card in a row of five wearing a different colour reads as a fault rather than as a distinction.
+- **"Normal" replaced with an em-dash in the Status column.** The argument: a badge marking an exception should not be printed on every row that is not one — the column held six identical pills and one Significant, 191px wide at 1920. The page's answer: most days nothing crosses the rule at all, so the column became seven dashes and read as data that had failed to load. **A quiet answer still has to look like an answer.**
 
 **The Measured Floor Rule.** A colour pair ships only once its ratio has been computed: 4.5:1 for text, 3:1 for a graphical object that carries data. Many tokens here are the value they are because the prettier value failed — `muted`, `body`, `chart-bar`, all three tints, and `primary` wherever it would have to sit on a plate.
 
@@ -240,14 +249,16 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 ### Hierarchy
 
-- **Display** (Source Serif 4, 600, `clamp(2.25rem, 4vw, 3.25rem)`, 1.06): one per page, carrying what the page is *about* rather than always its name. News takes its name; **Home takes the session date** — spelled out, `Tuesday, August 18` — because the nav card holds the product's name on every route now, and at 52px a name the visitor already knows is the least useful element on a surface where they are finding something out. It also states the product's central caveat in the first thing the eye meets: a completed session, not a live tape. Today's Activity has no display element at all; its `<h1>` is a ticker and stays in Inter as a measured identifier. Set through the `page-title` utility, which also carries the mask sweep.
+- **Display** (Source Serif 4, 600, `clamp(2.25rem, 4vw, 3.25rem)`, 1.06): **at most** one per page, and two of the three routes now have none. News takes its name. **Home has no display element** — its `<h1>` is `sr-only` — and Today's Activity has none either; its `<h1>` is a ticker and stays in Inter as a measured identifier. Set through the `page-title` utility, which also carries the mask sweep; `error.tsx` and `not-found.tsx` use it too.
 
-  The date is set in the serif rather than in mono, and that is not an exception to The Mono Numerals Rule. That rule governs a number which is *data* — a value in a column, comparable down it. A page's title is written.
+  Home's display element was the session date, spelled out at 52px, and losing it is a **deletion rather than a demotion**. Once the nav card gained a session marker, the day was stated on every route in the shell; keeping a 52px copy of it on one route would have been the same defect that moved the product's name out of Home's heading in the first place — one fact, two places, drifting the moment either changes. The eye now meets the session digest instead, which answers *how the day went* rather than *which day it was*.
+
+  A page that has nothing to say at display size should say nothing at display size. A display element is not a slot to fill.
 - **Figure** (JetBrains Mono, 500, 1.875rem, 1.05, `tnum`): the one large tabular reading — Market Overview levels and the Today's Activity stat cells. Both surfaces import this step rather than spelling a size, because the same role rendered 38px on one page and 30px on another before it existed.
 - **Title** (Inter, 600, 1.25rem, 1.75rem): section headings. One step, always paired with the hairline rule running to the meta slot.
-- **Lede** (Source Serif 4, 400, 1.125rem, 1.59): the AI narrative — the one passage long enough for optical bleed to accumulate.
+- **Lede** (Source Serif 4, 400, 1.125rem, 1.59): the AI narrative — the one passage long enough for optical bleed to accumulate, and **the one passage in the product with no measure cap, deliberately**. Capping it was tried and made the page worse rather than better: the panel is the full content column, so a cap simply moved the emptiness from the end of each line to the right third of a tall card. The card takes a second column instead — see The Filled Right Rule.
 - **Story** (Source Serif 4, 600, 1rem, 1.375): news headlines, on both the News page and the Home teaser. A headline is one role and must not change size or face between two surfaces showing the same three articles.
-- **Body** (Inter, 400, 0.875rem, 1.5rem): running interface prose, table cells, straplines. Measure capped at 62–86ch.
+- **Body** (Inter, 400, 0.875rem, 1.5rem): running interface prose, table cells, straplines. Measure caps run **48–60ch**, each one computed from the passage's own average character width rather than taken off a scale: 60ch on a timeline entry, 53ch on a news blurb, 52ch on the two provenance notes, 49ch on the News strapline and the not-found line. The band used to read 62–86ch, which was the same numbers copied across six elements at three font sizes.
 - **Label** (Inter, 600, 0.75rem): column headers, cell labels, tab labels.
 - **Micro** (Inter, 600, 0.6875rem): the second line inside a cell — relative volume under volume, the lettermark inside a plate.
 
@@ -257,29 +268,60 @@ A near-black sky with almost no red in it, weather painted over it in deep blue,
 
 **The Mono Numerals Rule.** Every number that is *data* renders in JetBrains Mono with `tabular-nums`. A figure set in Inter is a defect: it breaks column alignment and severs the visual promise that numbers here are measured rather than written.
 
+The session date has been on both sides of this rule and the second answer is the right one. As Home's 52px title it was *written* and set in the serif, correctly. In the nav card's session marker it is not a title — it is the day being reported, stamped beside the time it was read, and it is set in mono with the rest of the measured values. **The face follows the role the element is playing, not the kind of value it holds.**
+
 **The Signed Value Rule.** Change values always carry an explicit `+` or `−` (U+2212, not a hyphen) and are formatted from the absolute value. Direction is legible without colour, which is what keeps the change columns usable for a colour-blind reader.
 
 **The Dark-Compensation Rule.** Light-on-dark bleeds — the glyph spreads optically into the field, closing counters and tightening the gaps between letters — so a setting that reads as composed on white reads as clotted on near-black. `lede` carries +0.003em tracking and 1.59 leading for this, unlayered so it beats the utility on the element. Weight is deliberately left alone: 500 would put the narrative at the same weight as the figures around it and cost more in voice than it buys in legibility.
 
 **The Measure-On-The-Text Rule.** A `ch` cap belongs on the element whose font size it is meant to describe, never on a wrapper. `ch` resolves against the element's *own* font size, so `max-w-[16ch]` on a 16px wrapper containing a 52px heading yields about 270px and shatters the heading into one-word lines.
 
+And `ch` is **not** a character count. It is the advance of the digit zero, which in Inter is wider than the average letter — measured, 12px Inter runs about 5.79px a character against a 7.58px `0`, so `52ch` holds roughly 68 characters. A cap copied from a typographic rule of thumb about *characters* therefore sets a line about 30% longer than intended. Every cap in this file was derived by measuring the passage it governs; none was chosen.
+
 **The Intact Heading Rule.** Never split a heading into per-character boxes to animate it. A browser cannot kern across boxes — measured, "US TechMarket" rendered 376.7px split against 368.3px intact, about 0.7px lost on every pair. Animate a heading with a mask that travels across an intact text node instead; kerning, ligatures and text selection all survive.
 
 ## Layout
 
-One centred group, `max-w-[1680px]`, stacked as a column with a uniform `24px` of padding and a `24px` gap between the nav card and the content below it. Pages carry **no horizontal padding of their own** — the shell owns every gutter. This replaced three unrelated sources of margin that never agreed: measured at 1470px the viewport-to-rail gap was 16px, rail-to-content 56px and content-to-viewport 40px, diverging to 16 / 280 / 264 at 1920px.
+One centred group, `max-w-[1680px]`, stacked as a column. Padding and the gap under the nav card are the same value and it is the only responsive step in the shell: `16px` below 600px, `24px` above. A phone is 390px wide and 48px of it is gutter at the desktop figure — the one screen where the shell's own margin is a material fraction of the content column. Pages carry **no horizontal padding of their own** — the shell owns every gutter. This replaced three unrelated sources of margin that never agreed: measured at 1470px the viewport-to-rail gap was 16px, rail-to-content 56px and content-to-viewport 40px, diverging to 16 / 280 / 264 at 1920px.
 
-The navigation is a full-width `62px` card across the top, and it used to be a `240px` rail down the left. `<main>` is still a flex item and still carries `min-w-0` — load-bearing, not tidying: without it a flex item cannot shrink below its content's min-content width, and the two `overflow-x-auto` wrappers in the product become dead code that widens the page instead of scrolling inside itself. The axis changed; the default it guards against did not.
+The navigation is a full-width `62px` card across the top, and it used to be a `240px` rail down the left. It holds **three** things, not two — the nameplate, the session marker, and the nav — and its height is the only chrome in the product that is not fixed:
 
-**The content column is `viewport − 48` on every route, and that is the whole consequence.** It was `viewport − 48 − 240 rail − 24 gap`, so content gained exactly 264px: `main` measures 1422px at a 1470px viewport where it measured 1158px. Every breakpoint derived from the shell arithmetic moved with it, and one of them changes what a laptop sees — Home's two-column split now engages at 1130px instead of 1390px, so a 1280px screen gets the composition the page was drawn for instead of a stacked column. The cost runs the other way: `84px` of permanent vertical chrome (62 card + 24 gap, from a viewport top of 24) that a rail did not charge, on the axis that is scarcer on a laptop.
+| width | height | what changed |
+|---|---|---|
+| ≥ 1000px | `62px` | all three on one row |
+| 430–999px | `86px` | the marker takes a row of its own (`w-full` forces the wrap) |
+| < 430px | `104px` | the marker itself needs two lines |
 
-Sections stack at a `24px` rhythm. Every section opens with a `SectionHeading`: a title, a hairline running from it to the right edge, and an optional meta slot. The row carries a `38px` minimum height — the height of a `panel-control` pill — because two side-by-side sections with different metas otherwise started 10px apart.
+(The nameplate is dropped below 600px, which costs no height — the marker already has the row.)
+
+Each figure is arithmetic, not a stock step. One row costs `120` nameplate + `32` gap + `368` marker + `32` gap + `349` nav + `32` card padding + `48` shell = 981px, rounded up to a clean 1000. 950 was tried first from an estimate of the marker at ~300px; at that width the *nav* wrapped instead and the card came out at 93px — the same 24px of chrome spent on a worse arrangement.
+
+**The second row is a composition rather than a fallback.** A name with the date beneath it is what a masthead does, and it is the arrangement every newspaper reaches for at exactly the width where the two stop sitting side by side. The cost is 24px of chrome below 1000px, accepted for one reason: after this change the shell is the only surface that always names the session, and an element that disappears on the narrowest screen is one nobody can rely on.
+
+`<main>` is still a flex item and still carries `min-w-0` — load-bearing, not tidying: without it a flex item cannot shrink below its content's min-content width, and the two `overflow-x-auto` wrappers in the product become dead code that widens the page instead of scrolling inside itself. The axis changed; the default it guards against did not.
+
+**The content column is `viewport − 48` at 600px and above, `viewport − 32` below, and that is the whole consequence.** It was `viewport − 48 − 240 rail − 24 gap`, so content gained exactly 264px: measured, `main` is 1422px at a 1470px viewport where it was 1158px, and 358px at 390. Every breakpoint derived from the shell arithmetic moved with it, and one of them changes what a laptop sees — Home's two-column split now engages at 1130px instead of 1390px, so a 1280px screen gets the composition the page was drawn for instead of a stacked column. The cost runs the other way: `84px` of permanent vertical chrome (62 card + 24 gap, from a viewport top of 24) that a rail did not charge, on the axis that is scarcer on a laptop.
+
+Sections stack at a `40px` rhythm. Every section opens with a `SectionHeading`: a title, a hairline running from it to the right edge, and an optional meta slot. The row carries a `38px` minimum height — the height of a `panel-control` pill — because two side-by-side sections with different metas otherwise started 10px apart.
 
 Breakpoints are chosen arithmetically rather than from a stock scale, and they move whenever the shell or the column set does. The watchlist's sideways-scroll hint appears below `800px` because the table's panel needs 748px and the content column is `viewport − 48 shell` — an exact crossing of 796, rounded up to a clean ten. It read `1060px` while the rail took 264px out of that same column. Tailwind's nearest steps (768, 1024) would both show the line at widths where it is false.
 
-**Target viewports are laptop and iPad, and phone now fits as well.** Measured on all three routes at 390 / 430 / 600 / 768 / 834 / 1024 / 1130 / 1280 / 1470 / 1920: `documentElement.scrollWidth` equals the viewport at every one of them, so nothing overflows anywhere.
+Four surfaces take a second column, each at its own derived width:
 
-390px used to overflow, and the diagnosis recorded here was right — the rail never yielded its 240px, leaving `main` 78px against min-content widths of 117–224px. Moving navigation to the top is the collapse behaviour that was missing: `main` gets 342px at 390, which clears the widest of those minimums. Phone is still not a *designed* target — nothing below 600px has been composed for, and the nav card wraps to two rows of items there (`110px` instead of `62px`) — but it is no longer broken, and the fix was a side effect rather than work.
+| surface | at | split |
+|---|---|---|
+| Home (watchlist / aside) | `1130px` | `minmax(748px,1fr)` + `minmax(300px,360px)` |
+| News list | `1130px` | two equal columns, divider drawn per cell |
+| Today's Timeline | `1130px` | two equal columns, **split in the server component**, not in CSS |
+| AI Daily Summary | `1050px` | `1fr` + a `30rem` rail |
+
+The news figure is the row's own arithmetic and lands on Home's number by coincidence rather than by copying it: a row is a 96px plate, a 16px gap and text, and at 45 characters the text needs about 340px — so a column is ~452px, a pair ~928, plus the 48px shell. 1130 clears it with room.
+
+**Target viewports are laptop and iPad, and phone now fits as well.** Measured on all three routes at 390 / 430 / 600 / 768 / 834 / 1024 / 1050 / 1130 / 1280 / 1470 / 1920: `documentElement.scrollWidth` equals the viewport at every one of them, so nothing overflows anywhere.
+
+390px used to overflow, and the diagnosis recorded here was right — the rail never yielded its 240px, leaving `main` 78px against min-content widths of 117–224px. Moving navigation to the top is the collapse behaviour that was missing: `main` measures 358px at 390, which clears the widest of those minimums.
+
+**Phone has since been composed rather than merely fitted**, and the nav card no longer wraps its items there. It used to: "Today's Activity" is 152px of the ~330px three labelled items need against a 358px column, so the row broke and the card went to `110px`. Dropping the `Today's ` prefix below 600px brings the row to ~292px and holds one line at 390 — **48px of permanent chrome returned on every route, on the axis a phone has least of.** The card is 104px there rather than 62 only because the session marker takes two lines, which is a fact worth stating on the narrowest screen rather than a wrap to absorb. Below ~330px the items would wrap again, and should: degrading beats overflowing.
 
 ### Named Rules
 
@@ -287,7 +329,13 @@ Breakpoints are chosen arithmetically rather than from a stock scale, and they m
 
 **The One Container Rule.** Every page renders directly into the shell's `max-w-[1680px]` group. A page that sets its own width or its own horizontal padding is drifting.
 
+**The Orphaned Card Rule.** Five is prime, so **every** column count that is not five leaves the last card alone on its row: 2+2+1 below `lg`, 3+2 between `lg` and `xl` — measured, a 373×165 hole at 1024–1279px, which is iPad landscape and most laptop windows. The last child spans the remainder instead, and the span is reset at `xl` where the row is exactly full. It lands on the odd one out of each set anyway: Volatility is the only non-index card in Market Overview, and News & Events the only non-price card on Today's Activity. **Check a grid at every column count it passes through, not only at its widest.**
+
 **The Filled Right Rule.** A full-width container whose content is capped at a reading measure has a second column's worth of empty space in it, and the emptiness reads as unfinished rather than as restraint. If a measure cap leaves a third of a panel blank, the panel wants a second column, not a wider measure.
+
+**The width has to be spent, not reclaimed** — this is the half that was learned the hard way. Capping the AI summary to a readable measure in the pass before this one made the page worse: it moved the emptiness from the end of each line into the right third of a tall card, where it is far more visible. Three measurements settled it, all at 1470px: a news row ran 1420px with content stopping at ~780, leaving 491px on each of sixty rows — about **4.1 million px²** of empty panel; the timeline left **482,608px²**; Home's old header left **~114,000px²**. Each one is now a second column or a re-composed band.
+
+The rule has a floor. A short list is left alone: two columns of three rows is an arrangement, not a composition.
 
 ## Elevation & Depth
 
@@ -352,7 +400,11 @@ Borders are 1px and always translucent where they meet the sky, solid only where
 
 Navigation is a card across the top, not a slab and not a rail: same 24px geometry and same material as every other panel, only darker and more blurred, because it is the one surface a visitor sees on every route and it should stay quiet while the page behind it changes. It is split to its two edges — the product's name at the left, the three items at the right — which is the masthead arrangement: the publication's name at one end, its sections at the other. The name is set in the display serif so the nameplate speaks in the brand voice while the items opposite speak in the interface voice, and it is text rather than a link, since a second control pointing at Home would compete with the item already carrying `aria-current`. Below 600px the name is dropped and the nav keeps the row, falling back to the left edge — measured, the two together need 533px against a content column of `viewport − 48`.
 
-Nothing was invented to fill the middle, and nothing needs to be. The Filled Right Rule warns that emptiness inside a full-width container reads as unfinished — but that is about a panel of content whose measure cap strands a column. Splitting two real objects to the two edges is what a masthead does, and the gap between them is the arrangement rather than a hole in it.
+**The middle is now the session marker**, and it is what turned this card from shell into a masthead. It states three things — whether the market is open, which day is on screen, and the timestamp the data was read at — in muted micro type, with the open/closed dot the session digest used to carry, minus its halo. It lives here rather than on Home because all three are true on *every* route; stating them on one page only was the same defect that moved the product's name out of Home's heading. It is rendered by the server and handed to this client component as a prop, since the card may not read data itself.
+
+`justify-between` rather than `ml-auto` on the nav, deliberately: below 600px the nameplate is hidden, and a lone `ml-auto` child would still be shoved to the right edge with nothing opposite it, while `justify-between` with one child simply left-aligns. The narrow case gets the right answer for free.
+
+The state is written as a word beside the dot and nothing is dropped to buy back the 16px the second line costs at 390px — colour is never the only channel, including on the screen with the least room to spare.
 
 **It is deliberately not sticky, and that reverses the rail's own behaviour.** A rail can be sticky for free: content scrolls past its side, so its backdrop holds nothing but the fixed sky and the blur is never recomputed. A pinned top card has content passing *underneath* it, which re-composites a 10px `backdrop-filter` on every scroll frame — the case The Bounded Motion Rule exists to forbid. The card scrolls away with the page instead, and `g h` / `g n` / `g a` cover switching from any scroll position. It carries no entrance animation either: it is the frame, present from the first paint like the sky, which also holds peak animation concurrency at three.
 
@@ -363,6 +415,10 @@ Each row carries its shortcut — `g h`, `g n`, `g a` — in `aria-keyshortcuts`
 `nav-active` is the one sanctioned exception to The Baked Tint Rule, and it earns it only by being measured at both ends of its range: `primary` fails every alpha (4.49:1 at its most generous), `primary-active` clears at 5.43:1 against the card's bright end and 7.06:1 against its dim end.
 
 A nav label carries `whitespace-nowrap` for the reason the watchlist's column headers do: a label naming a destination is an identity, and the one thing in a row that must never reflow. Without it, "Today's Activity" broke across two lines inside its own item at 390px and took the card from 62px to 82px doing it.
+
+**Below 600px one label is shortened, not wrapped and not abbreviated.** "Today's Activity" is 152px of the ~330px three labelled items need against a 342px column, so on a phone the item reads **Activity**. It is authored as a `phonePrefix` on the single label rather than as a second `shortLabel` string, so the two spellings cannot drift — there is one label, and a phone shows the tail of it. The tail is also what the route is called everywhere else a visitor meets it (`/todays-activity`, and the nav glyph is the sparkline shape), so the short form names the destination rather than abbreviating a title.
+
+The three glyphs are authored to one convention — 24×24 viewBox, `currentColor` stroke, round caps and joins, no fill — and each is drawn as the thing it leads to rather than as a stock icon: a house, a folded sheet with a headline rule over two body lines, and the same jagged line as the sparklines the page is full of. Stroke width is the range's own two ends, `1.5` inactive and `1.75` active, which gives the active state a second, non-colour channel; before that, active and inactive differed by colour alone.
 
 ### Menus and Disclosures
 
@@ -382,11 +438,35 @@ Those three declare `role="menu"` on the list (not on the panel — the panel al
 
 `12px` cells, a `surface-soft` header band (a scrolled table otherwise loses its column labels into the data), `hairline` dividers, `surface-soft` row hover. Column labels never wrap — the header should be the one thing in a column that never reflows. The row's primary value takes one size step above the rest of the cells; the second read takes weight instead of a third size.
 
+**A cell holding a drawing fills its column rather than sitting at a fixed size in it.** The session sparkline was 96px inside a 193px column at 1920; because the SVG carries a viewBox, a wider box *redraws* the session rather than stretching it, which is the treatment the Market Overview card already gave the same mark. Capped at 140px so it does not outgrow the figures beside it.
+
+**A brand mark above the fold loads eagerly.** The watchlist and Top Movers are the first thing under Home's session band, and a lazy request that starts after layout leaves an empty light plate where a logo should be for several hundred milliseconds — on first paint, on the page a visitor judges the product by. Sixty news thumbnails still pay for themselves lazily.
+
+### Surfaces That Take a Second Column
+
+Three surfaces split above their breakpoints, and each one is instructive about a different constraint.
+
+- **The news list** is a CSS grid, and its dividers are drawn **per cell** rather than as a grid gap. A gap showing a hairline-coloured background through it would require every row to become an opaque plate — The One Translucent Layer Rule broken for the sake of a line. The odd child takes a right border; the last two lose their bottom one.
+- **Today's Timeline splits its array in the server component**, not in CSS, and this is the case where CSS genuinely cannot do the job. `columns-2` will not work because the rail is drawn per row as "a segment unless this is the last entry", and CSS decides where a multi-column list breaks, so the rail runs off the bottom of the first column into nothing. A two-column grid will not work either: in row-major flow the sequence reads *across* while the rail runs *down*, and the two contradict each other. Splitting the array is also what makes the columns read the way a newspaper column does — down the first, then down the second, each with a rail that starts and ends on an entry. The seam is the one thing left to CSS: a single connector, drawn while the columns are stacked and hidden once they sit side by side.
+- **The AI Daily Summary** takes a `1fr` + `30rem` split instead of a measure cap. See the Lede role and The Filled Right Rule.
+
+### The Session Digest
+
+The first thing on Home and the only thing above Market Overview: one horizontal band answering how the session went, before a visitor scrolls into any of the detail that explains it. It was a 352×191 card in the right half of a header whose left half was the 52px date; once that date moved into the shell the header had nothing left to balance, and the digest inherited the slot outright — which is what it was written to be. Laid along the full content column it reads as one line of consequence and costs ~90px of height instead of 191, closing ~114,000px² of empty header.
+
+It carries `flex-wrap` with **no breakpoint of its own**: the four groups have their own natural widths, so the band folds wherever they stop fitting rather than at a number somebody picked. The market-open dot and its label are no longer here — they are true on every route, so they live in the shell's session marker instead.
+
 ### Signature Component — the Night Sky
 
-A single fixed layer at `z-index: -1`, inside the root stacking context so every backdrop-filter above it has something to sample. Two banks of cloud built from lobe clusters displaced by `feTurbulence` + `feDisplacementMap`, and 313 silver stars in three tiers.
+A single fixed layer at `z-index: -1`, inside the root stacking context so every backdrop-filter above it has something to sample. **Five masses** of cloud built from lobe clusters displaced by `feTurbulence` + `feDisplacementMap`, and 313 silver stars in three tiers.
+
+The masses are a composition and are balanced by measurement, not by eye. In the 1600×1000 viewBox they run `haze` 0.07 — large, low, felt and not seen, because at a readable opacity a mass that size floods the frame — then `drift` 0.16 upper middle-left, the dominant at 0.22, its companion at 0.19, and a fifth at 0.20. The dominant–companion pair keeps the relationship the composition was solved for: centres 175 apart against a combined radius of 260, a ratio of **0.67**, inside the 0.55–0.85 band where two masses read as one weather system rather than as two blobs or one lump.
+
+**The frame's centre of gravity sits at x 961 of 1600 (60%), where it used to sit at 1192 (74%).** The old right-heavy composition was counterweighting a 240px rail down the left side of the page, and that reason expired the moment navigation moved into a card across the top — it is recorded in a comment at the definition so it is not re-derived from the shape. Three things brought it back: the dominant mass shrank by a fifth and dropped from 0.28 opacity, it moved out of the crop's edge, and the left-hand `drift` was raised from a faint trace to real mass (0.12 → 0.16, 5.1% → 13.5% of the frame's weight).
 
 Two invariants: the **bright** stars are excluded from the union of every panel rectangle on all three routes with 24 units of margin — a dim star bleeding through glass is what the material is for, a crisp bright one under text is a hot spot, and the Worst-Case Composite Rule does not model point sources. And a star must be **big enough to survive the blur**: a Gaussian of standard deviation σ reduces a disc of radius r to roughly `r²/(r²+2σ²)` of its peak, and Chrome's `blur(Npx)` is about σ = N/2, so the old 10px blur left a 1.3px star at six per cent of its brightness. Thinning the glass never revealed a star because the alpha was never the binding constraint — the blur was.
+
+**The Cropped-Frame Rule.** The sky is drawn with `preserveAspectRatio="xMidYMid slice"`, so the viewBox is **cropped, never fitted**: a viewport narrower than 1.6:1 sees only the middle band of it, and a phone sees very little else. **Compose against the crop, not against the viewBox.** The dominant mass was centred at x 1530 of 1600 and at a 1470px viewport the visible range is 65–1535 — so what reached the screen was the mass's side, with no silhouette, reading as a wall of colour pinned to the right edge rather than as a shape. Moving its centre to 1450 gave it back its own form at every width. Anything authored near the frame edge is authored where most viewports will not see it whole.
 
 ### Motion
 
@@ -419,6 +499,10 @@ The phase split is the entire motion budget. Every one of these used to start at
 - **Do** set data in JetBrains Mono with `tabular-nums`, and prose in Source Serif 4.
 - **Do** give anything with a hard minimum width its own `overflow-x-auto` island — and a sentence telling the visitor it scrolls.
 - **Do** derive breakpoints from the shell arithmetic, not from the nearest Tailwind step.
+- **Do** derive a `ch` cap by measuring the passage it governs. `ch` is the width of a zero, not of a character.
+- **Do** give a wide panel a second column rather than a narrower measure. The width has to be spent, not reclaimed.
+- **Do** compose the sky against the *cropped* frame. `slice` means most viewports never see the viewBox whole.
+- **Do** check a grid at every column count it passes through, not only at its widest.
 - **Do** state a busy state in words. Dimming can only say "no", never "wait".
 - **Do** sequence a loud arrival into phases before shortening or deleting any of it.
 - **Do** declare a keyboard shortcut in `aria-keyshortcuts` on the control it operates, whether or not it is drawn.
@@ -435,6 +519,10 @@ The phase split is the entire motion budget. Every one of these used to start at
 - **Don't** declare an ARIA role you have not implemented the keyboard model for.
 - **Don't** set a keyboard hint as bare quiet text next to a label. Draw it as a keycap or leave it out.
 - **Don't** let Signal Blue become decorative. Outside a token of state, a dot, tick or rule in the accent colour is a violation even when it looks good.
+- **Don't** colour an action in a hue that already means something else on the same screen. Use a glyph.
+- **Don't** replace a quiet answer with a dash or a blank. On the ordinary day it becomes a column of dashes that reads as data that failed to load.
+- **Don't** state the same fact in the shell and on a page. One of the two will drift.
+- **Don't** fill a display slot because the page has one. Home has no display element on purpose.
 - **Don't** split a heading into per-character boxes. The kerning does not survive it.
 - **Don't** author the weather anywhere but `night-sky.tsx`, or mirror its colours into a CSS token that nothing can check.
 - **Don't** add an eyebrow, a section number, a gradient text fill, or a hard offset shadow. None of them belong to this world.

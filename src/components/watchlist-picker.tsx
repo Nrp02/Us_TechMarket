@@ -142,15 +142,24 @@ export function WatchlistPicker({
                       </span>
                       <span className="ml-2 text-xs text-muted">{stock.name}</span>
                     </span>
+                    {/* No colour on the verb. "Remove" was drawn in the loss
+                        red and "Add" in Signal Blue, so at the moment this menu
+                        is open the same viewport shows red meaning "a price
+                        fell" and red meaning "this button destroys something",
+                        and blue meaning "crossed the significance rule" beside
+                        blue meaning "you may click this". Both are the accent
+                        rules of DESIGN.md broken in one row.
+
+                        The distinction is carried by a glyph instead — the same
+                        − and + the symbol switcher uses for the same two
+                        actions — so it survives for a reader who cannot
+                        separate the two hues at all. */}
                     <span
-                      className={`text-xs font-semibold ${
-                        blocked
-                          ? "text-muted"
-                          : isChosen
-                            ? "text-semantic-down"
-                            : "text-primary"
+                      className={`flex items-center gap-1.5 text-xs font-semibold ${
+                        blocked ? "text-muted" : "text-body"
                       }`}
                     >
+                      <span aria-hidden>{isChosen ? "−" : "+"}</span>
                       {isChosen ? "Remove" : "Add"}
                     </span>
                   </button>

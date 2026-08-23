@@ -113,7 +113,10 @@ export default async function News({
       : `No articles from ${formatDay(resolved.date!)} in this category.`;
 
   return (
-    <div className="page-enter flex flex-col gap-6 pb-10">
+    // gap-10, matching Home and Today's Activity. The three routes ran 40 / 40
+    // / 24 for the same relationship, which is legible as News feeling 40%
+    // tighter than the other two without a visitor being able to name why.
+    <div className="page-enter flex flex-col gap-10 pb-10">
       {/* This page's h1 was 24px while Home's ran to 52px, so the two pages
           opened at completely different ranks. Both are the one display element
           on their surface and both take the display step. */}
@@ -122,7 +125,7 @@ export default async function News({
           <h1 className="page-title text-ink">News</h1>
           {/* The measure belongs on the paragraph, not on a 16px wrapper — see
               the note on the Home header for what `ch` actually resolves to. */}
-          <p className="mt-3 max-w-[62ch] text-sm text-body">
+          <p className="mt-3 max-w-[49ch] text-sm text-body">
             Every summary is AI-written from the source article. Latest first.
           </p>
         </div>

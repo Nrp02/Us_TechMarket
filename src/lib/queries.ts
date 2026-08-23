@@ -63,6 +63,20 @@ function dayWindow(day: string): { from: string; to: string } {
   };
 }
 
+/** The instant of the newest stored snapshot, overall or for one symbol. */
+async function newestSnapshotAt(symbol?: string): Promise<string | null> {
+  let query = db
+    .from("intraday_snapshots")
+    .select("snapshot_at")
+    .order("snapshot_at", { ascending: false })
+    .limit(1);
+
+  if (symbol) query = query.eq("symbol", symbol);
+
+  const { data } = await query;
+  return (data?.[0]?.snapshot_at as string | undefined) ?? null;
+}
+
 /**
  * The most recent session that actually produced snapshots, as an ET date.
  *
@@ -73,27 +87,32 @@ function dayWindow(day: string): { from: string; to: string } {
  * the stored summary are all looked up by the day the snapshots imply.
  */
 async function getLatestSessionDay(symbol?: string): Promise<string | null> {
-  let query = db
-    .from("intraday_snapshots")
-    .select("snapshot_at")
-    .order("snapshot_at", { ascending: false })
-    .limit(1);
-
-  if (symbol) query = query.eq("symbol", symbol);
-
-  const { data } = await query;
-  const newest = data?.[0]?.snapshot_at as string | undefined;
+  const newest = await newestSnapshotAt(symbol);
   return newest ? tradingDay(new Date(newest)) : null;
 }
 
 /**
- * The session the cached data describes, as a New York date, or null before any
- * snapshot exists. Home needs it to name the day on screen: the page promised
- * "today" while showing a completed session and carried no date anywhere.
+ * The session the cached data describes: its New York date, and the instant of
+ * the newest snapshot in it. Null before any snapshot exists.
+ *
+ * The shell reads this on every route, which is the reason it is cached and the
+ * reason it returns both halves. The day answers "which session is this",
+ * asked once per page by a visitor whose own clock is not New York's; the
+ * instant answers "how fresh", and it is the one the ET suffix hangs off. It is
+ * read from the data rather than from the clock for the same reason
+ * getLatestSessionDay is: a wall-clock look-back empties over a weekend.
+ *
+ * Both fields are strings, so the value survives the data cache — a Date would
+ * come back as an ISO string and a Map would come back as {}.
  */
-export async function getSessionDay(): Promise<string | null> {
-  return getLatestSessionDay();
-}
+export const getSessionStamp = unstable_cache(
+  async (): Promise<{ day: string; at: string } | null> => {
+    const newest = await newestSnapshotAt();
+    return newest ? { day: tradingDay(new Date(newest)), at: newest } : null;
+  },
+  ["session-stamp"],
+  { revalidate: CACHE_SECONDS },
+);
 
 /** Latest session's intraday closes per symbol, keyed by symbol. */
 async function getSparklines(): Promise<Map<string, number[]>> {

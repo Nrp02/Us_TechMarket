@@ -38,6 +38,13 @@ export const INDEX_CARDS: IndexCard[] = [
   { label: "S&P 500", symbol: "SPY", note: "SPY ETF proxy" },
   { label: "Dow Jones", symbol: "DIA", note: "DIA ETF proxy" },
   { label: "Technology", symbol: "XLK", note: "XLK sector ETF" },
+  // This card was once drawn in neutral ink on the argument that a falling
+  // volatility future is a calmer market, so red would be the product judging
+  // the news. It was reverted on sight: VIXY is an ETF with a price, the price
+  // did fall, and red reports the same fact here as on the other four. The
+  // "bad news" reading is the viewer's inference, not the card's claim — and
+  // one card in a row of five wearing a different colour reads as a fault
+  // rather than as a distinction. Do not re-propose it without new evidence.
   { label: "Volatility", symbol: "VIXY", note: "VIXY futures ETF" },
 ];
 

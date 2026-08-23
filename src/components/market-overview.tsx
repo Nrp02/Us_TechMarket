@@ -88,7 +88,14 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           itself does not change, because it is one shared step across this
           section and Today's Activity and forking it by width is how the same
           role ended up at two sizes before it existed. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5">
+      {/* Five is prime, so every column count that is not five orphans the
+          last card: 2+2+1 below lg, and 3+2 between lg and xl, which measured
+          a 373x165 hole at 1024-1279 — iPad landscape and most laptop
+          windows. The last child spans the remainder instead, and the span is
+          reset at xl where the row is exactly full. It falls on the odd one
+          out of each set anyway: Volatility is the only non-index card here,
+          and News & Events the only non-price card on Today's Activity. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1">
         {INDEX_CARDS.map((card) => {
           const ticker = bySymbol.get(card.symbol);
 

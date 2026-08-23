@@ -75,7 +75,7 @@ export default async function TodaysActivityForSymbol({
     <div className="page-enter flex flex-col gap-10 pb-10">
       <header className="flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
         <div className="flex items-center gap-4">
-          <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
+          <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
           <div>
             {/* Ticker only — the header is the switcher, not a company title.
                 Wrapped in an h1 because the page had no heading at all: the
@@ -137,17 +137,46 @@ export default async function TodaysActivityForSymbol({
 
       <DailySummaryCard summary={activity.summary} symbol={ticker.symbol} />
 
-      <section>
-        <SectionHeading meta="Recorded every 15 minutes">
-          Price &amp; Volume
-        </SectionHeading>
-        <IntradayChart points={activity.intraday} up={up} />
-      </section>
+      {/* The chart takes the events panel as its sidebar, and the timeline runs
+          the full width beneath them both.
 
-      <div className="grid grid-cols-1 gap-10 lg:grid-cols-2">
-        <ActivityTimeline entries={activity.timeline} />
+          It was timeline and events sharing a 50/50 split, which paired the one
+          panel that grows with the day's news against the one panel with four
+          fixed rows. Measured on NVDA at 1200: the timeline 1152px tall, the
+          events panel 285px, both 556px wide — 868 x 556 = 482,608px of bare
+          backdrop closing the product's most important route, and it grew with
+          the screen: 581,876px at 1920. Below 1024 the two stacked and the hole
+          disappeared, so the desktop composition was strictly worse than the
+          phone one.
+
+          The chart is the better partner for a 285px panel: 528px against 285
+          leaves 243px beside a sidebar rather than 868px beside a column, and
+          the chart's own 560px minimum is what sets the breakpoint — 560 + 40
+          of panel + 24 gap + 300 of events + 48 shell = 972, so 1130 (the
+          breakpoint Home already derives for the same pairing) clears it. */}
+      {/* grid-cols-1 is not redundant with the single implicit column: an
+          implicit track is `auto`, which sizes to max-content, so the chart's
+          560px minimum pushed the page 228px wider than a 390px viewport
+          until this was stated. The Scrolling Island Rule needs the track to
+          be able to shrink before the wrapper inside it can scroll. */}
+      <div className="grid grid-cols-1 gap-10 min-[1130px]:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] min-[1130px]:items-start min-[1130px]:gap-6">
+        <section>
+          <SectionHeading meta="Recorded every 15 minutes">
+            Price &amp; Volume
+          </SectionHeading>
+          <IntradayChart points={activity.intraday} up={up} />
+        </section>
+
         <UpcomingEvents events={activity.events} />
       </div>
+
+      {/* Full width and one column, deliberately. Two columns were tried on
+          paper and cannot work: the rail is drawn per row as "a segment unless
+          this is the last entry", and CSS decides where a multi-column list
+          breaks, so the rail would run off the bottom of the first column into
+          nothing. A grid instead of columns reverses the reading order — in
+          row-major flow the sequence goes across while the rail goes down. */}
+      <ActivityTimeline entries={activity.timeline} />
     </div>
   );
 }

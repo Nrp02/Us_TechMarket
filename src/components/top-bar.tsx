@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { SHORTCUTS } from "@/components/keyboard-shortcuts";
 
@@ -77,7 +78,7 @@ const NAV_ITEMS = [
 // single-source reasoning the significance rule already gets.
 const KEY_BY_HREF = new Map(SHORTCUTS.map((s) => [s.href, s.key]));
 
-export function TopBar() {
+export function TopBar({ marker }: { marker?: ReactNode }) {
   const pathname = usePathname();
 
   return (
@@ -145,9 +146,38 @@ export function TopBar() {
             column of viewport − 48, so 600 clears it with 19px to spare and
             560 would not. The name is the half that can go, because the nav
             cannot. */}
-        <span className="hidden shrink-0 px-2 font-serif text-[0.9375rem] font-semibold tracking-tight text-ink min-[600px]:block">
+        <span className="hidden shrink-0 px-2 font-serif text-base font-semibold tracking-tight text-ink min-[600px]:block">
           US TechMarket
         </span>
+
+        {/* The session stamp — which day is on screen, how fresh it is, and
+            whether the market is open — rendered by the server and handed down,
+            because this file is a client component and may not read data.
+
+            Where it sits is measured, not chosen. The three children need
+            120px of nameplate + 32 gap + 368 of stamp + 32 gap + 349 of nav =
+            901, plus 32 of card padding and 48 of shell, so one row costs
+            981px of viewport — rounded up to a clean 1000. Below that the
+            stamp takes a row of its own (w-full is what forces the wrap) and
+            the card grows 62px -> 86px, or 102px below 600px where the stamp
+            itself needs two lines. 950 was tried first, from an estimate of
+            the stamp at ~300px rather than a measurement of it; at that width
+            the nav wrapped instead and the card came out at 93px, which is the
+            same cost paid for a worse arrangement.
+
+            That second row is a composition rather than a fallback: the name
+            with the date beneath it is what a masthead does, and it is the
+            arrangement every newspaper reaches for at exactly the width where
+            the two cannot sit side by side. The cost is 24px of chrome below
+            950px, which is accepted here for one reason — after this change
+            the shell is the only surface that always names the session, and an
+            element that disappears on the narrowest screen is one nobody can
+            rely on. */}
+        {marker ? (
+          <div className="order-last w-full min-[1000px]:order-none min-[1000px]:w-auto">
+            {marker}
+          </div>
+        ) : null}
 
         {/* flex-wrap here as well as on the card, and it is not redundant:
             the nav is a single flex item of the card, so without it the three

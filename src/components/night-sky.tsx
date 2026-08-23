@@ -482,19 +482,81 @@ const CLOUDS: {
   lobes: [number, number, number, number, number][];
 }[] = [
   {
-    // DOMINANT. Enters from the right edge at mid-height — 41% of it is off
-    // the canvas, which is what "crossing the frame" means and what four
-    // fully-contained masses could never read as.
+    // HAZE. The layer that makes this read as a sky rather than as a cloud.
+    //
+    // Everything else here is a mass with a silhouette; this is atmosphere —
+    // very large, very faint, and centred on the middle of the frame, which
+    // until now held no weather at all. Two things made that a problem. On a
+    // wide screen the eye found one bright system at the right edge and empty
+    // black everywhere else, so the field read as "a cloud" rather than as air.
+    // And `xMidYMid slice` crops to the CENTRE of the viewBox: at 390px only x
+    // 569-1031 is on screen, which is precisely the band that was empty, so a
+    // phone got a starfield with no weather in it whatsoever.
+    //
+    // 0.07 rather than the 0.17-0.28 the masses run at. It is meant to be felt
+    // and not seen — at a readable opacity a mass this size would flood the
+    // panels and take the field's brightest pixel with it.
+    id: "cloud-haze",
+    filter: "billow-a",
+    opacity: 0.07,
+    box: [80, 170, 1310, 600],
+    lobes: [
+      [725, 430, 330, 200, 1],
+      [945, 470, 275, 168, 1],
+      [515, 468, 258, 158, 1],
+      [755, 566, 420, 120, 0.5],
+    ],
+  },
+  {
+    // DRIFT. A third scale, upper middle-left.
+    //
+    // The composition had two sizes — a dominant system and one faint distant
+    // mass — which reads as near and far with nothing between them. This sits
+    // at about half the dominant's radius and a little over twice the distant's
+    // opacity, so the frame carries three depths rather than two. It is also
+    // inside the phone's visible band, which the other masses are not.
+    // Raised from 0.12 and a quarter larger. At 5% of the field's weight it was
+    // a hint rather than a mass, so the left half of the frame had nothing to
+    // answer the right with.
+    id: "cloud-drift",
+    filter: "billow-b",
+    opacity: 0.16,
+    box: [350, 90, 550, 360],
+    lobes: [
+      [612, 269, 131, 98, 1],
+      [714, 281, 103, 78, 1],
+      [524, 277, 93, 73, 1],
+      [622, 315, 160, 55, 0.45],
+    ],
+  },
+  {
+    // DOMINANT. Crosses the upper right, and it used to cross the middle right.
+    //
+    // It was carrying 47% of the field's visual weight on its own — 61% with
+    // the companion — with both centred at x≈1530 of 1600. The mass-weighted
+    // centroid sat at x 1192, three quarters of the way to the right edge,
+    // against the x 792 the note above still claims. Radii are down a fifth
+    // and opacity from 0.28, which is what brings the pair to ~41%.
+    //
+    // The reason it sat right is also gone. The note below explains the weight
+    // as a counterbalance to "the navigation rail, a heavy object permanently
+    // parked on the left" — the rail became a card across the top, so the sky
+    // has been balancing against something that is not there.
+    //
+    // Lifted as well as shrunk. At 1470px the viewBox crops to x 65-1535, so a
+    // mass centred at 1530 showed only its left flank, which read as a bright
+    // wall down the whole right edge rather than as a body with a top and a
+    // bottom. Centred at 1450 it keeps a silhouette.
     id: "cloud-dominant",
     filter: "billow-a",
-    opacity: 0.28,
-    box: [1230, 240, 620, 400],
+    opacity: 0.22,
+    box: [1120, 90, 700, 470],
     lobes: [
-      [1530, 400, 195, 145, 1],
-      [1660, 425, 155, 120, 1],
-      [1390, 430, 145, 115, 1],
-      [1545, 500, 250, 92, 0.5],
-      [1420, 490, 150, 70, 0.45],
+      [1453, 298, 156, 116, 1],
+      [1583, 323, 124, 96, 1],
+      [1313, 328, 116, 92, 1],
+      [1468, 398, 200, 74, 0.5],
+      [1343, 388, 120, 56, 0.45],
     ],
   },
   {
@@ -502,30 +564,38 @@ const CLOUDS: {
     // than chosen: the only free parameter was where on the 0.55-0.85 overlap
     // ring it could sit without touching sky-borne text and while keeping half
     // its area visible. One answer came back.
+    // Moved and shrunk with the dominant so the relationship survives: centres
+    // 175 apart against 260 of combined radii is 0.67, inside the 0.55-0.85
+    // band this position was originally solved for.
     id: "cloud-companion",
     filter: "billow-b",
-    opacity: 0.22,
-    box: [1360, 480, 460, 270],
+    opacity: 0.19,
+    box: [1220, 340, 540, 340],
     lobes: [
-      [1555, 592, 122, 92, 1],
-      [1665, 606, 95, 76, 1],
-      [1450, 610, 88, 72, 1],
-      [1580, 656, 152, 56, 0.5],
+      [1482, 483, 104, 78, 1],
+      [1592, 497, 81, 65, 1],
+      [1377, 501, 75, 61, 1],
+      [1507, 547, 129, 48, 0.5],
     ],
   },
   {
     // DISTANT. Far corner, faintest, and the only mass whose job is depth
     // rather than mass. 0.85 of the frame diagonal from the dominant, which is
     // the minimum at which two clouds stop looking related.
+    //
+    // Moved 200 units right and raised from 0.17. It was placed with a third of
+    // its area off the left edge and the rest of it behind the watchlist panel,
+    // so the one mass whose job was to say "there is more sky than this" was
+    // the one nobody could see. Still a corner mass, still the faintest.
     id: "cloud-distant",
     filter: "billow-b",
-    opacity: 0.17,
-    box: [-120, 760, 420, 250],
+    opacity: 0.2,
+    box: [40, 700, 500, 300],
     lobes: [
-      [80, 850, 100, 76, 1],
-      [180, 862, 76, 60, 1],
-      [-10, 858, 72, 58, 1],
-      [90, 898, 124, 46, 0.45],
+      [280, 850, 110, 84, 1],
+      [380, 862, 84, 66, 1],
+      [190, 858, 79, 64, 1],
+      [290, 898, 136, 51, 0.45],
     ],
   },
 ];

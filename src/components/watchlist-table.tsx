@@ -138,7 +138,7 @@ export function WatchlistTable({
                       aria-label={`${ticker.symbol} – ${ticker.name}`}
                       className="group flex items-center gap-3"
                     >
-                      <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
+                      <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
                       <div>
                         <div className="text-sm font-semibold text-ink transition-colors group-hover:text-primary">
                           {ticker.symbol}
@@ -175,11 +175,27 @@ export function WatchlistTable({
                       {formatRelVolume(ticker.relativeVolume)} avg
                     </span>
                   </td>
+                  {/* "Normal" was once replaced with an em-dash here, on the
+                      argument that a badge marking an exception should not be
+                      printed on every row that is not one — the column held six
+                      identical pills and one Significant, 191px wide at 1920.
+                      It was reverted on sight, and the reason is the case that
+                      argument forgot: most days nothing crosses the rule at
+                      all, so the column became seven dashes and read as data
+                      that had failed to load. A quiet answer still has to look
+                      like an answer. */}
                   <td className="px-3 py-3">
                     <StatusBadge significant={ticker.significant} />
                   </td>
+                  {/* The chart fills its cell rather than sitting at a fixed
+                      96px inside a 193px column at 1920. The SVG carries a
+                      viewBox, so a wider box redraws the session instead of
+                      stretching it — the same treatment the Market Overview
+                      card already gives it. */}
                   <td className="px-3 py-3">
-                    <Sparkline values={ticker.spark} up={up} />
+                    <span className="flex min-w-0 max-w-[140px] [&>svg]:h-auto [&>svg]:w-full">
+                      <Sparkline values={ticker.spark} up={up} />
+                    </span>
                   </td>
                 </tr>
               );
@@ -232,7 +248,7 @@ export function WatchlistTable({
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 items-center gap-3">
-                    <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
+                    <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
                     {/* min-w-0 and truncate: a long company name is the one
                         field here with no natural bound, and without them it
                         pushes the price off the right edge instead of
@@ -303,9 +319,14 @@ export function WatchlistTable({
           The volume sentence rides along because it fixes the same class of
           gap: the cells read `0.43x avg` and never say what the average is of,
           while the same figure on Today's Activity spells out "vs 10-day
-          average". One number, two levels of explanation, is a defect. */}
+          average". One number, two levels of explanation, is a defect.
+
+          52ch, from a measurement rather than a guess: at 12px Inter this
+          sentence averages 5.79px a character against a 7.58px "0", so the
+          `ch` unit overstates the line by 31%. The 86ch this asked for
+          rendered 112 characters. */}
       {tickers.length > 0 && (
-        <p className="mt-3 max-w-[86ch] px-1 text-xs leading-relaxed text-muted">
+        <p className="mt-3 max-w-[52ch] px-1 text-xs leading-relaxed text-muted">
           Volume is shown against each stock&apos;s 10-day average.{" "}
           {SIGNIFICANCE_RULE_TEXT}
         </p>

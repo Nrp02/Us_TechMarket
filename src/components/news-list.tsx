@@ -21,7 +21,24 @@ export function NewsList({
   }
 
   return (
-    <ul className="panel overflow-hidden">
+    // Two columns from 1130px, and the number is the row's own arithmetic
+    // rather than a stock breakpoint. A row is a 96px plate, a 16px gap and
+    // text; at 45 characters the text needs about 340px, so a column needs
+    // ~452px and a pair of them ~928 plus the 48px shell. 1130 is the
+    // breakpoint Home already derives, and it clears that with room.
+    //
+    // The reason is measured emptiness: at 1470 the row ran 1420px while its
+    // content stopped at ~780, leaving 491px — 35% of every row, sixty rows
+    // deep, about 4.1 million px of empty panel. Capping the summary to a
+    // readable measure in the pass before this one made it worse, not better,
+    // which is what settled the column count: the width has to be spent, not
+    // reclaimed.
+    //
+    // Dividers are drawn per cell rather than with a gap: the panel is glass,
+    // and a grid gap showing a hairline-coloured background under it would
+    // need every row to become an opaque plate, which is the One Translucent
+    // Layer Rule broken for the sake of a line.
+    <ul className="panel overflow-hidden min-[1130px]:grid min-[1130px]:grid-cols-2 min-[1130px]:[&>li:nth-child(odd)]:border-r min-[1130px]:[&>li:nth-last-child(-n+2)]:border-b-0">
       {items.map((item) => {
         const symbol = item.relatedSymbols[0] ?? null;
 
@@ -38,7 +55,18 @@ export function NewsList({
               third of every row empty — the row was one column in a container
               built for two. Below sm the column collapses back under the text
               in source order, so there is only one copy of the markup. */}
-          <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          {/* The meta column returns under the text once the list is two
+              columns wide: 176px of fixed meta beside a 45-character measure
+              needs ~650px, which a half-width column does not have until
+              1400px. Stacked, the same row is comfortable from 1130.
+
+              `min-[640px]:` rather than `sm:`, and the two are not
+              interchangeable here. Tailwind emits arbitrary-variant rules
+              before the named breakpoints, so `sm:flex-row` won at every width
+              and the two-column rows kept a 176px meta column beside a 187px
+              measure — 28 characters a line. Stating both tiers in the same
+              arbitrary form is what makes the later one win. */}
+          <div className="flex min-w-0 flex-1 flex-col gap-3 min-[640px]:flex-row min-[640px]:items-start min-[640px]:justify-between min-[640px]:gap-6 min-[1130px]:flex-col min-[1130px]:gap-3">
             <div className="min-w-0">
               {/* The headline is the row's one reason to exist and it was set at
                   the same 14px as the summary below it, so a list of twenty read
@@ -69,15 +97,20 @@ export function NewsList({
                   max-w caps the measure — unconstrained, this ran past 110
                   characters per line at the widest supported viewport. text-sm
                   on the same element is load-bearing: `ch` resolves against the
-                  element's own font size. */}
+                  element's own font size.
+
+                  53ch rather than 68, because "roughly a character" is not what
+                  `ch` measures: at 14px Inter these summaries average 6.85px a
+                  character against an 8.84px "0", so 68ch rendered 88
+                  characters. 53 renders 68. */}
               {item.summary && (
-                <p className="mt-1.5 max-w-[68ch] text-sm leading-relaxed text-body">
+                <p className="mt-1.5 max-w-[53ch] text-sm leading-relaxed text-body">
                   {item.summary}
                 </p>
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:w-44 sm:shrink-0 sm:justify-end">
+            <div className="flex flex-wrap items-center gap-2 min-[640px]:w-44 min-[640px]:shrink-0 min-[640px]:justify-end min-[1130px]:w-auto min-[1130px]:justify-start">
               {/* Mono + tabular, per the Mono Numerals Rule. This was the one
                   timestamp in the product set in Inter; the timeline renders the
                   same class of value in mono.

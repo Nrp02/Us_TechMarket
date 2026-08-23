@@ -1,13 +1,24 @@
 import { formatPercent } from "@/lib/format";
-import { isMarketOpen } from "@/lib/market";
 import type { Ticker } from "@/lib/queries";
 
-// The right half of the Home header.
+// The first thing on Home, and now the only thing above Market Overview.
 //
-// The heading asks "what happened to your stocks today" and the page then made
-// the visitor scroll three sections to start answering it, while the 800px
-// beside the heading held nothing. This is the one-glance answer: how the Top 20
-// split, how many crossed the significance rule, and which moved furthest.
+// It used to be the right half of a header whose left half was a 52px date.
+// That date is in the shell now, so the header had nothing left to balance and
+// the digest inherited the slot outright — which is what it was written to be
+// in the first place: the one-glance answer to how the session went, before a
+// visitor scrolls into any of the detail that explains it.
+//
+// Horizontal rather than the 352x191 card it was. The panel is the full
+// content column now, and a tall narrow card in a wide slot is what left
+// ~114,000px2 of the old header empty; laid along the width it reads as one
+// line of consequence and costs ~90px of height instead of 191.
+//
+// The market-open dot and its "Market open / Market closed" label are not here
+// any more. They moved into the session marker in the nav card, because they
+// are true on every route rather than only on this one — and stating them in
+// both places would be the same defect that moved the product's name out of
+// this page's heading.
 //
 // Every figure is counted from tickers the page already fetched — no query, no
 // upstream call, and nothing derived that is not a count or a max of stored
@@ -15,7 +26,6 @@ import type { Ticker } from "@/lib/queries";
 // Rule, so the bar is not the only channel.
 
 export function SessionDigest({ tickers }: { tickers: Ticker[] }) {
-  const open = isMarketOpen();
   const advancing = tickers.filter((t) => t.changePercent > 0).length;
   const declining = tickers.filter((t) => t.changePercent < 0).length;
   const moved = advancing + declining;
@@ -30,96 +40,86 @@ export function SessionDigest({ tickers }: { tickers: Ticker[] }) {
   );
 
   return (
-    // Fixed width only from lg, which is where the header actually splits into
-    // two columns. Pinned at sm it stayed 352px while stacked under the
-    // heading, leaving an iPad with a short panel and a gap beside it.
-    <aside className="panel w-full shrink-0 p-5 lg:w-[22rem]">
-      {/* The session date used to sit opposite this line. It is the page's
-          <h1> now — stating it twice in one viewport is the same defect as the
-          product's name appearing twice, which is what moved it. What is left
-          is one statement, so the row no longer has two ends to balance. */}
-      <div className="flex items-center gap-3">
-        <span className="flex items-center gap-2 text-xs font-semibold text-ink">
-          <span className="relative flex size-2">
-            {/* The dot is the market-state indicator the Market Overview
-                heading also carries; this one leads, so it gets a halo to read
-                at a glance rather than on inspection. */}
-            <span
-              className={`absolute inline-flex size-full rounded-full opacity-40 ${
-                open ? "bg-semantic-up" : "bg-muted"
-              }`}
-              style={{ transform: "scale(2)" }}
-            />
-            <span
-              className={`relative inline-flex size-2 rounded-full ${
-                open ? "bg-semantic-up" : "bg-muted"
-              }`}
-            />
-          </span>
-          {open ? "Market open" : "Market closed"}
-        </span>
-      </div>
-
+    // flex-wrap with no breakpoint of its own: the four groups have their own
+    // natural widths, so the band folds to two rows wherever they stop fitting
+    // rather than at a number somebody picked.
+    <aside className="panel flex flex-wrap items-center gap-x-10 gap-y-5 px-5 py-4">
       {moved > 0 ? (
         <>
           {/* Breadth across the tracked universe, as one bar rather than two
               numbers. The split is a count of directional price changes, which
-              is the one thing the gain/loss pair is allowed to colour. */}
-          <div
-            className="mt-5 flex h-2 gap-1 overflow-hidden rounded-full"
-            role="img"
-            aria-label={`${advancing} of ${tickers.length} tracked stocks advanced, ${declining} declined`}
-          >
-            <span
-              className="bar-advancing rounded-full bg-semantic-up"
-              style={{ width: `${(advancing / moved) * 100}%` }}
-            />
-            <span
-              className="bar-declining rounded-full bg-semantic-down"
-              style={{ width: `${(declining / moved) * 100}%` }}
-            />
+              is the one thing the gain/loss pair is allowed to colour. It takes
+              the flexible width because it is the only element here that reads
+              better the longer it is. */}
+          <div className="min-w-[240px] flex-1">
+            <div
+              className="flex h-2 gap-1 overflow-hidden rounded-full"
+              role="img"
+              aria-label={`${advancing} of ${tickers.length} tracked stocks advanced, ${declining} declined`}
+            >
+              <span
+                className="bar-advancing rounded-full bg-semantic-up"
+                style={{ width: `${(advancing / moved) * 100}%` }}
+              />
+              <span
+                className="bar-declining rounded-full bg-semantic-down"
+                style={{ width: `${(declining / moved) * 100}%` }}
+              />
+            </div>
+
+            <div className="mt-2.5 flex items-baseline justify-between font-mono text-xs tabular-nums">
+              <span className="text-semantic-up">{advancing} advancing</span>
+              <span className="text-semantic-down">{declining} declining</span>
+            </div>
           </div>
 
-          <div className="mt-2.5 flex items-baseline justify-between font-mono text-xs tabular-nums">
-            <span className="text-semantic-up">{advancing} advancing</span>
-            <span className="text-semantic-down">{declining} declining</span>
-          </div>
+          {/* Label and value on one line each, because the band reads across
+              rather than down — the justify-between pair this used to be only
+              makes sense inside a column with two edges to push against. */}
+          <dl className="flex flex-wrap items-baseline gap-x-10 gap-y-2 text-xs">
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted">Crossed the significance rule</dt>
+              <dd className="font-mono tabular-nums text-ink">
+                {significant} of {tickers.length}
+              </dd>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <dt className="text-muted">Widest move</dt>
+              <dd className="font-mono tabular-nums text-ink">
+                {widest ? (
+                  <>
+                    {widest.symbol}{" "}
+                    <span
+                      className={
+                        widest.changePercent >= 0
+                          ? "text-semantic-up"
+                          : "text-semantic-down"
+                      }
+                    >
+                      {formatPercent(widest.changePercent)}
+                    </span>
+                  </>
+                ) : (
+                  "—"
+                )}
+              </dd>
+            </div>
+          </dl>
         </>
       ) : (
-        <p className="mt-5 text-sm text-muted">
+        <p className="flex-1 text-sm text-muted">
           No prices stored for this session yet.
         </p>
       )}
 
-      <dl className="mt-5 flex flex-col gap-2.5 border-t border-hairline pt-4 text-xs">
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-muted">Crossed the significance rule</dt>
-          <dd className="font-mono tabular-nums text-ink">
-            {significant} of {tickers.length}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-4">
-          <dt className="text-muted">Widest move</dt>
-          <dd className="font-mono tabular-nums text-ink">
-            {widest ? (
-              <>
-                {widest.symbol}{" "}
-                <span
-                  className={
-                    widest.changePercent >= 0
-                      ? "text-semantic-up"
-                      : "text-semantic-down"
-                  }
-                >
-                  {formatPercent(widest.changePercent)}
-                </span>
-              </>
-            ) : (
-              "—"
-            )}
-          </dd>
-        </div>
-      </dl>
+      {/* The page's provenance sentence, which was the strapline under the old
+          heading. It is the same register as every other meta line in the
+          product — "Recorded every 15 minutes", "From the earnings calendar" —
+          so it belongs at that size, beside the figures it describes, rather
+          than at body scale under a title that no longer exists. */}
+      <p className="text-xs text-muted">
+        Prices recorded every 15 minutes across 20 US technology stocks.
+      </p>
     </aside>
   );
 }

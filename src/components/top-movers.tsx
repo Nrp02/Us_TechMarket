@@ -60,7 +60,7 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
                 >
                   {index + 1}
                 </span>
-                <CompanyLogo symbol={ticker.symbol} name={ticker.name} />
+                <CompanyLogo symbol={ticker.symbol} name={ticker.name} eager />
 
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold text-ink transition-colors group-hover:text-primary">
@@ -71,8 +71,28 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
                   </span>
                 </span>
 
-                <span className="shrink-0 font-mono text-base font-medium tabular-nums text-ink">
-                  {formatPrice(ticker.price)}
+                {/* The change, not the price, at the row's largest step. This
+                    panel ranks by the significance score, and the price is the
+                    one figure in the row that has nothing to do with that
+                    ranking — drawn at 16px in ink it was the brightest thing
+                    on a row whose order it does not explain, while the value
+                    that does explain it sat at 12px underneath. Swapped, the
+                    reader can see why row 1 outranks row 4 without reading the
+                    small print. */}
+                {/* text-sm/600, matching the watchlist's Change % exactly:
+                    both panels state the same value about the same session, and
+                    the same role rendered at two sizes is the defect the shared
+                    `figure` step was created to stop. It was text-base while
+                    the price sat here, which made the row's biggest number the
+                    one that has nothing to do with the ranking. */}
+                <span
+                  className={`shrink-0 font-mono text-sm font-semibold tabular-nums ${
+                    ticker.changePercent >= 0
+                      ? "text-semantic-up"
+                      : "text-semantic-down"
+                  }`}
+                >
+                  {formatPercent(ticker.changePercent)}
                 </span>
               </div>
 
@@ -80,21 +100,19 @@ export function TopMovers({ tickers }: { tickers: Ticker[] }) {
                   flex track gives it ~100px, rather than on line two competing
                   with the change and the badge — there it truncated to "A…" and
                   "Br…" on exactly the significant rows, because those carry the
-                  wider badge. Line two is now movement only, right-aligned.
+                  wider badge. Line two carries the price, the relative volume
+                  and the badge, right-aligned: context under the ranking value
+                  rather than beside it.
 
                   pl-[34px] = the rank's 24px plus the 10px gap beside it, so
                   the line starts under the logo rather than under the rank. */}
               <div className="flex items-center justify-end gap-2 pl-[34px]">
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="font-mono text-xs tabular-nums">
-                    <span
-                      className={
-                        ticker.changePercent >= 0
-                          ? "font-semibold text-semantic-up"
-                          : "font-semibold text-semantic-down"
-                      }
-                    >
-                      {formatPercent(ticker.changePercent)}
+                    {/* The price keeps its place in the row and gives up its
+                        weight: it is context for the change above, not a rank. */}
+                    <span className="text-muted">
+                      {formatPrice(ticker.price)}
                     </span>
                     {/* Relative volume was coloured by the price direction it has
                         nothing to do with — the two values shared one span.

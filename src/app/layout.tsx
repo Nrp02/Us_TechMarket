@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { ChartGradients } from "@/components/chart-gradients";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { Meteors } from "@/components/meteors";
 import { NightSky } from "@/components/night-sky";
+import { SessionMarker } from "@/components/session-marker";
 import { TopBar } from "@/components/top-bar";
 import "./globals.css";
 
@@ -144,7 +146,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             already — it is where the nameplate hides — so this pass adds a
             tier at a breakpoint that exists rather than a fourth number. */}
         <div className="flex w-full max-w-[1680px] flex-col gap-4 p-4 min-[600px]:gap-6 min-[600px]:p-6">
-          <TopBar />
+          {/* The marker is passed in rather than imported by TopBar, which is a
+              client component: a server component can be handed down as a
+              prop, it cannot be rendered from inside one.
+
+              Suspense, so this layout stays synchronous. Awaiting the query
+              here would hold the whole shell — nav card included — behind a
+              database round trip on every route, and the fast shell-then-
+              skeleton first paint is the thing that makes the app feel
+              instant. The fallback reserves the stamp's width so the nav does
+              not jump sideways when it resolves. */}
+          <TopBar
+            marker={
+              <Suspense
+                fallback={
+                  <span aria-hidden className="block h-4 w-[300px] max-w-full" />
+                }
+              >
+                <SessionMarker />
+              </Suspense>
+            }
+          />
           {/* min-w-0 is load-bearing, not tidying. A flex item defaults to
               min-width:auto, so without it <main> cannot shrink below its
               content's min-content width — the watchlist table and the 560px

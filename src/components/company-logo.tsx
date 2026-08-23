@@ -13,7 +13,16 @@ import { logoSrc } from "@/lib/logos";
 // square marks nothing since they are height-capped well before the width cap.
 // servicenow at 6.9:1 is the weakest badge in the set and the one to revisit
 // first if a legibility complaint comes back from the gate.
-export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) {
+export function CompanyLogo({
+  symbol,
+  name,
+  eager = false,
+}: {
+  symbol: string;
+  name: string;
+  /** Load immediately. For the marks that are above the fold on first paint. */
+  eager?: boolean;
+}) {
   const src = logoSrc(symbol);
 
   return (
@@ -63,7 +72,14 @@ export function CompanyLogo({ symbol, name }: { symbol: string; name: string }) 
           // Same reasoning as news-thumbnail: the fixed h-8 w-20 plate already
           // reserves the box, so lazy loading costs no layout stability and
           // saves the CDN round trips for rows below the fold.
-          loading="lazy"
+          //
+          // Except for the rows that are not below the fold. The watchlist and
+          // Top Movers are the first thing under Home's session band, and a
+          // lazy request that starts after layout leaves an empty light pill
+          // sitting where a brand mark should be for several hundred
+          // milliseconds — on first paint, on the page a visitor judges the
+          // product by. Sixty news thumbnails still pay for themselves lazily.
+          loading={eager ? "eager" : "lazy"}
           decoding="async"
           // The colour and size are for the alt text and are invisible while
           // the image loads. Without them the fallback inherits Ink on the
