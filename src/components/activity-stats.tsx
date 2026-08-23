@@ -87,7 +87,14 @@ export function ActivityStats({ activity }: { activity: Activity }) {
           reset at xl where the row is exactly full. It falls on the odd one
           out of each set anyway: Volatility is the only non-index card here,
           and News & Events the only non-price card on Today's Activity. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1">
+      {/* The span survives only below 600 now, and three columns start at 600
+          rather than at lg. Market Overview made this change first, for an
+          iPad-landscape report — at 1180 the spanned card measured 748px beside
+          siblings of 366 and read as a different kind of object. The comment
+          above is the reason this file moved with it: these two rows are the
+          same object on two pages, and News & Events is this page's odd one out
+          exactly as Volatility is that page's. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 min-[600px]:[&>*:last-child]:col-span-1">
         <Cell
           label="Price Movement"
           value={formatPercent(ticker.changePercent)}

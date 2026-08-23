@@ -10,8 +10,12 @@ export default function Loading() {
 
       {/* The same grid string the real section carries, span included, so the
           skeleton and the page break to the same column counts at the same
-          widths. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:gap-4 lg:grid-cols-3 xl:grid-cols-5 [&>*:last-child]:col-span-2 xl:[&>*:last-child]:col-span-1">
+          widths. This is load-bearing rather than tidy: when Market Overview
+          dropped the span above 600 and this line did not follow, the skeleton
+          drew a double-width fifth card that snapped to equal width the moment
+          content arrived — worst on exactly the slow connection a skeleton is
+          for. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 min-[600px]:[&>*:last-child]:col-span-1">
         {Array.from({ length: 5 }, (_, i) => (
           <SkeletonPanel key={i} className="h-[180px]" lines={3} />
         ))}
