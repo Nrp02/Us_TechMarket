@@ -8,7 +8,7 @@ export default function Loading() {
     <SkeletonPage>
       <div className="h-[92px]" aria-hidden />
 
-      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 min-[600px]:[&>*:last-child]:col-span-1">
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5">
         {Array.from({ length: 5 }, (_, i) => (
           <SkeletonPanel key={i} className="h-[152px]" />
         ))}

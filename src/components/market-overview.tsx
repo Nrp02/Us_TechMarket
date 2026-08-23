@@ -89,50 +89,27 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
           section and Today's Activity and forking it by width is how the same
           role ended up at two sizes before it existed. */}
       {/* Five is prime, so every column count that is not five orphans the last
-          card. This used to be solved by spanning the last child across the
-          remainder, on the reasoning that a 373x165 hole at 1024-1279 read
-          badly. The owner has now seen both on the device that case was named
-          for, and prefers the hole: at 1180 — iPad landscape, an iPad 10th gen
-          — the spanned card measured 748px beside siblings of 366, and a card
-          twice its neighbours' width reads as a different KIND of object,
-          while an empty grid cell reads as an empty grid cell. Portrait at 820
-          was the same, 772 against 378; it simply had not been looked at.
+          card, and the answer is now simply to let it be orphaned: five equal
+          cards with an empty cell beside the last one.
 
-          So the span survives only below 600, where the card is alone on its
-          row AND narrow enough that filling it does not make it an outlier —
-          358px at 390, with the wider trace --spark-cap gives it there.
+          It used to span the remainder. That was introduced because a 373x165
+          hole read badly, and it was given up in two steps, both times because
+          the owner was looking at a real device and I was looking at a
+          breakpoint. First above 600 — at 1180, iPad landscape, the spanned
+          card measured 748px beside siblings of 366 and read as a different
+          KIND of object. Then below 600 as well, which is this change: the last
+          defence was that a phone card is alone on its row so full width is
+          harmless, and on the phone it is plainly the biggest thing in the
+          section — 358x193 against four siblings of 173x147.
 
-          Three columns from 600 rather than from lg is the other half: it puts
-          the orphan gap at one cell instead of half a row, and 173px cards at
-          600 are exactly the width the phone already renders correctly. */}
-      {/* Spanning the last card closes the hole, but it does not spend the
-          width it wins — measured at 390 the Volatility card is 358px against
-          the others' 173px and lays its contents out identically, so 185px of
-          it is void and the plate reads as half-empty. The session trace is
-          the one mark here that grows honestly: it carries a viewBox, so a
-          wider box REDRAWS the session rather than stretching it — the same
-          treatment the watchlist's chart column already takes. The cap travels
-          as a variable so the span rule and the size rule stay one decision,
-          and it resets at xl where the row is exactly full and nothing spans.
+          An empty grid cell reads as an empty grid cell. A card twice its
+          neighbours' size reads as a mistake.
 
-          It is raised BELOW 600 only — on a phone, which is the only width the
-          void was ever measured at. The boundary moved twice, and both moves
-          were the same mistake caught at a different size: a cap chosen for a
-          173px-wide card does not belong on a card that is already wide.
-
-          At 1024-1279 the grid is three columns and five cards, so the span
-          shares row two with Technology: a 300px trace drew 90px tall, took
-          the card to 225 against the siblings' 165, dragged its row-mate up
-          with it and became the largest object on the page. At 600-1023 — every
-          iPad width — the card is alone on its row so nothing else stretched,
-          but 720x201 against siblings of 165 still read as a card that had
-          grown for no reason, which is what the owner reported from an iPad.
-
-          So: 390 keeps 220x66, where a 358px card next to 173px siblings has
-          width to spend. Everything from 600 up returns to 100x30 and a 165px
-          card. The void that leaves above 600 is the one the span was already
-          accepted for; it is not what the audit found. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 [&>*:last-child]:[--spark-cap:220px] min-[600px]:[&>*:last-child]:col-span-1 min-[600px]:[&>*:last-child]:[--spark-cap:100px]">
+          This also retires --spark-cap. That variable existed only to spend the
+          width a spanned card won; with nothing spanning, the trace goes back
+          to the same max-w-[100px] every other card uses, and the mechanism
+          leaves with the problem it was invented for. */}
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5">
         {INDEX_CARDS.map((card) => {
           const ticker = bySymbol.get(card.symbol);
 
@@ -195,7 +172,7 @@ export function MarketOverview({ tickers }: { tickers: Ticker[] }) {
                         a viewBox, so a narrower box redraws the whole session
                         instead of cropping the end off it. `ml-auto` keeps it
                         on the right edge once it stops filling the space. */}
-                    <span className="ml-auto flex min-w-0 max-w-[var(--spark-cap,100px)] flex-1 justify-end [&>svg]:h-auto [&>svg]:w-full">
+                    <span className="ml-auto flex min-w-0 max-w-[100px] flex-1 justify-end [&>svg]:h-auto [&>svg]:w-full">
                       <Sparkline
                         values={ticker.spark}
                         up={ticker.changePercent >= 0}

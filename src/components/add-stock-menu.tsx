@@ -59,7 +59,20 @@ export function AddStockMenu({ symbols, max }: { symbols: string[]; max: number 
       </button>
 
       {open && (
-        <div className="panel-overlay absolute left-0 z-20 mt-2 w-72 rounded-2xl p-1">
+        // Anchored right on a phone so it opens LEFTWARD, and this is an
+        // overflow fix rather than a preference. The popover is 288px wide and
+        // the trigger sits after the symbol switcher, about 250px into a 358px
+        // content column, so anchored left it ran to ~536 against a 390
+        // viewport — roughly 146px of the stock list off-screen and
+        // unreachable. Anchored right its left edge is trigger-right minus
+        // 288, measured across the watchlist: MU 22, AVGO 56, NVDA 58,
+        // GOOGL 78, all inside the 16px column margin. MU is the worst case
+        // because it is the shortest ticker, so the switcher beside it is
+        // narrowest and the trigger sits furthest left.
+        //
+        // From 600 up it goes back to opening rightward, where there is room
+        // and where the trigger reads as the anchor.
+        <div className="panel-overlay absolute right-0 z-20 mt-2 w-72 rounded-2xl p-1 [--overlay-origin:top_right] min-[600px]:left-0 min-[600px]:right-auto min-[600px]:[--overlay-origin:top_left]">
           {/* Busy and blocked used to be one signal — a dimmed control — so a
               visitor could not tell "working" from "not allowed". This says
               which, in words, in the same live region the errors use. It never

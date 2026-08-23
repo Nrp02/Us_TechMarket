@@ -94,7 +94,7 @@ export function ActivityStats({ activity }: { activity: Activity }) {
           above is the reason this file moved with it: these two rows are the
           same object on two pages, and News & Events is this page's odd one out
           exactly as Volatility is that page's. */}
-      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5 [&>*:last-child]:col-span-2 min-[600px]:[&>*:last-child]:col-span-1">
+      <div className="grid grid-cols-2 gap-3 min-[600px]:grid-cols-3 min-[600px]:gap-4 xl:grid-cols-5">
         <Cell
           label="Price Movement"
           value={formatPercent(ticker.changePercent)}

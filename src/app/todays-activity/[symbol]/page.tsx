@@ -113,7 +113,22 @@ export default async function TodaysActivityForSymbol({
             plate under it and the badge beside it — three channels, none of
             them size, which is the right way round for a value that is already
             the only figure in the header. */}
-        <div className="flex items-center gap-5">
+        {/* ml-auto, not just the header's justify-between. On a phone this
+            block wraps to a line of its own, where justify-between has a single
+            item to place and puts it at flex-start — so a right-aligned pair
+            ended up floating at the LEFT of the screen. Measured at 390 before
+            the fix: the group sat at x=16 with 103px of dead space to its
+            right, and inside it the price started at x=53 while the change pill
+            started at x=16, both flush right at 174. Two numbers ragged on the
+            left against nothing, which is what it looked like.
+            
+            Right-aligned is the intended arrangement rather than something to
+            abandon here: watchlist-table.tsx sets its mobile card up as "price
+            over change, right-aligned, mirroring the Today's Activity header",
+            so left-aligning this would break the shape that row was built to
+            match. Same trap as the news date picker — justify-between does
+            nothing for a lone item on a wrapped line. */}
+        <div className="ml-auto flex items-center gap-5">
           <div className="flex flex-col items-end">
             <p className="font-mono text-figure font-medium tabular-nums text-ink">
               {formatPrice(ticker.price)}
