@@ -812,7 +812,43 @@
    a thing in the sky rather than a wash over it. */
 @utility night-sky {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+
+  /* HEIGHT IS PINNED, AND `inset: 0` IS WHY IT HAD TO BE.
+
+     A fixed element sized by `inset: 0` is laid out against the layout
+     viewport, and on iOS Safari that viewport RESIZES while you scroll: the
+     URL bar retracts on the way down and returns on the way up, and the box
+     grows and shrinks with it. The SVG inside carries
+     `preserveAspectRatio="xMidYMid slice"`, which solves for a scale that
+     covers its box — so a box whose height keeps changing is a starfield that
+     visibly ZOOMS in and out through the whole gesture.
+
+     The cost is not the zoom, it is what the zoom implies: a new scale is a
+     new rasterisation, of a full-viewport SVG carrying 313 circles and five
+     masks each running feTurbulence at numOctaves 4 into feDisplacementMap
+     into feGaussianBlur. The `translateZ(0)` below promotes this layer so that
+     work happens ONCE and is cached — but a cache is keyed on size, so a layer
+     that is continuously resized is a cache that is continuously thrown away.
+     That is the "always redrawing" feeling, and it is why it never reproduced
+     on a laptop: desktop browsers have no chrome that retracts mid-scroll.
+
+     `100vh` rather than `inset: 0` fixes it because on iOS `vh` has always
+     resolved against the LARGE viewport — the URL-bar-collapsed size — and is
+     therefore constant through the gesture. That is the same quirk that makes
+     `100vh` notoriously "too tall" for content; here it is exactly what is
+     wanted. `100lvh` restates it explicitly for browsers that have the unit,
+     and resolves identically. Both are the largest case, so the layer still
+     covers the screen when the bar is away and is merely cropped when it is
+     not — which is what a fixed backdrop should do anyway.
+
+     Do not "tidy" this back to `inset: 0` or swap in `100dvh`. `dvh` tracks
+     the dynamic viewport, which is precisely the value that moves. */
+  height: 100vh;
+  height: 100lvh;
+
   z-index: -1;
   pointer-events: none;
   background-color: var(--color-backdrop);
@@ -1439,6 +1475,39 @@ a {
 
 .star-breathe {
   animation: star-breathe var(--star-dur) ease-in-out var(--star-delay) infinite;
+}
+
+/* Not on touch hardware, and this is a device failure rather than a taste call.
+
+   THIS RULE IS WHAT MAKES THE `night-sky` PROMOTION COMMENT TRUE. That comment
+   states "nothing about this layer ever animates — it is promoted to be CACHED,
+   not to be moved", and the promotion exists so WebKit keeps a full-viewport
+   SVG of 313 circles and five feTurbulence/feDisplacementMap/feGaussianBlur
+   masks as a texture instead of re-rasterising it. The claim was false the day
+   it was written: the rule above is the only `infinite` animation in this
+   stylesheet, and it animates opacity on eighteen <g> elements INSIDE that
+   layer. An SVG group is not composited on its own, so each cycle dirties the
+   shared layer and throws the cached texture away — continuously, at rest and
+   mid-scroll alike. On A14 hardware (iPhone 12, iPad 10th gen) that reads as a
+   page that never finishes loading.
+
+   `animation: none`, not the iteration-count clamp the reduced-motion block
+   uses: one iteration is still one full cycle of invalidation, and what is
+   wanted here is zero. The stars settle at their authored base opacity from
+   `night-sky.tsx`, which is exactly the value the contrast harness measured —
+   the keyframe only ever dims BELOW base, never above it — so no contrast pair
+   moves and nothing needs re-measuring.
+
+   Orthogonal to `prefers-reduced-motion` rather than a duplicate of it: that
+   query serves people who asked for less motion on any device, this one serves
+   a GPU that cannot afford it regardless of what was asked. `hover: none` keys
+   off the primary input being touch, which is true on iPhone and iPad Safari
+   and false on a laptop — including a touchscreen laptop, whose primary
+   pointer still reports `hover: hover`. Deliberately not a user-agent test. */
+@media (hover: none) {
+  .star-breathe {
+    animation: none;
+  }
 }
 
 /* The only motion in the product is transition-colors plus the switcher
