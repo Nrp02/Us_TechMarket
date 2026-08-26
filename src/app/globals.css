@@ -738,6 +738,56 @@
   pointer-events: none;
 }
 
+/* --- Clear glass, not frosted -------------------------------------------
+   Every tier above drops its `backdrop-filter` here and keeps its alpha. The
+   pane stays translucent — the sky still shows through at the same 0.34 it
+   always did — it simply stops being FROSTED. This is not the reduced-
+   transparency fallback below, which repaints each tier solid; nothing about
+   the composite changes, so every contrast pair the harness measured against
+   --color-canvas still holds unaltered.
+
+   THE REASON IS SCROLL, AND IT IS A DEVICE FAILURE RATHER THAN A TASTE CALL.
+   The Bounded Motion Rule already states the cost: fourteen glass surfaces
+   sample the sky on Home, twelve on Today's Activity, and none of them is
+   fixed — so every scrolled frame moves fourteen sampled regions across the
+   backdrop and re-runs fourteen Gaussian passes. `night-sky` was promoted to
+   its own compositor layer to stop WebKit re-rasterising the SVG underneath
+   that, and it fixed the stutter it was aimed at. It could not fix the passes
+   themselves. On A14 hardware (iPhone 12, iPad 10th gen) the compositor gives
+   up rather than falls behind: whole panes drop out of the frame mid-scroll
+   and repaint seconds later, which reads as content that is simply missing.
+
+   Blur is the one property here that costs per-pixel-per-frame. Alpha is a
+   single composite the GPU does for free, which is why the translucency stays
+   and only the convolution goes.
+
+   WHAT IT CHANGES VISUALLY, stated plainly: the dust and dim star tiers now
+   read through the panes as points instead of as a wash. That is the material
+   working rather than a regression — DESIGN.md records that thinning the glass
+   never revealed a star because "the alpha was never the binding constraint,
+   the blur was", and the bright tier is already excluded from the union of
+   every panel rectangle with 24 units of margin, so the one class of star that
+   would sit under text as a hot spot cannot be behind a pane at all. Worst
+   case is a DIM star at its 0.55 ceiling directly under a glyph: ~5.4:1, still
+   AA. The clouds are unaffected — a Gaussian over a soft gradient returns
+   nearly the same gradient, which is why the composite is unchanged.
+
+   `panel-overlay` is deliberately NOT in this list. What shows through an
+   overlay is TEXT, not weather, and unfrosted text at 0.18 transmission ghosts
+   through a dropdown. It is also not part of the problem: one element, mounted
+   only while open, on an explicit action — exactly the bounded case the rule
+   permits. Its 2px → 16px entrance survives with it. */
+.panel,
+.panel-track,
+.panel-track-block,
+.panel-raised,
+.panel-rail,
+.panel-control,
+.panel-chip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
 @utility nav-active {
   background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
   box-shadow:
