@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { Inter, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
 import { ChartGradients } from "@/components/chart-gradients";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
@@ -178,6 +179,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           </main>
         </div>
         <ChartGradients />
+        <Analytics />
         {/* Renders nothing. It is here rather than in the nav card because
             the shortcuts are a property of the document, and the card is a
             component that could stop existing at a narrower width. */}
