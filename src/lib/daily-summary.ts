@@ -10,7 +10,7 @@ import {
 } from "@/lib/format";
 import { generateJson, SAFETY_RULES } from "@/lib/gemini";
 import { tradingDay } from "@/lib/market";
-import { isSignificant } from "@/lib/significance";
+import { isSignificant, relativeVolume } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL, TOP_20_SYMBOLS } from "@/lib/symbols";
 import { buildTimeline, type Snapshot } from "@/lib/timeline";
@@ -179,10 +179,7 @@ function buildInput(args: {
   const { symbol, day, price, snapshots, news, events } = args;
 
   const changePercent = Number(price.change_percent);
-  const relativeVolume =
-    price.volume && price.avg_volume
-      ? Number(price.volume) / Number(price.avg_volume)
-      : null;
+  const relVolume = relativeVolume(price.volume, price.avg_volume);
 
   const prices = snapshots.map((s) => s.price);
   const extreme = (pick: (values: number[]) => number) =>
@@ -192,9 +189,9 @@ function buildInput(args: {
   // the reason without working it back out of the thresholds itself.
   const triggers: string[] = [];
   if (Math.abs(changePercent) >= 5) triggers.push("price change of 5% or more");
-  if (relativeVolume != null && relativeVolume >= 2.5)
+  if (relVolume != null && relVolume >= 2.5)
     triggers.push("relative volume of 2.5x or more");
-  if (Math.abs(changePercent) >= 3 && (relativeVolume ?? 0) >= 1.5)
+  if (Math.abs(changePercent) >= 3 && (relVolume ?? 0) >= 1.5)
     triggers.push("price change of 3% or more together with relative volume of 1.5x or more");
 
   return {
@@ -219,14 +216,14 @@ function buildInput(args: {
       "10-day average volume": price.avg_volume
         ? `${formatVolume(Number(price.avg_volume))} shares`
         : null,
-      "volume versus average": relativeVolume == null
+      "volume versus average": relVolume == null
         ? null
-        : `${formatRelVolume(relativeVolume)} the 10-day average, which is ${
-            relativeVolume >= 1 ? "above" : "below"
+        : `${formatRelVolume(relVolume)} the 10-day average, which is ${
+            relVolume >= 1 ? "above" : "below"
           } normal`,
     },
     "movement status": {
-      verdict: isSignificant(changePercent, relativeVolume) ? "Significant" : "Normal",
+      verdict: isSignificant(changePercent, relVolume) ? "Significant" : "Normal",
       "rules triggered": triggers,
     },
     "market context": {

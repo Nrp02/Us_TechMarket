@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { isSignificant, significanceScore } from "./significance.ts";
+import { isSignificant, relativeVolume, significanceScore } from "./significance.ts";
 
 // The Significant Movement rule is used in three places (Home Status badge, Top
 // Movers ranking, Today's Activity badge) and CLAUDE.md forbids reimplementing
@@ -74,4 +74,25 @@ test("score crosses 1 exactly where the verdict flips", () => {
 test("score ranks a bigger move above a smaller one", () => {
   assert.ok(significanceScore(8, 1) > significanceScore(6, 1));
   assert.ok(significanceScore(1, 3) > significanceScore(1, 2));
+});
+
+test("relative volume is today's volume over the 10-day average", () => {
+  assert.equal(relativeVolume(12_580_343, 60_432_270), 12_580_343 / 60_432_270);
+  assert.equal(relativeVolume(100, 50), 2);
+});
+
+test("a missing figure yields null, never zero", () => {
+  // Null means unknown, and it is what stops the volume branches of the rule
+  // from firing at all. Returning 0 instead would read as "no shares traded",
+  // which is a claim about a quiet day rather than an absent measurement — and
+  // the index proxies carry no average volume at all by design.
+  for (const [volume, avg] of [
+    [null, 60_432_270],
+    [12_580_343, null],
+    [null, null],
+    [0, 60_432_270],
+    [12_580_343, 0],
+  ] as [number | null, number | null][]) {
+    assert.equal(relativeVolume(volume, avg), null);
+  }
 });

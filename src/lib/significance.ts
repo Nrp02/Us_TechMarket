@@ -24,6 +24,24 @@ export const SIGNIFICANCE_RULE_TEXT =
   "or price moved 3% or more together with 1.5x relative volume or more.";
 
 /**
+ * Today's traded volume over the 10-day average — the "Rel. Volume" column, and
+ * the second input to the rule below.
+ *
+ * Null when either figure is missing, which is the normal state for the index
+ * proxies (relative volume is only ever shown for stocks) and for any symbol
+ * whose volume the upstream feed did not supply. Null is not zero: it means
+ * unknown, and it makes the volume branches of the rule unable to fire rather
+ * than making them fire negatively.
+ */
+export function relativeVolume(
+  volume: number | null,
+  avgVolume: number | null,
+): number | null {
+  if (!volume || !avgVolume) return null;
+  return Number(volume) / Number(avgVolume);
+}
+
+/**
  * Normalised intensity of a move. Crosses 1.0 at exactly the thresholds above,
  * so `score >= 1` is the Significant/Normal test and the same number also
  * orders Top Movers — one rule, not a rule plus a separate ranking heuristic.

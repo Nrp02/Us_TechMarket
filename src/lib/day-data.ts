@@ -1,4 +1,4 @@
-import { tradingDay } from "@/lib/market";
+import { dayWindow, tradingDay } from "@/lib/market";
 import { db } from "@/lib/supabase";
 import type { Snapshot } from "@/lib/timeline";
 
@@ -19,10 +19,9 @@ export type DayDataBatch = {
 };
 
 /**
- * Snapshots and news are stored in UTC; a trading day is a New York date. New
- * York is UTC-4 or UTC-5, so one ET day always falls inside the UTC window from
- * its own midnight to noon the next day. The window narrows the query; the exact
- * boundary is settled by comparing trading days below.
+ * Snapshots and news are stored in UTC; a trading day is a New York date.
+ * `dayWindow` narrows the query to the UTC bounds containing that ET day, and
+ * the exact boundary is settled by comparing trading days below.
  *
  * Batched across every symbol in `symbols` rather than queried one at a time:
  * the day window is already shared, so there is nothing symbol-specific about
@@ -33,8 +32,7 @@ export async function loadDayDataBatch(
   symbols: string[],
   day: string,
 ): Promise<DayDataBatch> {
-  const from = `${day}T00:00:00Z`;
-  const to = new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString();
+  const { from, to } = dayWindow(day);
 
   const [snapshotResult, newsResult] = await Promise.all([
     db

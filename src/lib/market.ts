@@ -80,3 +80,21 @@ export function tradingDay(at: Date = new Date()): string {
     timeZone: "America/New_York",
   }).format(at);
 }
+
+/**
+ * The UTC bounds that contain one New York trading day. New York is UTC-4 or
+ * UTC-5, so an ET day always falls between its own midnight UTC and noon UTC the
+ * next day; callers narrow with this and then compare trading days exactly.
+ *
+ * Deliberately wider than the day it selects — it *contains* the day rather than
+ * equalling it, which is why every caller re-checks `tradingDay(...) === day`
+ * afterwards. A caller that skips that check gets the neighbouring day's rows
+ * too, and one that applies a row limit against this window truncates the wrong
+ * set (see the note on `limit` in queries.ts).
+ */
+export function dayWindow(day: string): { from: string; to: string } {
+  return {
+    from: `${day}T00:00:00Z`,
+    to: new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString(),
+  };
+}

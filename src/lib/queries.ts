@@ -1,9 +1,9 @@
 import { unstable_cache } from "next/cache";
 
-import { tradingDay } from "@/lib/market";
+import { dayWindow, tradingDay } from "@/lib/market";
 import type { NewsCategory } from "@/lib/news-category";
 import { newsRetentionCutoff } from "@/lib/news-retention";
-import { isSignificant, significanceScore } from "@/lib/significance";
+import { isSignificant, relativeVolume, significanceScore } from "@/lib/significance";
 import { db } from "@/lib/supabase";
 import { NAME_BY_SYMBOL } from "@/lib/symbols";
 
@@ -50,18 +50,6 @@ type PriceRow = {
   volume: number | null;
   avg_volume: number | null;
 };
-
-/**
- * The UTC bounds that contain one New York trading day. New York is UTC-4 or
- * UTC-5, so an ET day always falls between its own midnight UTC and noon UTC the
- * next day; callers narrow with this and then compare trading days exactly.
- */
-function dayWindow(day: string): { from: string; to: string } {
-  return {
-    from: `${day}T00:00:00Z`,
-    to: new Date(Date.parse(`${day}T12:00:00Z`) + 86_400_000).toISOString(),
-  };
-}
 
 /** The instant of the newest stored snapshot, overall or for one symbol. */
 async function newestSnapshotAt(symbol?: string): Promise<string | null> {
@@ -163,8 +151,7 @@ async function getTickersUncached(
     if (!row) return [];
 
     const changePercent = Number(row.change_percent);
-    const relativeVolume =
-      row.volume && row.avg_volume ? Number(row.volume) / Number(row.avg_volume) : null;
+    const relVolume = relativeVolume(row.volume, row.avg_volume);
 
     return [
       {
@@ -174,9 +161,9 @@ async function getTickersUncached(
         change: Number(row.change),
         changePercent,
         volume: row.volume ? Number(row.volume) : null,
-        relativeVolume,
-        significant: isSignificant(changePercent, relativeVolume),
-        score: significanceScore(changePercent, relativeVolume),
+        relativeVolume: relVolume,
+        significant: isSignificant(changePercent, relVolume),
+        score: significanceScore(changePercent, relVolume),
         spark: sparks.get(symbol) ?? [],
       },
     ];

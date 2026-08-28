@@ -26,7 +26,8 @@ function snapshotSlot(at: Date): string {
   return slot.toISOString();
 }
 
-export async function mapLimit<T, R>(
+/** Bounded worker pool over `items`. Private: `refreshMarketData` is its only caller. */
+async function mapLimit<T, R>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<R>,
