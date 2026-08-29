@@ -16,6 +16,13 @@ import { readWatchlist } from "@/lib/watchlist";
 // cookie, which is what makes a route dynamic — so removing it changes nothing
 // a visitor sees except how often the query underneath actually runs.
 
+// Headroom for the read path's retry budget, not an expectation. A healthy
+// render is ~93ms on a cache hit and ~547ms on a miss; the ceiling only matters
+// when lib/db-read.ts is spending its per-attempt timeouts, and getSparklines is
+// two sequential reads, so the worst case is ~13s. The page routes previously
+// set nothing and ran on the platform default, which is below that.
+export const maxDuration = 30;
+
 export default async function Home() {
   const watchlist = await readWatchlist();
 
@@ -23,6 +30,15 @@ export default async function Home() {
   // Top 20), sliced into the three views below — INDEX_SYMBOLS and
   // TOP_20_SYMBOLS each independently trigger a full-session sparkline scan, so
   // three separate calls would run that scan three times for the same day.
+  //
+  // `Promise.all` rather than `allSettled`, and that is now a decision rather
+  // than a default. Reads throw on failure (lib/db-read.ts), so allSettled would
+  // let one failed arm render a page missing its charts or its prices — which is
+  // precisely the reported symptom this whole change exists to remove. A page
+  // that renders three-quarters of itself cannot be told from a quiet market.
+  // Failing to app/error.tsx costs one visitor one render, recoverable with its
+  // Try again button; the silent-empty it replaces cost every visitor a full
+  // minute and no reload could fix it.
   const [all, news, session] = await Promise.all([
     getTickers([...INDEX_SYMBOLS, ...TOP_20_SYMBOLS]),
     getNewsTeaser(watchlist, 3),

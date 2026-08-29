@@ -45,6 +45,10 @@ function buildHref(tab: TabKey, date?: string): string {
   return qs ? `/news?${qs}` : "/news";
 }
 
+// Headroom for the read path's retry budget in lib/db-read.ts — see the note on
+// the same export in app/page.tsx.
+export const maxDuration = 30;
+
 export default async function News({
   searchParams,
 }: {

@@ -12,6 +12,7 @@ import { SymbolSwitcher } from "@/components/symbol-switcher";
 import { UpcomingEvents } from "@/components/upcoming-events";
 import { formatChange, formatDay, formatPercent, formatPrice } from "@/lib/format";
 import { getActivity } from "@/lib/queries";
+import { ALL_SYMBOLS } from "@/lib/symbols";
 import {
   readWatchlist,
   WATCHLIST_MAX,
@@ -44,11 +45,16 @@ import {
 // It reads from the same `unstable_cache`d query the page body uses, so within
 // the 60s window it costs nothing. If the symbol is untracked the page 404s
 // anyway; the fallback keeps the tab sane on the way there.
+// Headroom for the read path's retry budget in lib/db-read.ts — see the note on
+// the same export in app/page.tsx.
+export const maxDuration = 30;
+
 export async function generateMetadata({
   params,
 }: PageProps<"/todays-activity/[symbol]">) {
   const { symbol } = await params;
   const upper = symbol.toUpperCase();
+  if (!ALL_SYMBOLS.includes(upper)) return { title: upper };
   const activity = await getActivity(upper);
   if (!activity) return { title: upper };
   return { title: `${upper} ${formatPercent(activity.ticker.changePercent)}` };
@@ -60,12 +66,23 @@ export default async function TodaysActivityForSymbol({
   const { symbol: raw } = await params;
   const symbol = raw.toUpperCase();
 
+  // "Is this a stock we track" is a question about the fixed Top 20 plus the
+  // index proxies, so it is settled against that list rather than against the
+  // database. It used to be inferred from a missing price_cache row, which
+  // conflated an untracked ticker with a failed read — and since a failed read
+  // arrived as an empty result, a transient Supabase blip rendered a 404 for a
+  // stock that plainly exists. Reads now throw (lib/db-read.ts), so this check
+  // is what keeps the two answers apart: unknown ticker → 404, failed read →
+  // app/error.tsx, which is recoverable and never cached.
+  if (!ALL_SYMBOLS.includes(symbol)) notFound();
+
   // Still needed for the header dropdown's +/- controls, even though the
   // activity read itself no longer splits news by watchlist.
   const watchlist = await readWatchlist();
   const activity = await getActivity(symbol);
 
-  // No cached price for this symbol means it is not one we track at all.
+  // A tracked symbol with no price_cache row yet — before the first refresh has
+  // ever run for it. The only case left after the guard above.
   if (!activity) notFound();
 
   const { ticker } = activity;

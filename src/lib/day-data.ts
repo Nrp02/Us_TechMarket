@@ -1,3 +1,4 @@
+import { readRowsWithCount } from "@/lib/db-read";
 import { dayWindow, tradingDay } from "@/lib/market";
 import { db } from "@/lib/supabase";
 import type { Snapshot } from "@/lib/timeline";
@@ -34,27 +35,40 @@ export async function loadDayDataBatch(
 ): Promise<DayDataBatch> {
   const { from, to } = dayWindow(day);
 
+  // Through readRowsWithCount rather than awaited directly, so a Supabase error
+  // is retried and then raised instead of arriving as `data: null` and being
+  // read as "this day had no snapshots" — the defect lib/db-read.ts documents.
+  // The *count* half stays reported rather than thrown, which is deliberate: a
+  // job can finish its work and carry the problem out in its response, where a
+  // page cannot, so this keeps the `truncated` contract its two callers already
+  // collect (timeline-rebuild.ts and daily-summary.ts).
   const [snapshotResult, newsResult] = await Promise.all([
-    db
-      .from("intraday_snapshots")
-      .select("symbol, price, volume, snapshot_at", { count: "exact" })
-      .in("symbol", symbols)
-      .gte("snapshot_at", from)
-      .lt("snapshot_at", to)
-      .order("snapshot_at", { ascending: true }),
-    db
-      .from("news")
-      .select("related_symbols, headline, published_at, news_summaries(summary)", {
-        count: "exact",
-      })
-      .overlaps("related_symbols", symbols)
-      .gte("published_at", from)
-      .lt("published_at", to)
-      .order("published_at", { ascending: false }),
+    readRowsWithCount<Record<string, unknown>>("day-snapshots", (signal) =>
+      db
+        .from("intraday_snapshots")
+        .select("symbol, price, volume, snapshot_at", { count: "exact" })
+        .in("symbol", symbols)
+        .gte("snapshot_at", from)
+        .lt("snapshot_at", to)
+        .order("snapshot_at", { ascending: true })
+        .abortSignal(signal),
+    ),
+    readRowsWithCount<Record<string, unknown>>("day-news", (signal) =>
+      db
+        .from("news")
+        .select("related_symbols, headline, published_at, news_summaries(summary)", {
+          count: "exact",
+        })
+        .overlaps("related_symbols", symbols)
+        .gte("published_at", from)
+        .lt("published_at", to)
+        .order("published_at", { ascending: false })
+        .abortSignal(signal),
+    ),
   ]);
 
-  const { data: snapshotRows } = snapshotResult;
-  const { data: newsRows } = newsResult;
+  const snapshotRows = snapshotResult.rows;
+  const newsRows = newsResult.rows;
 
   // PostgREST caps a response at its max-rows setting (1000 by default) and
   // says nothing when it does — the reply is simply short. Batching made that
@@ -69,10 +83,9 @@ export async function loadDayDataBatch(
     ["intraday_snapshots", snapshotResult],
     ["news", newsResult],
   ] as const) {
-    const returned = result.data?.length ?? 0;
-    if (result.count != null && result.count > returned) {
+    if (result.count != null && result.count > result.rows.length) {
       truncated.push(
-        `${table}: row cap hit — ${returned} of ${result.count} rows returned, so timelines would be rebuilt from partial data`,
+        `${table}: row cap hit — ${result.rows.length} of ${result.count} rows returned, so timelines would be rebuilt from partial data`,
       );
     }
   }

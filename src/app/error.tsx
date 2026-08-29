@@ -8,21 +8,35 @@
 // the nearest boundary above it, and there is no closer one. It renders inside
 // the root layout, so the nav card stays and navigation still works.
 //
-// What actually reaches here is narrower than it looks, and both halves were
-// measured rather than assumed:
+// What reaches here, and what cannot:
 //
-//   - An upstream outage never does. Pages read cached tables only, the
-//     ingestion job absorbs a Finnhub failure per symbol, and a Supabase query
-//     error comes back as `{ data: null }` rather than a throw.
+//   - A FAILED DATABASE READ NOW DOES, and this is its intended destination.
+//     This comment used to say the opposite — that a Supabase error "comes back
+//     as `{ data: null }` rather than a throw" — and treated that as a property
+//     of the design. It was the bug. Every call site read that null as an empty
+//     table, and `unstable_cache` then served the empty result to every visitor
+//     for a minute: measured on the live site as six consecutive Home renders
+//     with no sparklines while the database held the whole session. Reads now
+//     retry and then raise (lib/db-read.ts), which is what keeps the wrong
+//     answer out of the cache, and raising has to land somewhere visible.
+//   - An upstream outage still never does. Pages read cached tables only, and
+//     the ingestion job absorbs a Finnhub failure per symbol.
+//   - components/session-marker.tsx is deliberately exempt. It renders from the
+//     ROOT layout, which is above this boundary, so its read is the one that
+//     catches its own failure rather than reaching here.
 //   - A throw during *module evaluation* never does either — a missing
 //     SUPABASE_SECRET_KEY makes lib/supabase.ts throw on import, which happens
 //     before the React tree exists, and Next serves a bare "Internal Server
 //     Error" body no boundary can intercept.
+//   - The other reachable render throw is a malformed timestamp in a row:
+//     Intl.DateTimeFormat rejects an Invalid Date, so every format helper in
+//     lib/format.ts that takes an ISO string can raise a RangeError on data that
+//     reached the table in the wrong shape.
 //
-// What remains is a throw during render, and the reachable one is a malformed
-// timestamp in a row: Intl.DateTimeFormat rejects an Invalid Date, so every
-// format helper in lib/format.ts that takes an ISO string can raise a
-// RangeError on data that reached the table in the wrong shape.
+// The `Reference:` digest below is the working half of the diagnosis: the thrown
+// message names the table and carries PostgREST's own, and Vercel logs it beside
+// the digest under a `[read]` prefix. That channel existed before and was
+// unusable only because nothing ever threw.
 //
 // Note when testing: this renders on the client after hydration. The SSR shell
 // is <html id="__next_error__">, so curl sees only "Internal Server Error" —

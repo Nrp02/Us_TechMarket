@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 
+import { readMaybeOne, readRows } from "@/lib/db-read";
 import { dayWindow, tradingDay } from "@/lib/market";
 import type { NewsCategory } from "@/lib/news-category";
 import { newsRetentionCutoff } from "@/lib/news-retention";
@@ -24,6 +25,15 @@ import { NAME_BY_SYMBOL } from "@/lib/symbols";
  * The reads cached here are all visitor-independent. The watchlist is a cookie
  * and never reaches this file except as an argument, which becomes part of the
  * cache key, so one visitor's selection can never be served to another.
+ *
+ * WHAT MAKES THIS SAFE IS THAT A FAILED READ THROWS. Every query below goes
+ * through lib/db-read.ts, which retries and then raises rather than returning an
+ * empty result — because `unstable_cache` writes no entry for a rejected
+ * promise. The two are one mechanism: caching is what would otherwise make a
+ * single transient failure durable, and throwing is what keeps the empty answer
+ * out of the cache. This file previously read `{ data }` alone and could not
+ * tell a failure from an empty table; one blip then blanked the sparklines for
+ * every visitor for a full minute. Do not reintroduce a read that swallows.
  */
 const CACHE_SECONDS = 60;
 
@@ -53,16 +63,24 @@ type PriceRow = {
 
 /** The instant of the newest stored snapshot, overall or for one symbol. */
 async function newestSnapshotAt(symbol?: string): Promise<string | null> {
-  let query = db
-    .from("intraday_snapshots")
-    .select("snapshot_at")
-    .order("snapshot_at", { ascending: false })
-    .limit(1);
+  // No `count: "exact"`: `.limit(1)` is a natural bound, so there is no cap to
+  // hit and no reason to pay for a count.
+  const rows = await readRows<{ snapshot_at: string }>(
+    symbol ? `newest-snapshot:${symbol}` : "newest-snapshot",
+    (signal) => {
+      let query = db
+        .from("intraday_snapshots")
+        .select("snapshot_at")
+        .order("snapshot_at", { ascending: false })
+        .limit(1);
 
-  if (symbol) query = query.eq("symbol", symbol);
+      if (symbol) query = query.eq("symbol", symbol);
 
-  const { data } = await query;
-  return (data?.[0]?.snapshot_at as string | undefined) ?? null;
+      return query.abortSignal(signal);
+    },
+  );
+
+  return rows[0]?.snapshot_at ?? null;
 }
 
 /**
@@ -108,20 +126,34 @@ async function getSparklines(): Promise<Map<string, number[]>> {
   if (!day) return new Map();
 
   const { from, to } = dayWindow(day);
-  const { data } = await db
-    .from("intraday_snapshots")
-    .select("symbol, price, snapshot_at")
-    .gte("snapshot_at", from)
-    .lt("snapshot_at", to)
-    .order("snapshot_at", { ascending: true });
+
+  // The one read in this file with no natural bound: it carries every tracked
+  // symbol's whole session in a single response. 25 symbols × 27 points = 675
+  // rows today, against a PostgREST ceiling of 1000 that truncates silently. The
+  // explicit limit does not raise that ceiling — it makes it visible in the
+  // source rather than an invisible server setting — and the exact count is what
+  // lets db-read tell a short reply from a complete one. It becomes a real
+  // problem at 38 tracked symbols, and the ordering is ascending, so truncation
+  // would drop the newest point of every sparkline at once.
+  const rows = await readRows<{ symbol: string; price: number; snapshot_at: string }>(
+    "sparklines",
+    (signal) =>
+      db
+        .from("intraday_snapshots")
+        .select("symbol, price, snapshot_at", { count: "exact" })
+        .gte("snapshot_at", from)
+        .lt("snapshot_at", to)
+        .order("snapshot_at", { ascending: true })
+        .limit(1000)
+        .abortSignal(signal),
+  );
 
   // The window can only straddle the boundary, never span two sessions, so the
   // trading-day comparison is what actually pins each point to `day`.
   const result = new Map<string, number[]>();
-  for (const row of data ?? []) {
-    if (tradingDay(new Date(row.snapshot_at as string)) !== day) continue;
-    const symbol = row.symbol as string;
-    result.set(symbol, [...(result.get(symbol) ?? []), Number(row.price)]);
+  for (const row of rows) {
+    if (tradingDay(new Date(row.snapshot_at)) !== day) continue;
+    result.set(row.symbol, [...(result.get(row.symbol) ?? []), Number(row.price)]);
   }
   return result;
 }
@@ -134,17 +166,28 @@ async function getTickersUncached(
 ): Promise<Ticker[]> {
   if (!symbols.length) return [];
 
-  const [{ data: prices }, sparks] = await Promise.all([
-    db
-      .from("price_cache")
-      .select("symbol, price, change, change_percent, volume, avg_volume")
-      .in("symbol", symbols),
+  const [prices, sparks] = await Promise.all([
+    // `.in()` over at most 25 symbols is its own bound, so no exact count.
+    readRows<PriceRow>("price-cache", (signal) =>
+      db
+        .from("price_cache")
+        .select("symbol, price, change, change_percent, volume, avg_volume")
+        .in("symbol", symbols)
+        .abortSignal(signal),
+    ),
     sparklines ? getSparklines() : new Map<string, number[]>(),
   ]);
 
-  const bySymbol = new Map(
-    ((prices ?? []) as PriceRow[]).map((row) => [row.symbol, row]),
-  );
+  const bySymbol = new Map(prices.map((row) => [row.symbol, row]));
+
+  // A read failure can no longer reach this point — it throws upstream — so an
+  // absent row now means what it says: the symbol has never been refreshed. That
+  // was worth nothing while the two were indistinguishable, and is the line that
+  // confirms it next time.
+  const missing = symbols.filter((symbol) => !bySymbol.has(symbol));
+  if (missing.length) {
+    console.warn(`[read] price-cache has no row for ${missing.join(", ")}`);
+  }
 
   return symbols.flatMap((symbol) => {
     const row = bySymbol.get(symbol);
@@ -253,13 +296,18 @@ function toNewsItem(row: Record<string, unknown>): NewsItem {
  * that runs concurrently is close to free while a sequential one is not.
  */
 async function getNewestNewsDayUncached(): Promise<string | null> {
-  const { data } = await db
-    .from("news")
-    .select("published_at")
-    .order("published_at", { ascending: false })
-    .limit(1);
+  const rows = await readRows<{ published_at: string }>(
+    "newest-news-day",
+    (signal) =>
+      db
+        .from("news")
+        .select("published_at")
+        .order("published_at", { ascending: false })
+        .limit(1)
+        .abortSignal(signal),
+  );
 
-  const newest = data?.[0]?.published_at as string | undefined;
+  const newest = rows[0]?.published_at;
   return newest ? tradingDay(new Date(newest)) : null;
 }
 
@@ -275,55 +323,68 @@ async function getNewsUncached(
   day?: string | null,
   limit = 60,
 ): Promise<NewsItem[]> {
-  let query = db
-    .from("news")
-    .select(NEWS_COLUMNS)
-    .order("published_at", { ascending: false });
+  // `count: "exact"` is asked for only on the day path, and the asymmetry is
+  // load-bearing: PostgREST reports the total matching rows, ignoring `limit`.
+  // On the teaser path `limit` is an intentional cap far below the ceiling, so a
+  // count would always exceed what came back and db-read would read every
+  // healthy read as truncated. On the day path the only cap is the ceiling
+  // itself, which is precisely what the count is there to catch.
+  const buildQuery = (signal: AbortSignal) => {
+    let query = db
+      .from("news")
+      .select(NEWS_COLUMNS, day ? { count: "exact" } : undefined)
+      .order("published_at", { ascending: false });
 
-  // `limit` is applied in Postgres only when there is no day filter, and that
-  // placement is the whole point rather than an optimisation.
-  //
-  // dayWindow is 36 hours wide because it has to *contain* an ET day (see
-  // below); the exact day is settled afterwards in JS. Applying the limit in
-  // Postgres therefore truncated the wrong set — it took the newest `limit`
-  // rows of the 36-hour window, which are dominated by the *next* ET day, and
-  // the JS filter then threw most of them away. Measured on ET 2026-08-20: the
-  // window held 183 rows, the day itself held 122, and the page rendered 5.
-  //
-  // It was worse than a simple undercount, because the category predicates run
-  // in Postgres too. Each tab drew its 60 from a smaller pool, so more of its
-  // rows survived the day filter than All News's did — 34 / 38 / 27 against 5,
-  // three tabs each larger than the tab that is supposed to contain them.
-  //
-  // So a day view is uncapped: the window bounds it to a few hundred rows, and
-  // a query returning 200 rows costs what one returning 1 costs here (the cost
-  // is per request — see CACHE_SECONDS). The `limit` argument is ignored on
-  // this path, which no caller exercises: only the Home teaser passes one, and
-  // it passes no day.
-  //
-  // PostgREST's own 1000-row ceiling is *not* a graceful backstop here, which
-  // is worth stating because it reads like one. It keeps the newest 1000 rows
-  // and drops the rest, and the newest rows of a 36-hour window are the next ET
-  // day — so a window that ever exceeded 1000 would lose the requested day from
-  // its oldest end and reproduce exactly the bug above, tabs outgrowing All News
-  // and all. Headroom is real (183 rows in the widest window measured); if it
-  // ever narrows, tighten the window rather than trusting the ceiling.
-  if (!day) query = query.limit(limit);
+    // `limit` is applied in Postgres only when there is no day filter, and that
+    // placement is the whole point rather than an optimisation.
+    //
+    // dayWindow is 36 hours wide because it has to *contain* an ET day (see
+    // below); the exact day is settled afterwards in JS. Applying the limit in
+    // Postgres therefore truncated the wrong set — it took the newest `limit`
+    // rows of the 36-hour window, which are dominated by the *next* ET day, and
+    // the JS filter then threw most of them away. Measured on ET 2026-08-20: the
+    // window held 183 rows, the day itself held 122, and the page rendered 5.
+    //
+    // It was worse than a simple undercount, because the category predicates run
+    // in Postgres too. Each tab drew its 60 from a smaller pool, so more of its
+    // rows survived the day filter than All News's did — 34 / 38 / 27 against 5,
+    // three tabs each larger than the tab that is supposed to contain them.
+    //
+    // So a day view is uncapped: the window bounds it to a few hundred rows, and
+    // a query returning 200 rows costs what one returning 1 costs here (the cost
+    // is per request — see CACHE_SECONDS). The `limit` argument is ignored on
+    // this path, which no caller exercises: only the Home teaser passes one, and
+    // it passes no day.
+    //
+    // PostgREST's own 1000-row ceiling is *not* a graceful backstop here, which
+    // is worth stating because it reads like one. It keeps the newest 1000 rows
+    // and drops the rest, and the newest rows of a 36-hour window are the next ET
+    // day — so a window that ever exceeded 1000 would lose the requested day from
+    // its oldest end and reproduce exactly the bug above, tabs outgrowing All News
+    // and all. Headroom is real (183 rows in the widest window measured). It is
+    // no longer trusted silently: the day path states the ceiling as an explicit
+    // limit and asks for the exact count, so exceeding it raises instead of
+    // quietly serving the wrong day. Tightening the window is still the fix if
+    // that ever fires.
+    query = day ? query.limit(1000) : query.limit(limit);
 
-  // An empty tag list is what identifies the general feed; everything else is a
-  // company article, sorted by whether the visitor watches any of its tickers.
-  if (category === "market") query = query.eq("related_symbols", "{}");
-  if (category === "company") query = query.overlaps("related_symbols", watchlist);
-  if (category === "industry") {
-    query = query
-      .neq("related_symbols", "{}")
-      .not("related_symbols", "ov", `{${watchlist.join(",")}}`);
-  }
+    // An empty tag list is what identifies the general feed; everything else is a
+    // company article, sorted by whether the visitor watches any of its tickers.
+    if (category === "market") query = query.eq("related_symbols", "{}");
+    if (category === "company") query = query.overlaps("related_symbols", watchlist);
+    if (category === "industry") {
+      query = query
+        .neq("related_symbols", "{}")
+        .not("related_symbols", "ov", `{${watchlist.join(",")}}`);
+    }
 
-  if (day) {
-    const { from, to } = dayWindow(day);
-    query = query.gte("published_at", from).lt("published_at", to);
-  }
+    if (day) {
+      const { from, to } = dayWindow(day);
+      query = query.gte("published_at", from).lt("published_at", to);
+    }
+
+    return query.abortSignal(signal);
+  };
 
   // The retention floor is applied here rather than as a SQL bound, because it
   // depends on the newest stored day and so is not known while the query is
@@ -332,10 +393,13 @@ async function getNewsUncached(
   // trims a tail that failed it. That reasoning only holds because the limit
   // and the floor agree on an ordering; it is exactly the reasoning the day
   // filter broke, since a day is not a suffix of a newest-first list.
-  const [{ data }, newestDay] = await Promise.all([query, getNewestNewsDay()]);
+  const [rows, newestDay] = await Promise.all([
+    readRows<Record<string, unknown>>("news", buildQuery),
+    getNewestNewsDay(),
+  ]);
   const cutoff = newsRetentionCutoff(newestDay);
 
-  const items = (data ?? [])
+  const items = rows
     .map((row) => toNewsItem(row))
     .filter((item) => tradingDay(new Date(item.publishedAt)) >= cutoff);
   return day
@@ -371,23 +435,27 @@ export async function getNewsTeaser(
  * avoids adding a Postgres function for one dropdown.
  */
 async function getNewsAvailableDatesUncached(): Promise<string[]> {
-  const { data } = await db
-    .from("news")
-    .select("published_at")
-    .order("published_at", { ascending: false })
-    .limit(1000);
+  // The closest read in this file to the ceiling: its 1000 IS the ceiling rather
+  // than a chosen cap, so the exact count is the only thing that could ever tell
+  // you it had been reached. Truncation here would silently drop the oldest days
+  // out of the picker.
+  const rows = await readRows<{ published_at: string }>("news-dates", (signal) =>
+    db
+      .from("news")
+      .select("published_at", { count: "exact" })
+      .order("published_at", { ascending: false })
+      .limit(1000)
+      .abortSignal(signal),
+  );
 
-  const rows = data ?? [];
   // Rows come back newest first, so the first one is the anchor the floor is
   // measured from — no second query is needed here.
-  const newestDay = rows.length
-    ? tradingDay(new Date(rows[0].published_at as string))
-    : null;
+  const newestDay = rows.length ? tradingDay(new Date(rows[0].published_at)) : null;
   const cutoff = newsRetentionCutoff(newestDay);
 
   const days = new Set<string>();
   for (const row of rows) {
-    const day = tradingDay(new Date(row.published_at as string));
+    const day = tradingDay(new Date(row.published_at));
     if (day >= cutoff) days.add(day);
   }
   return [...days].sort().reverse();
@@ -451,18 +519,28 @@ async function getIntraday(
   day: string,
 ): Promise<IntradayPoint[]> {
   const { from, to } = dayWindow(day);
-  const { data } = await db
-    .from("intraday_snapshots")
-    .select("price, volume, snapshot_at")
-    .eq("symbol", symbol)
-    .gte("snapshot_at", from)
-    .lt("snapshot_at", to)
-    .order("snapshot_at", { ascending: true });
+  // One symbol's day is ~27 rows, so the ceiling is nowhere near — but no cap is
+  // stated, which is exactly the case the count is cheap insurance for.
+  const rows = await readRows<{
+    price: number;
+    volume: number | null;
+    snapshot_at: string;
+  }>(`intraday:${symbol}`, (signal) =>
+    db
+      .from("intraday_snapshots")
+      .select("price, volume, snapshot_at", { count: "exact" })
+      .eq("symbol", symbol)
+      .gte("snapshot_at", from)
+      .lt("snapshot_at", to)
+      .order("snapshot_at", { ascending: true })
+      .limit(1000)
+      .abortSignal(signal),
+  );
 
-  return (data ?? [])
-    .filter((row) => tradingDay(new Date(row.snapshot_at as string)) === day)
+  return rows
+    .filter((row) => tradingDay(new Date(row.snapshot_at)) === day)
     .map((row) => ({
-      at: row.snapshot_at as string,
+      at: row.snapshot_at,
       price: Number(row.price),
       volume: row.volume == null ? null : Number(row.volume),
     }));
@@ -478,15 +556,21 @@ async function getIntraday(
  */
 async function getSymbolNews(symbol: string, day: string): Promise<NewsItem[]> {
   const { from, to } = dayWindow(day);
-  const { data } = await db
-    .from("news")
-    .select(NEWS_COLUMNS)
-    .contains("related_symbols", [symbol])
-    .gte("published_at", from)
-    .lt("published_at", to)
-    .order("published_at", { ascending: false });
+  const rows = await readRows<Record<string, unknown>>(
+    `symbol-news:${symbol}`,
+    (signal) =>
+      db
+        .from("news")
+        .select(NEWS_COLUMNS, { count: "exact" })
+        .contains("related_symbols", [symbol])
+        .gte("published_at", from)
+        .lt("published_at", to)
+        .order("published_at", { ascending: false })
+        .limit(1000)
+        .abortSignal(signal),
+  );
 
-  return (data ?? [])
+  return rows
     .filter((row) => tradingDay(new Date(row.published_at as string)) === day)
     .map((row) => toNewsItem(row));
 }
@@ -505,7 +589,7 @@ async function getActivityUncached(symbol: string): Promise<Activity | null> {
   // One wave, not two: the timeline/events/summary queries only need `symbol`
   // and `sessionDay`, both already known, so they don't have to wait behind the
   // tickers/intraday/news queries above them.
-  const [tickers, intraday, news, timelineRows, eventRows, summaryRow] = await Promise.all([
+  const [tickers, intraday, news, timelineRows, eventRows, summary] = await Promise.all([
     // This page draws its own chart from getIntraday and renders no sparkline.
     // Uncached on purpose: the whole of getActivity is cached below, so going
     // through the cached variant here would only add a second lookup for a
@@ -513,35 +597,57 @@ async function getActivityUncached(symbol: string): Promise<Activity | null> {
     getTickersUncached([symbol, SECTOR_SYMBOL, MARKET_SYMBOL], { sparklines: false }),
     getIntraday(symbol, sessionDay),
     getSymbolNews(symbol, sessionDay),
-    db
-      .from("timeline_events")
-      .select("event_at, kind, label, detail")
-      .eq("symbol", symbol)
-      .eq("trading_day", sessionDay)
-      .order("event_at", { ascending: true }),
+    readRows<{ event_at: string; kind: string; label: string; detail: string | null }>(
+      `timeline:${symbol}`,
+      (signal) =>
+        db
+          .from("timeline_events")
+          .select("event_at, kind, label, detail")
+          .eq("symbol", symbol)
+          .eq("trading_day", sessionDay)
+          .order("event_at", { ascending: true })
+          .abortSignal(signal),
+    ),
     // Bounded by the start of today's ET date, not by the current instant.
     // Earnings rows carry a time only so the date and the call sort in order
     // (noon and 21:00 UTC), so comparing against "now" hid today's earnings from
     // the afternoon onwards — on the one day they matter most.
-    db
-      .from("events")
-      .select("event_type, event_at, note")
-      .eq("symbol", symbol)
-      .gte("event_at", `${tradingDay()}T00:00:00Z`)
-      .order("event_at", { ascending: true }),
-    db
-      .from("daily_summaries")
-      .select("summary, bullets, generated_at")
-      .eq("symbol", symbol)
-      .eq("summary_date", sessionDay)
-      .maybeSingle(),
+    readRows<{ event_type: string; event_at: string; note: string | null }>(
+      `events:${symbol}`,
+      (signal) =>
+        db
+          .from("events")
+          .select("event_type, event_at, note")
+          .eq("symbol", symbol)
+          .gte("event_at", `${tradingDay()}T00:00:00Z`)
+          .order("event_at", { ascending: true })
+          .abortSignal(signal),
+    ),
+    // Absent is a normal answer here — a stock the post-close job has not
+    // reached yet has no row — so this is the one read whose empty result is
+    // meaningful rather than suspicious.
+    readMaybeOne<{ summary: string; bullets: string[] | null; generated_at: string }>(
+      `daily-summary:${symbol}`,
+      (signal) =>
+        db
+          .from("daily_summaries")
+          .select("summary, bullets, generated_at")
+          .eq("symbol", symbol)
+          .eq("summary_date", sessionDay)
+          .abortSignal(signal)
+          .maybeSingle(),
+    ),
   ]);
 
   const bySymbol = new Map(tickers.map((t) => [t.symbol, t]));
   const ticker = bySymbol.get(symbol);
+  // Narrower than it used to be, and the narrowing matters. This once absorbed
+  // a failed read as well, and the route turns null into notFound() — so a
+  // transient Supabase error rendered a 404 for a stock that plainly exists. A
+  // read failure now throws before reaching here, and the route checks the
+  // symbol against ALL_SYMBOLS itself, so the only case left is the honest one:
+  // a tracked symbol with no price_cache row yet, before the first refresh.
   if (!ticker) return null;
-
-  const summary = summaryRow.data;
 
   return {
     sessionDay,
@@ -550,21 +656,21 @@ async function getActivityUncached(symbol: string): Promise<Activity | null> {
     market: bySymbol.get(MARKET_SYMBOL) ?? null,
     intraday,
     news,
-    timeline: (timelineRows.data ?? []).map((row) => ({
-      at: row.event_at as string,
+    timeline: timelineRows.map((row) => ({
+      at: row.event_at,
       kind: row.kind as TimelineEntry["kind"],
-      label: row.label as string,
-      detail: (row.detail as string | null) ?? null,
+      label: row.label,
+      detail: row.detail ?? null,
     })),
-    events: (eventRows.data ?? []).map((row) => ({
+    events: eventRows.map((row) => ({
       type: row.event_type as UpcomingEvent["type"],
-      at: row.event_at as string,
-      note: (row.note as string | null) ?? null,
+      at: row.event_at,
+      note: row.note ?? null,
     })),
     summary: summary
       ? {
-          narrative: summary.summary as string,
-          bullets: (summary.bullets as string[] | null) ?? [],
+          narrative: summary.summary,
+          bullets: summary.bullets ?? [],
           generatedAt: summary.generated_at as string,
         }
       : null,

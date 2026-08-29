@@ -24,7 +24,30 @@ import { getSessionStamp } from "@/lib/queries";
  * one or two days exactly when a visitor is most likely to be looking.
  */
 export async function SessionMarker() {
-  const stamp = await getSessionStamp();
+  // THE ONE READ IN THE APP THAT IS ALLOWED TO SWALLOW ITS FAILURE, and it is
+  // forced by where this is mounted rather than by taste. Every other read
+  // throws on purpose (see lib/db-read.ts): a page's throw lands in
+  // app/error.tsx, which renders inside the shell with the nav card intact.
+  // This component is rendered from the ROOT layout, and app/error.tsx sits at
+  // the same segment level, so it cannot catch a throw from here — with no
+  // app/global-error.tsx in the repo, one failed read would replace every route
+  // with Next's bare error page and take the navigation with it. That is a
+  // worse outcome than a missing dateline, and it would apply to all three
+  // routes at once rather than the one that failed.
+  //
+  // Returning null is already a supported state: this renders nothing before
+  // the first snapshot exists. Logged rather than silent, with the same [read]
+  // prefix as the helper, so it is still one grep in the Vercel logs.
+  let stamp: Awaited<ReturnType<typeof getSessionStamp>> = null;
+  try {
+    stamp = await getSessionStamp();
+  } catch (error) {
+    console.error(
+      `[read] session-stamp failed; shell renders without the dateline: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
   if (!stamp) return null;
 
   const open = isMarketOpen();
