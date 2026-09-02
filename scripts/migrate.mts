@@ -20,6 +20,11 @@ await client.query(`
   )
 `);
 
+// Same posture as every app table: RLS on, no policies, so the anon key sees
+// nothing. This connection is the table owner, which RLS never applies to
+// (only FORCE ROW LEVEL SECURITY would), so the reads below still work.
+await client.query("ALTER TABLE schema_migrations ENABLE ROW LEVEL SECURITY");
+
 const { rows } = await client.query<{ name: string }>(
   "SELECT name FROM schema_migrations",
 );
