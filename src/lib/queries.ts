@@ -366,6 +366,12 @@ async function getNewsUncached(
     // limit and asks for the exact count, so exceeding it raises instead of
     // quietly serving the wrong day. Tightening the window is still the fix if
     // that ever fires.
+    //
+    // Headroom is smaller than it was. The widest window measured 183 rows when
+    // that was written; ET day 2026-09-04 alone now holds 253 articles, so the
+    // 36-hour window around a busy day runs ~350-400. This is the same growth
+    // that broke news-dates (see below, and migration 0009) — the day path is
+    // the next read that would fire, at roughly 2.5x today's volume.
     query = day ? query.limit(1000) : query.limit(limit);
 
     // An empty tag list is what identifies the general feed; everything else is a
@@ -429,36 +435,36 @@ export async function getNewsTeaser(
 
 /**
  * Every ET trading day that has at least one stored article, most recent
- * first. Backs the News page's date filter. Reads one column across the whole
- * table rather than a grouped SQL query — simplest thing that works at the
- * size this table actually is (measured in the low hundreds of rows), and it
- * avoids adding a Postgres function for one dropdown.
+ * first. Backs the News page's date filter.
+ *
+ * Asks Postgres for the distinct days (news_days(), migration 0009) rather than
+ * selecting `published_at` from every row and collapsing them into a Set here,
+ * which is what this did until it broke the page outright. PostgREST caps a
+ * response at 1000 rows and the news table reached 1402 inside its own 7-day
+ * retention window, so `readRows` correctly refused to render from partial data
+ * and /news served the error boundary on every request. Retention was working;
+ * the table just holds ~175 articles a day now, so a date bound would not have
+ * helped — those 1402 rows already WERE the retained window. See the migration
+ * for the full measurement.
+ *
+ * One row per day means the read is now bounded by the retention window rather
+ * than by article volume, so it cannot approach the ceiling again.
  */
 async function getNewsAvailableDatesUncached(): Promise<string[]> {
-  // The closest read in this file to the ceiling: its 1000 IS the ceiling rather
-  // than a chosen cap, so the exact count is the only thing that could ever tell
-  // you it had been reached. Truncation here would silently drop the oldest days
-  // out of the picker.
-  const rows = await readRows<{ published_at: string }>("news-dates", (signal) =>
+  // The count stays, and now it can never falsely fire: 1000 is the ceiling
+  // rather than a chosen cap (db-read.ts states the rule), and the reply is at
+  // most the handful of retained days.
+  const rows = await readRows<{ day: string }>("news-dates", (signal) =>
     db
-      .from("news")
-      .select("published_at", { count: "exact" })
-      .order("published_at", { ascending: false })
+      .rpc("news_days", {}, { count: "exact" })
       .limit(1000)
       .abortSignal(signal),
   );
 
-  // Rows come back newest first, so the first one is the anchor the floor is
-  // measured from — no second query is needed here.
-  const newestDay = rows.length ? tradingDay(new Date(rows[0].published_at)) : null;
-  const cutoff = newsRetentionCutoff(newestDay);
-
-  const days = new Set<string>();
-  for (const row of rows) {
-    const day = tradingDay(new Date(row.published_at));
-    if (day >= cutoff) days.add(day);
-  }
-  return [...days].sort().reverse();
+  // Already DISTINCT and newest-first out of SQL, so the first row is the
+  // anchor the floor is measured from — no second query is needed here.
+  const cutoff = newsRetentionCutoff(rows[0]?.day ?? null);
+  return rows.map((row) => row.day).filter((day) => day >= cutoff);
 }
 
 export const getNewsDates = unstable_cache(
