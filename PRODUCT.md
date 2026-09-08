@@ -50,7 +50,7 @@ Second, supporting claim: **the visitor's traffic never reaches a metered upstre
 - **Fixed universe of 20 US large-cap technology stocks**, defined in `src/lib/symbols.ts`. Not a live ranking — no free-tier endpoint ranks US tech by market cap.
 - **Watchlist: minimum 1, maximum 10, default 7**, stored in a per-browser cookie and re-validated server-side on every read. Two visitors do not share a watchlist; two people sharing a browser profile do.
 - **No user accounts, no auth.** This rules out bookmarking, alerts, notifications, saved views and personalisation beyond the cookie — those are out of scope, not deferred.
-- **Free tiers only, no billing anywhere.** The binding limit is Gemini at 20 requests per day per project; the app runs at a budget of 10 (6 news cycles + 4 summary batches). Every AI call is batched and scheduled — never per article, per stock page, or per interaction.
+- **Free tiers only, no billing anywhere.** The binding limit is Gemini at 20 requests per day per project; the app runs at a worst case of 12 (8 news cycles + 4 summary batches). Every AI call is batched and scheduled — never per article, per stock page, or per interaction.
 - **Market index cards are ETF proxies** (QQQ, SPY, DIA, XLK, VIXY) because the free tier rejects real index symbols. `VIXY` tracks VIX **futures**, not VIX spot, and the interface must not imply otherwise.
 - **Today's volume comes from an unofficial Yahoo endpoint**, so a failure means "volume unknown" rather than an error.
 - **One shared significance rule** (price move ≥5%, or relative volume ≥2.5x, or ≥3% with ≥1.5x) defines the Significant/Normal badge and Top Movers everywhere. It is imported, never reimplemented per surface.
@@ -95,4 +95,4 @@ Second, supporting claim: **the visitor's traffic never reaches a metered upstre
 
 One known tension to carry forward rather than rediscover, and one now closed. Numeric change values carry an explicit `+`/`−` sign, and the **sparklines and intraday chart** no longer depend on colour alone either — both are `role="img"` with an accessible name stating direction and range, which closes that gap. Still open: the logo plate is deliberately light against the dark field because several brand marks carry near-black fills that cannot be recoloured, which constrains contrast work around it.
 
-Phone widths (~390px) no longer overflow on any route, but they have not been composed for. Now that phone is a named target, that gap is design work owed rather than a scope decision already taken.
+Phone widths (~390px) have since been composed for rather than merely fitted — the watchlist becomes a two-line list, the five-card grids run two-up, and the nav card holds one row — so this is no longer design work owed. What remains is to keep it that way: a new surface has three designed widths to answer for, not one.

@@ -15,7 +15,7 @@ There are three surfaces:
 | | |
 |---|---|
 | **Home** | Five market index cards, your watchlist as a table with a Significant/Normal badge per stock, the day's top movers ranked, and a three-article news teaser. |
-| **News** | Every article collected, split into All / Company / Industry / Market, each with an AI-written 2–3 line summary and a link to the original. |
+| **News** | Every article collected, split into All / Company / Industry / Market, filterable by day, each with an AI-written 2–3 line summary and a link to the original. |
 | **Today's Activity** | One page per stock: five stat cards, the AI daily summary, an intraday price-and-volume chart, a reconstructed timeline of the session, and the next earnings date. |
 
 Your watchlist (1–10 stocks, 7 by default) lives in a cookie in your own browser. There are no accounts.
@@ -40,11 +40,31 @@ Every external call — Finnhub, Yahoo, Gemini — comes from a scheduled server
 
 This is enforced mechanically rather than by convention: importing an upstream client from a page or component **fails lint**, and the ingestion endpoint checks a shared secret and fails closed.
 
-It matters because the free tiers are small. Gemini's limit is **20 requests per day per project** — measured off a live 429, not read from a blog post — and the app runs at a budget of **8**: four batched news cycles and four batched summary runs. One call per article, or per page view, would exhaust the quota before a demo started.
+It matters because the free tiers are small. Gemini's limit is **20 requests per day per project** — measured off a live 429, not read from a blog post — and the app runs at a worst case of **12**: eight batched news cycles and four batched summary runs. One call per article, or per page view, would exhaust the quota before a demo started.
+
+### A failed read is not an empty table
+
+Every read used to destructure `{ data }` alone — the string `error` did not appear in the query layer at all. supabase-js reports a failure as `{ data: null, error }` rather than by rejecting, so one network blip arrived as `data: null` and the call site collapsed it to `[]`. A failed read was indistinguishable from an empty table.
+
+The 60-second read cache is what turned that into a reported bug rather than a bad second: **one transient failure was written into the cache and served to every visitor for at least a minute.** The symptom was sparklines and prices intermittently missing, which reads exactly like an upstream outage. It was not one — the database held all 675 of that session's rows the whole time.
+
+So reads now either return rows or **throw**, through `src/lib/db-read.ts`: a bounded retry on a fresh `AbortSignal` per attempt, a 2s timeout where there had been none, and a row-count check that refuses to hand back a silently truncated page. Throwing is the mechanism, not the side effect — `unstable_cache` writes no entry for a rejected promise, so a wrong answer can no longer become a durable one. It must not "degrade gracefully" back to `[]`.
+
+That check then caught a real one. PostgREST caps a response at 1000 rows; the News date picker was reading `published_at` from **every article in the table** just to collapse it into a list of days, and at 1402 rows it crossed the cap and took the page down visibly instead of quietly rendering a short picker. The fix was to stop reading rows to answer a question about days — a `news_days()` SQL function returns 8 rows instead of 1402, bounded by the retention window rather than by how busy the news day was.
 
 ### It survives its upstreams failing
 
 Simulated by pointing the app at a dead Finnhub key so every request 401s. The refresh job returned HTTP 200 with `prices: 0, failed: [all 25]` — and, more importantly, **wrote nothing**: the cached prices and 1,346 intraday snapshots were untouched. All three pages still rendered the last good data. A total upstream outage cannot reach a visitor, because a visitor was never connected to an upstream.
+
+The scheduled cleanup is guarded the same way. Supabase pauses a free-tier project after about a week of inactivity, and cron pauses with it — so on resume a naive 7-day prune would find *every* row older than the window and delete all of them. Each `DELETE` carries a guard that leaves the last surviving data in place, so the job trims history but can never empty a table.
+
+## How it looks
+
+One theme, dark, no daylight counterpart: **a midnight sky with frosted glass over it.** The background is an authored night sky — 313 stars, two fractal filters, occasional meteors — rendered as a server component so none of it ships as client JavaScript, and every panel above it is a translucent plate that samples it.
+
+The face pairing is a newspaper's rather than a terminal's: Source Serif 4 for prose, Inter for the interface, JetBrains Mono for every number. That is a claim about what the product is — it does not tick, does not trade and does not advise; its output is written, edited prose after the close, and terminal typography would misrepresent it by implying something is still moving.
+
+Arrival is sequenced in two phases — the room first, then the instruments draw themselves in the direction of the session they plot — which keeps peak concurrency to five animation families on Home instead of seven starting at once. `DESIGN.md` carries the tokens and the named rules the whole interface is built from.
 
 ## How it is built
 
@@ -54,17 +74,21 @@ Simulated by pointing the app at a dead Finnhub key so every request 401s. The r
 | **Database** | Supabase (Postgres) |
 | **Scheduling** | Supabase Cron (`pg_cron` + `pg_net`) — Vercel Hobby caps cron at once per day, which cannot deliver 15-minute snapshots |
 | **AI** | Gemini `gemini-3.5-flash`, free tier, batched |
-| **Hosting** | Vercel |
+| **Hosting** | Vercel (`sin1`), with Vercel Web Analytics |
 
-**Data sources.** Finnhub for prices, company news and the earnings calendar; Yahoo Finance's chart endpoint for today's volume and intraday bars (Finnhub's free tier serves neither); SEC EDGAR for filing metadata; Brandfetch's Logo CDN for company marks, hotlinked under its licence.
+**Data sources.** Finnhub for prices, company news and the earnings calendar; Yahoo Finance's chart endpoint for today's volume, intraday bars and the official closing print (Finnhub's free tier serves neither, and its quote drifts into after-hours trading once the bell has gone); Brandfetch's Logo CDN for company marks, hotlinked under its licence — the one upstream a browser touches, because it is a static-asset host that cannot starve a metered quota.
 
-**Schedule.** Price and volume snapshots every 15 minutes while the market is open; news four times a trading day; summaries after the close. Market hours are evaluated in `America/New_York`, so the schedule survives daylight saving without editing a cron expression.
+**Schedule.** Price and volume snapshots every 15 minutes while the market is open; news eight times a day; summaries after the close; a retention sweep nightly. Market hours are evaluated in `America/New_York`, so the schedule survives daylight saving without editing a cron expression.
+
+**Retention is seven days, and that is the product, not a stopgap.** This is a daily-intelligence tool, not an archive. Old rows are physically deleted, and the News page additionally floors its own reads at a whole ET day anchored on the newest stored day — so the window can never open onto a partial day whose article count shrinks on every reload.
 
 **Performance.** Server-side median page time is ~93ms, down from ~1,450ms. Almost none of that came from tuning queries: a query returning one row cost the same as one returning 840, because the price is per *request*. The two fixes were pinning the functions to the same region as the database (`iad1` 260ms → `sin1` 155ms per request) and caching the read helpers for 60 seconds, well inside the 15-minute ingestion cadence.
 
-**Keyboard.** `g h`, `g n` and `g a` jump between the three routes; each rail item declares its own shortcut in `aria-keyshortcuts`, so a screen reader announces it with the link. The watchlist menus are real ARIA menus: they take focus when they open, move on the arrow keys, and jump to a ticker as you type it (`n`, `v` → NVDA).
+**Keyboard.** `g h`, `g n` and `g a` jump between the three routes; each nav item declares its own shortcut in `aria-keyshortcuts`, so a screen reader announces it with the link. The watchlist menus are real ARIA menus: they take focus when they open, move on the arrow keys, and jump to a ticker as you type it (`n`, `v` → NVDA).
 
-**Accessibility.** WCAG 2.1 AA. Contrast is measured against the *worst-case composite* — the frosted panels are translucent, so each surface is a range rather than a value, and every text pair is checked at the brightest point that range reaches. `prefers-reduced-motion`, `prefers-reduced-transparency` and `prefers-contrast` each get a designed alternative rather than a blanket switch-off. Laptop and iPad are the supported widths; phone is a documented non-target.
+**Accessibility.** WCAG 2.1 AA. Contrast is measured against the *worst-case composite* — the frosted panels are translucent, so each surface is a range rather than a value, and every text pair is checked at the brightest point that range reaches. `prefers-reduced-motion`, `prefers-reduced-transparency` and `prefers-contrast` each get a designed alternative rather than a blanket switch-off.
+
+**Widths.** Laptop, iPad and phone are all designed targets. Below 600px the watchlist table becomes a two-line list carrying all eight fields from the same format helpers as the cells, the two five-card grids run two-up, and the nav card collapses to one row. Measured clean — `scrollWidth === innerWidth` on all three routes at 390 / 430 / 600 / 768 / 834 / 1024 / 1130 / 1280 / 1470 / 1920.
 
 ## Running it locally
 
@@ -77,7 +101,7 @@ You will need a `.env.local` with Supabase, Finnhub and Gemini credentials, plus
 
 ```bash
 npm run build        # production build
-npm test             # 41 unit tests
+npm test             # 84 unit tests
 npm run lint
 npm run migrate      # apply SQL migrations
 npm run setup-cron   # provision the Supabase Cron schedules (idempotent)
@@ -107,5 +131,6 @@ Three documents carry the reasoning behind the code, and they divide cleanly:
 - The market index cards are **ETF proxies** (QQQ, SPY, DIA, XLK, VIXY), because the free tier rejects real index symbols. `VIXY` tracks VIX *futures*, not VIX spot, and the interface says so.
 - The universe of 20 is a **fixed list**, not a live market-cap ranking — no free endpoint provides one.
 - Today's volume comes from an **unofficial Yahoo endpoint**. A failure there means "volume unknown", never an error page.
-- **Phone widths (~390px) are not supported.** A visitor on a phone gets a horizontally scrolling page. This is a device-target decision, not an oversight.
+- **Nothing on screen is live.** Snapshots land every 15 minutes and reads are cached for up to 60 seconds, so you are looking at a recent state of the world rather than a ticking one.
+- **Only seven days of history exist**, by design. There is no archive to browse and no way to look up a past session.
 - There are **no users, no track record and no financial-services standing**. This is a student project that holds no money and executes no trades. Nothing in it is investment advice.
